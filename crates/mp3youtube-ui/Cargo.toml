@@ -1,0 +1,30 @@
+[package]
+name = "mp3youtube-ui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Leptos-based UI for MP3YouTube"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "mp3youtube-ui"
+path = "src/main.rs"
+
+[dependencies]
+leptos.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+serde-wasm-bindgen = "0.6"
+js-sys = "0.3"
+console_error_panic_hook = "0.1"
+web-sys = { version = "0.3", features = ["Window", "Document", "Element"] }
+
+[dev-dependencies]
+
+[lints]
+workspace = true

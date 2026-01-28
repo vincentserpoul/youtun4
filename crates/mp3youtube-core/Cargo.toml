@@ -1,0 +1,25 @@
+[package]
+name = "mp3youtube-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Core library for MP3YouTube - handles device detection, playlist management, and YouTube downloading"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+sysinfo.workspace = true
+walkdir.workspace = true
+
+[dev-dependencies]
+mockall.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["test-util", "macros"] }
+
+[lints]
+workspace = true

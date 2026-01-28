@@ -1,0 +1,30 @@
+[package]
+name = "mp3youtube"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Desktop/mobile app for managing MP3 playlists from YouTube"
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+tauri.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+dirs = "6.0"
+mp3youtube-core = { path = "../crates/mp3youtube-core" }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[lints]
+workspace = true

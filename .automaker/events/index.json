@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "events": [
+    {
+      "id": "evt-1769611707488-38463e99",
+      "trigger": "feature_success",
+      "timestamp": "2026-01-28T14:48:27.488Z",
+      "featureId": "15e72062-7ff3-4d80-a374-458fca73b890"
+    },
+    {
+      "id": "evt-1769611358672-542b3d58",
+      "trigger": "auto_mode_complete",
+      "timestamp": "2026-01-28T14:42:38.672Z"
+    },
+    {
+      "id": "evt-1769611357646-6e811e6a",
+      "trigger": "auto_mode_complete",
+      "timestamp": "2026-01-28T14:42:37.646Z"
+    },
+    {
+      "id": "evt-1769611356908-10d5e2c9",
+      "trigger": "auto_mode_complete",
+      "timestamp": "2026-01-28T14:42:36.908Z"
+    },
+    {
+      "id": "evt-1769611356008-cbd86ce2",
+      "trigger": "auto_mode_complete",
+      "timestamp": "2026-01-28T14:42:36.008Z"
+    },
+    {
+      "id": "evt-1769611351941-2458c9a6",
+      "trigger": "auto_mode_complete",
+      "timestamp": "2026-01-28T14:42:31.941Z"
+    },
+    {
+      "id": "evt-1769533791992-ef427860",
+      "trigger": "feature_success",
+      "timestamp": "2026-01-27T17:09:51.992Z",
+      "featureId": "15e72062-7ff3-4d80-a374-458fca73b890"
+    },
+    {
+      "id": "evt-1769533590858-495c9a48",
+      "trigger": "feature_success",
+      "timestamp": "2026-01-27T17:06:30.858Z",
+      "featureId": "15e72062-7ff3-4d80-a374-458fca73b890"
+    },
+    {
+      "id": "evt-1769532725809-45314a55",
+      "trigger": "feature_success",
+      "timestamp": "2026-01-27T16:52:05.809Z",
+      "featureId": "15e72062-7ff3-4d80-a374-458fca73b890"
+    },
+    {
+      "id": "evt-1769531566781-1a1eaea6",
+      "trigger": "feature_created",
+      "timestamp": "2026-01-27T16:32:46.781Z",
+      "featureId": "15e72062-7ff3-4d80-a374-458fca73b890"
+    }
+  ]
+}

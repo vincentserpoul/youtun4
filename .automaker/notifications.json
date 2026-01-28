@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "notifications": [
+    {
+      "id": "87d398fb-f52f-4526-9bb5-edea1efbe763",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"15e72062-7ff3-4d80-a374-458fca73b890\" is ready for your review and approval.",
+      "createdAt": "2026-01-27T16:52:05.794Z",
+      "read": true,
+      "dismissed": false,
+      "featureId": "15e72062-7ff3-4d80-a374-458fca73b890",
+      "projectPath": "/Users/vsm/workspace/trials-agent/mp3youtube"
+    },
+    {
+      "id": "eb651a14-685f-412d-b87d-b016a38fa852",
+      "type": "spec_regeneration_complete",
+      "title": "Spec Sync Complete",
+      "message": "Added 14 technologies, Removed 13 technologies",
+      "createdAt": "2026-01-27T16:52:31.277Z",
+      "read": true,
+      "dismissed": false,
+      "projectPath": "/Users/vsm/workspace/trials-agent/mp3youtube"
+    },
+    {
+      "id": "6256f3fd-b091-450a-b1e4-fdb556f817b0",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"15e72062-7ff3-4d80-a374-458fca73b890\" is ready for your review and approval.",
+      "createdAt": "2026-01-27T17:06:30.853Z",
+      "read": true,
+      "dismissed": false,
+      "featureId": "15e72062-7ff3-4d80-a374-458fca73b890",
+      "projectPath": "/Users/vsm/workspace/trials-agent/mp3youtube"
+    },
+    {
+      "id": "e4222810-dba1-4f10-8d2a-07120795a635",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"15e72062-7ff3-4d80-a374-458fca73b890\" is ready for your review and approval.",
+      "createdAt": "2026-01-27T17:09:51.990Z",
+      "read": true,
+      "dismissed": false,
+      "featureId": "15e72062-7ff3-4d80-a374-458fca73b890",
+      "projectPath": "/Users/vsm/workspace/trials-agent/mp3youtube"
+    },
+    {
+      "id": "c8682db2-7604-4fad-a232-01936bdbcf88",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"15e72062-7ff3-4d80-a374-458fca73b890\" is ready for your review and approval.",
+      "createdAt": "2026-01-28T14:48:27.487Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "15e72062-7ff3-4d80-a374-458fca73b890",
+      "projectPath": "/Users/vsm/workspace/trials-agent/mp3youtube"
+    }
+  ]
+}

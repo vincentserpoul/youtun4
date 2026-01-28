@@ -1,0 +1,11 @@
+[default]
+workspace = true
+out = ["Html", "Lcov"]
+output-dir = "coverage"
+timeout = "120s"
+ignore-tests = false
+skip-clean = false
+all-features = false
+packages = ["mp3youtube-core"]
+exclude-files = ["**/main.rs", "**/build.rs"]
+fail-under = 90.0

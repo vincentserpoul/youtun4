@@ -1,0 +1,73 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/mp3youtube-core",
+    "crates/mp3youtube-ui",
+    "src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["MP3YouTube Team"]
+license = "MIT"
+repository = "https://github.com/example/mp3youtube"
+
+[workspace.dependencies]
+# Core dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+anyhow = "1.0"
+tokio = { version = "1.43", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Tauri
+tauri = { version = "2.2", features = [] }
+tauri-build = "2.0"
+
+# Leptos
+leptos = { version = "0.8.15", features = ["csr"] }
+
+# Device detection
+sysinfo = "0.38"
+
+# YouTube downloading
+rustube = "0.6"
+
+# File handling
+walkdir = "2.5"
+tempfile = "3.17"
+
+# Testing
+mockall = "0.14"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+# Allow precision loss for display purposes (percentages, progress)
+cast_precision_loss = "allow"
+# Allow doc_markdown warnings for known technical terms
+doc_markdown = "warn"
+# Allow missing error docs in initial implementation
+missing_errors_doc = "warn"
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,32 @@
+# Build artifacts
+/target/
+/dist/*.js
+/dist/*.wasm
+
+# Coverage
+/coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Tauri
+/src-tauri/target/
+/src-tauri/gen/
+
+# Node (if using any build tools)
+node_modules/
+
+# Logs
+*.log

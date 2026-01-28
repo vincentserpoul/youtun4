@@ -1,0 +1,17 @@
+{
+  "category": "Core",
+  "description": "Initial project setup",
+  "id": "15e72062-7ff3-4d80-a374-458fca73b890",
+  "status": "verified",
+  "skipTests": true,
+  "descriptionHistory": [
+    {
+      "description": "Initial project setup",
+      "timestamp": "2026-01-27T16:32:46.775Z",
+      "source": "initial"
+    }
+  ],
+  "startedAt": "2026-01-28T14:33:11.955Z",
+  "updatedAt": "2026-01-28T14:48:27.484Z",
+  "justFinishedAt": "2026-01-28T14:48:27.484Z"
+}

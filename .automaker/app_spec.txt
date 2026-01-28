@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project_specification>
+  <project_name>an-desktopmobile-app</project_name>
+
+  <overview>
+    an desktop/mobile app that manages music playlists for any mp3 device that mounts as a usb storage device. the app should allow users to create, delete, and sync playlists between their local storage and the connected mp3 device. Playlists should be created from youtube URLs, downloading the audio as mp3 files.
+  </overview>
+
+  <technology_stack>
+    <technology>Rust</technology>
+    <technology>Tauri 2.2</technology>
+    <technology>Leptos 0.8.15</technology>
+    <technology>Cargo Workspace</technology>
+    <technology>Tokio</technology>
+    <technology>Serde</technology>
+    <technology>Sysinfo</technology>
+    <technology>WalkDir</technology>
+    <technology>Thiserror</technology>
+    <technology>Anyhow</technology>
+    <technology>Tracing</technology>
+    <technology>Mockall</technology>
+    <technology>iOS</technology>
+    <technology>Android</technology>
+  </technology_stack>
+
+  <core_capabilities>
+    <capability>**Device Detection**: Automatically detect when an mp3 device is connected via USB and mount it as a storage device.</capability>
+    <capability>**Local Storage Playlist Management**: Each playlist should be represented as a folder on a separate local folder (in userspace). The app should allow user to delete any playlist (folder) from the local folder.</capability>
+    <capability>**Sync Playlists to Device**: Allow users to sync the unique selected playlist from the local storage folder to the connected mp3 device. This should involve deleting any existing data on the device before copying the new playlist. The deletion and copy should be done in a way that ensures data integrity and speed.</capability>
+    <capability>**Playlist Creation**: Allow playlist to be created from a youtube URL. Playlists should ONLY be created from youtube playlists. The app should download the audio from the youtube URL and save it as an mp3 file in a new playlist folder in the local storage.</capability>
+    <capability>**User Interface**: Provide a user-friendly interface for managing playlists, including options to create, delete, and sync playlists. The interface should be intuitive and responsive on both desktop and mobile platforms.</capability>
+    <capability>**Error Handling**: Implement robust error handling to manage issues such as device connection failures, file download errors, and data transfer interruptions.</capability>
+    <capability>**Cross-Platform Compatibility**: Ensure the app works seamlessly across different operating systems (Windows, macOS, Linux for desktop; iOS, Android for mobile).</capability>
+    <capability>**Performance Optimization**: Optimize the app for performance, ensuring quick detection of devices, fast file transfers, and efficient handling of large playlists.</capability>
+    <capability>**Testing**: Implement thorough testing procedures, including unit tests, integration tests, and user acceptance tests to ensure the app functions as intended across all features and platforms.</capability>
+    <capability>**Security Considerations**: Ensure that the app adheres to best security practices, especially when handling file transfers and downloads from external sources like YouTube.</capability>
+    <capability>**Updates and Maintenance**: Plan for regular updates and maintenance to address bugs, add new features, and ensure compatibility with new operating system versions and mp3 devices.</capability>
+    <capability>**Code Quality**: Maintain high code quality standards, including code reviews, adherence to coding conventions, and use of version control systems like Git for collaborative development. Make the code as simple as possible to understand and maintain.</capability>
+    <capability>**UI/UX Design**: Focus on creating an appealing and user-friendly design that enhances the overall user experience on both desktop and mobile platforms.</capability>
+    <capability>**Colors and style**: Use dark mode as the default theme for the application, ensuring that all UI elements are optimized for visibility and aesthetics in low-light environments. Use pastel and neon colors for highlights and accents to create a modern and visually appealing interface, while ensuring that the overall design remains easy on the eyes and enhances user experience.</capability>
+    <capability>**fonts**: Use the &apos;Fira Sans&apos; font for all textual elements within the application. This font is known for its readability and modern appearance, making it an excellent choice for both desktop and mobile interfaces. Ensure that the font is consistently applied across all UI components to maintain a cohesive and professional look throughout the app.</capability>
+  </core_capabilities>
+
+  <implemented_features>
+    <feature>
+      <name>Feature: 15e72062-7ff3-4d80-a374-458fca73b890</name>
+      <description>Initial project setup</description>
+    </feature>
+  </implemented_features>
+
+  <development_guidelines>
+    <guideline>Write clean, production-quality code</guideline>
+    <guideline>Include proper error handling</guideline>
+    <guideline>Write comprehensive Playwright tests</guideline>
+    <guideline>Ensure all tests pass before marking features complete</guideline>
+  </development_guidelines>
+</project_specification>

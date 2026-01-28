@@ -1,0 +1,19 @@
+[build]
+# The HTML file to use
+target = "crates/mp3youtube-ui/index.html"
+# Output directory for the build
+dist = "dist"
+
+[watch]
+# Files to watch for changes
+watch = ["crates/mp3youtube-ui/src", "crates/mp3youtube-ui/styles", "crates/mp3youtube-ui/index.html"]
+# Ignore patterns
+ignore = ["target"]
+
+[serve]
+# Development server addresses
+addresses = ["127.0.0.1"]
+# Development server port (matching Tauri's devUrl)
+port = 1420
+# Open browser automatically
+open = false
