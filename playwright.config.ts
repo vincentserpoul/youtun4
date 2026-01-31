@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Playwright configuration for MP3YouTube UI tests.
+ * Playwright configuration for Youtun4 UI tests.
  *
  * Tests run against the Trunk dev server at localhost:1420.
  * The server must be started before running tests.

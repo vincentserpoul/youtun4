@@ -60,7 +60,7 @@ test.describe("Navigation and Layout", () => {
 
     test("should display application name in header", async ({ page }) => {
       const logoText = page.locator(".logo-text");
-      await expect(logoText).toContainText("MP3YouTube");
+      await expect(logoText).toContainText("Youtun4");
     });
 
     test("should display settings button in header", async ({

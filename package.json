@@ -1,5 +1,5 @@
 {
-  "name": "mp3youtube",
+  "name": "youtun4",
   "version": "1.0.0",
   "description": "A desktop/mobile app for managing MP3 playlists from YouTube. Built with Tauri and Rust.",
   "main": "index.js",

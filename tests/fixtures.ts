@@ -1,5 +1,5 @@
 /**
- * Test fixtures and utilities for MP3YouTube Playwright tests.
+ * Test fixtures and utilities for Youtun4 Playwright tests.
  *
  * This file provides common utilities, mock data, and helper functions
  * used across all test files.
