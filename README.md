@@ -1,4 +1,4 @@
-# MP3YouTube
+# Youtun4
 
 A desktop/mobile app for managing MP3 playlists from YouTube. Built with Tauri and Rust.
 
@@ -19,10 +19,10 @@ A desktop/mobile app for managing MP3 playlists from YouTube. Built with Tauri a
 ## Project Structure
 
 ```text
-mp3youtube/
+youtun4/
 ├── crates/
-│   ├── mp3youtube-core/     # Core library (device detection, playlist management, YouTube)
-│   └── mp3youtube-ui/       # Leptos UI components
+│   ├── youtun4-core/     # Core library (device detection, playlist management, YouTube)
+│   └── youtun4-ui/       # Leptos UI components
 ├── src-tauri/               # Tauri application
 │   ├── src/
 │   │   ├── main.rs          # Application entry point

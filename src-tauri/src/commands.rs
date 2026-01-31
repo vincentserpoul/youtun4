@@ -1,4 +1,4 @@
-//! Tauri commands for the `MP3YouTube` application.
+//! Tauri commands for the `Youtun4` application.
 //!
 //! These commands are invoked from the frontend via Tauri's IPC mechanism.
 
@@ -16,7 +16,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use mp3youtube_core::{
+use tauri::{AppHandle, Emitter, State};
+use tokio::sync::RwLock;
+use tracing::{debug, error, info};
+use youtun4_core::{
     AppConfig, Error, ErrorKind, Result,
     cleanup::{CleanupOptions, CleanupResult, DeviceCleanupHandler},
     config::ConfigManager,
@@ -43,9 +46,6 @@ use mp3youtube_core::{
         YouTubeDownloader, YouTubeUrlValidation, validate_youtube_url,
     },
 };
-use tauri::{AppHandle, Emitter, State};
-use tokio::sync::RwLock;
-use tracing::{debug, error, info};
 
 use crate::runtime::{AsyncRuntime, ProgressSender, TaskCategory, TaskId, TaskStatus};
 
@@ -318,7 +318,7 @@ pub async fn get_device_info(
     manager.refresh();
 
     let device =
-        mp3youtube_core::device::get_device_by_mount_point(&*manager, &PathBuf::from(&mount_point))
+        youtun4_core::device::get_device_by_mount_point(&*manager, &PathBuf::from(&mount_point))
             .map_err(map_err)?;
 
     info!(
@@ -379,11 +379,11 @@ pub async fn verify_device_space(
     manager.refresh();
 
     let device =
-        mp3youtube_core::device::get_device_by_mount_point(&*manager, &PathBuf::from(&mount_point))
+        youtun4_core::device::get_device_by_mount_point(&*manager, &PathBuf::from(&mount_point))
             .map_err(map_err)?;
 
     // Check if space is sufficient - this returns an error if insufficient
-    mp3youtube_core::device::check_device_space(&device, required_bytes).map_err(map_err)?;
+    youtun4_core::device::check_device_space(&device, required_bytes).map_err(map_err)?;
 
     info!(
         "Device {} has sufficient space: {} bytes available, {} bytes required",
@@ -453,7 +453,7 @@ pub async fn check_sync_capacity(
     // Get device info
     let mut manager = state.device_manager.write().await;
     manager.refresh();
-    let device = mp3youtube_core::device::get_device_by_mount_point(
+    let device = youtun4_core::device::get_device_by_mount_point(
         &*manager,
         &PathBuf::from(&device_mount_point),
     )
@@ -942,10 +942,10 @@ pub async fn cleanup_device_verified(
 
     let path = PathBuf::from(&mount_point);
     let device =
-        mp3youtube_core::device::get_device_by_mount_point(&*manager, &path).map_err(map_err)?;
+        youtun4_core::device::get_device_by_mount_point(&*manager, &path).map_err(map_err)?;
 
     // Verify device is accessible
-    mp3youtube_core::device::verify_device_accessible(&*manager, &device).map_err(map_err)?;
+    youtun4_core::device::verify_device_accessible(&*manager, &device).map_err(map_err)?;
 
     // Now perform cleanup
     let handler = DeviceCleanupHandler::new();
@@ -1145,7 +1145,7 @@ pub async fn transfer_files_to_device(
     };
 
     // Perform transfer
-    let mut engine = mp3youtube_core::TransferEngine::new();
+    let mut engine = youtun4_core::TransferEngine::new();
     engine
         .transfer_files(
             &source_paths,
@@ -1164,7 +1164,7 @@ pub async fn compute_file_checksum(file_path: String) -> std::result::Result<Str
     debug!("Computing checksum for: {}", file_path);
 
     let path = PathBuf::from(&file_path);
-    let engine = mp3youtube_core::TransferEngine::new();
+    let engine = youtun4_core::TransferEngine::new();
 
     engine.compute_file_checksum(&path).map_err(map_err)
 }
@@ -1186,7 +1186,7 @@ pub async fn verify_file_integrity(
     let source = PathBuf::from(&source_path);
     let dest = PathBuf::from(&destination_path);
 
-    let engine = mp3youtube_core::TransferEngine::new();
+    let engine = youtun4_core::TransferEngine::new();
 
     let source_checksum = engine.compute_file_checksum(&source).map_err(map_err)?;
     let dest_checksum = engine.compute_file_checksum(&dest).map_err(map_err)?;
@@ -1254,7 +1254,7 @@ pub async fn load_checksum_manifest(
 /// Check if a checksum manifest exists in a directory.
 #[tauri::command]
 pub async fn has_checksum_manifest(directory: String) -> std::result::Result<bool, String> {
-    let path = PathBuf::from(&directory).join(mp3youtube_core::integrity::DEFAULT_MANIFEST_FILE);
+    let path = PathBuf::from(&directory).join(youtun4_core::integrity::DEFAULT_MANIFEST_FILE);
     Ok(path.exists())
 }
 
@@ -1362,7 +1362,7 @@ pub async fn update_manifest_file(
     // Get file metadata
     let metadata = std::fs::metadata(&path).map_err(|e| {
         map_err(Error::FileSystem(
-            mp3youtube_core::error::FileSystemError::ReadFailed {
+            youtun4_core::error::FileSystemError::ReadFailed {
                 path: path.clone(),
                 reason: e.to_string(),
             },
@@ -1472,7 +1472,7 @@ pub async fn get_playlist_details(
 pub async fn validate_playlist_folder(
     state: State<'_, AppState>,
     name: String,
-) -> std::result::Result<mp3youtube_core::playlist::FolderValidationResult, String> {
+) -> std::result::Result<youtun4_core::playlist::FolderValidationResult, String> {
     debug!("Validating playlist folder: {}", name);
     let manager = state.playlist_manager.read().await;
     let result = manager.validate_folder(&name);
@@ -1495,7 +1495,7 @@ pub async fn validate_playlist_folder(
 pub async fn get_playlist_statistics(
     state: State<'_, AppState>,
     name: String,
-) -> std::result::Result<mp3youtube_core::playlist::FolderStatistics, String> {
+) -> std::result::Result<youtun4_core::playlist::FolderStatistics, String> {
     debug!("Getting statistics for playlist: {}", name);
     let manager = state.playlist_manager.read().await;
     let stats = manager.get_folder_statistics(&name).map_err(map_err)?;
@@ -1584,7 +1584,7 @@ pub async fn rename_playlist(
     info!("Renaming playlist '{}' to '{}'", old_name, new_name);
 
     // Validate the new name
-    mp3youtube_core::playlist::validate_playlist_name(&new_name).map_err(map_err)?;
+    youtun4_core::playlist::validate_playlist_name(&new_name).map_err(map_err)?;
 
     let manager = state.playlist_manager.read().await;
     let old_path = manager.get_playlist_path(&old_name).map_err(map_err)?;
@@ -1593,14 +1593,14 @@ pub async fn rename_playlist(
     // Check if new name already exists
     if new_path.exists() {
         return Err(map_err(Error::Playlist(
-            mp3youtube_core::error::PlaylistError::AlreadyExists { name: new_name },
+            youtun4_core::error::PlaylistError::AlreadyExists { name: new_name },
         )));
     }
 
     // Rename the folder
     std::fs::rename(&old_path, &new_path).map_err(|e| {
         map_err(Error::FileSystem(
-            mp3youtube_core::error::FileSystemError::WriteFailed {
+            youtun4_core::error::FileSystemError::WriteFailed {
                 path: new_path.clone(),
                 reason: format!("Failed to rename playlist folder: {e}"),
             },
@@ -1819,7 +1819,7 @@ pub async fn set_storage_directory(
 /// Get the default storage directory.
 #[tauri::command]
 pub fn get_default_storage_directory() -> String {
-    mp3youtube_core::config::default_playlists_directory()
+    youtun4_core::config::default_playlists_directory()
         .display()
         .to_string()
 }
@@ -2338,7 +2338,7 @@ pub async fn start_orchestrated_sync(
                 let error_result = CoreSyncResult {
                     success: false,
                     was_cancelled: false,
-                    final_phase: mp3youtube_core::sync::SyncPhase::Failed,
+                    final_phase: youtun4_core::sync::SyncPhase::Failed,
                     cleanup_result: None,
                     transfer_results: vec![],
                     total_files_transferred: 0,
@@ -2635,7 +2635,7 @@ impl YouTubeErrorCategory {
 fn classify_error(error: &Error) -> YouTubeErrorCategory {
     match error {
         Error::Download(download_err) => {
-            use mp3youtube_core::error::DownloadError;
+            use youtun4_core::error::DownloadError;
             match download_err {
                 DownloadError::InvalidUrl { .. } => YouTubeErrorCategory::InvalidUrl,
                 DownloadError::NotAPlaylist { .. } => YouTubeErrorCategory::InvalidUrl,
@@ -2948,7 +2948,7 @@ pub async fn download_youtube_playlist(
                 // Check if it was cancelled
                 let event = if matches!(
                     e,
-                    Error::Download(mp3youtube_core::error::DownloadError::Cancelled)
+                    Error::Download(youtun4_core::error::DownloadError::Cancelled)
                 ) {
                     youtube_events::DOWNLOAD_CANCELLED
                 } else {
@@ -3170,7 +3170,7 @@ pub async fn download_youtube_to_playlist(
                 // Check if it was cancelled
                 let event = if matches!(
                     e,
-                    Error::Download(mp3youtube_core::error::DownloadError::Cancelled)
+                    Error::Download(youtun4_core::error::DownloadError::Cancelled)
                 ) {
                     youtube_events::DOWNLOAD_CANCELLED
                 } else {
@@ -3377,7 +3377,7 @@ pub async fn sync_playlists_to_device(
 // Cache Commands
 // =============================================================================
 
-use mp3youtube_core::cache::{
+use youtun4_core::cache::{
     CacheCleanupStats, CacheConfig, CacheManager, CacheStats, default_cache_directory,
 };
 
@@ -4017,9 +4017,9 @@ async fn process_queue(app: AppHandle, state: State<'_, AppState>) {
                     .audio_quality
                     .clone()
                     .unwrap_or_else(|| match download_quality {
-                        mp3youtube_core::config::DownloadQuality::Low => "128".to_string(),
-                        mp3youtube_core::config::DownloadQuality::Medium => "192".to_string(),
-                        mp3youtube_core::config::DownloadQuality::High => "320".to_string(),
+                        youtun4_core::config::DownloadQuality::Low => "128".to_string(),
+                        youtun4_core::config::DownloadQuality::Medium => "192".to_string(),
+                        youtun4_core::config::DownloadQuality::High => "320".to_string(),
                     });
 
             let embed_thumbnail = item.request.embed_thumbnail.unwrap_or(true);
@@ -4222,6 +4222,6 @@ mod tests {
     fn test_get_default_storage_directory() {
         let dir = get_default_storage_directory();
         assert!(!dir.is_empty());
-        assert!(dir.contains("mp3youtube"));
+        assert!(dir.contains("youtun4"));
     }
 }

@@ -34,4 +34,4 @@ node_modules/
 test-results
 .automaker
 playwright-report
-crates/mp3youtube-ui/dist/
+crates/youtun4-ui/dist/

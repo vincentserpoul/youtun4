@@ -3000,63 +3000,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mp3youtube"
-version = "0.1.0"
-dependencies = [
- "dirs",
- "mp3youtube-core",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "mp3youtube-core"
-version = "0.1.0"
-dependencies = [
- "dirs",
- "filetime",
- "id3",
- "mockall",
- "regex",
- "reqwest",
- "rusty_ytdl",
- "serde",
- "serde_json",
- "sha2",
- "sysinfo",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "walkdir",
-]
-
-[[package]]
-name = "mp3youtube-ui"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "gloo-timers",
- "js-sys",
- "leptos",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
 name = "muda"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7233,6 +7176,63 @@ dependencies = [
  "quote",
  "syn 2.0.114",
  "synstructure",
+]
+
+[[package]]
+name = "youtun4"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "youtun4-core",
+]
+
+[[package]]
+name = "youtun4-core"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "filetime",
+ "id3",
+ "mockall",
+ "regex",
+ "reqwest",
+ "rusty_ytdl",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sysinfo",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
+]
+
+[[package]]
+name = "youtun4-ui"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "gloo-timers",
+ "js-sys",
+ "leptos",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
-# MP3YouTube Code Review & Refactoring Plan
+# Youtun4 Code Review & Refactoring Plan
 
 ## Executive Summary
 
@@ -42,7 +42,7 @@ cargo clippy --all-targets --all-features 2>&1 | grep "help:" | head -50
 ### 1.3 Failed Test
 
 ```rust
-// crates/mp3youtube-core/tests/integration_tests.rs:786
+// crates/youtun4-core/tests/integration_tests.rs:786
 // .mp4 is now considered audio (contains AAC)
 // Fix: Update test to reflect that mp4 IS an audio container
 assert!(is_audio_file(Path::new("video.mp4")));  // mp4 can contain audio
@@ -63,7 +63,7 @@ assert!(!is_audio_file(Path::new("video.mkv"))); // test non-audio instead
 ### 2.2 Proposed Trait Abstractions
 
 ```rust
-// crates/mp3youtube-core/src/traits.rs (NEW FILE)
+// crates/youtun4-core/src/traits.rs (NEW FILE)
 
 /// Abstraction over file system operations for testability.
 pub trait FileSystem: Send + Sync {
@@ -276,7 +276,7 @@ tokio::spawn(async move {
 
 ### 4.3 After Cleanup: Target Dependencies
 
-**mp3youtube-core:**
+**youtun4-core:**
 
 ```toml
 [dependencies]
@@ -301,23 +301,23 @@ dirs = "6.0"
 ### 5.1 Current Structure
 
 ```text
-mp3youtube/
+youtun4/
 ├── Cargo.toml (workspace)
 ├── crates/
-│   ├── mp3youtube-core/  (12 modules, ~15K lines)
-│   └── mp3youtube-ui/    (Leptos WASM, ~5K lines)
+│   ├── youtun4-core/  (12 modules, ~15K lines)
+│   └── youtun4-ui/    (Leptos WASM, ~5K lines)
 └── src-tauri/            (Tauri app, ~5K lines)
 ```
 
 ### 5.2 Proposed Structure
 
-Split `mp3youtube-core` into focused crates:
+Split `youtun4-core` into focused crates:
 
 ```text
-mp3youtube/
+youtun4/
 ├── Cargo.toml (workspace)
 ├── crates/
-│   ├── mp3youtube-types/     # Shared types, no dependencies
+│   ├── youtun4-types/     # Shared types, no dependencies
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── device.rs     # DeviceInfo, MountStatus
@@ -325,32 +325,32 @@ mp3youtube/
 │   │       ├── transfer.rs   # TransferProgress, TransferResult
 │   │       └── error.rs      # Unified Error type
 │   │
-│   ├── mp3youtube-fs/        # File system operations
+│   ├── youtun4-fs/        # File system operations
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── traits.rs     # FileSystem trait
 │   │       ├── real.rs       # RealFileSystem impl
 │   │       └── mock.rs       # MockFileSystem for tests
 │   │
-│   ├── mp3youtube-device/    # Device detection only
+│   ├── youtun4-device/    # Device detection only
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── detector.rs
 │   │       └── watcher.rs
 │   │
-│   ├── mp3youtube-youtube/   # YouTube downloading only
+│   ├── youtun4-youtube/   # YouTube downloading only
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── downloader.rs
 │   │       └── parser.rs     # URL parsing
 │   │
-│   ├── mp3youtube-playlist/  # Playlist management
+│   ├── youtun4-playlist/  # Playlist management
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── manager.rs
 │   │       └── sync.rs
 │   │
-│   └── mp3youtube-ui/        # Leptos WASM (unchanged)
+│   └── youtun4-ui/        # Leptos WASM (unchanged)
 │
 └── src-tauri/                # Tauri app (slimmed down)
 ```
@@ -362,22 +362,22 @@ mp3youtube/
 | **Faster compilation**   | Change in `youtube` doesn't recompile `device` |
 | **Clearer dependencies** | Each crate has minimal deps                    |
 | **Better testing**       | Test each crate in isolation                   |
-| **Reusability**          | `mp3youtube-youtube` could be a standalone lib |
+| **Reusability**          | `youtun4-youtube` could be a standalone lib    |
 | **Smaller binaries**     | Only include what's needed                     |
 
 ### 5.4 Dependency Graph (After Split)
 
 ```text
-mp3youtube-types (0 deps except serde)
+youtun4-types (0 deps except serde)
        ↑
-mp3youtube-fs (types)
+youtun4-fs (types)
        ↑
-mp3youtube-device (types, fs, sysinfo)
-mp3youtube-youtube (types, fs, rusty_ytdl)
-mp3youtube-playlist (types, fs, id3)
+youtun4-device (types, fs, sysinfo)
+youtun4-youtube (types, fs, rusty_ytdl)
+youtun4-playlist (types, fs, id3)
        ↑
 src-tauri (device, youtube, playlist, tauri)
-mp3youtube-ui (types, leptos)
+youtun4-ui (types, leptos)
 ```
 
 ---
@@ -410,11 +410,11 @@ mp3youtube-ui (types, leptos)
 
 ### Phase 4: Workspace Split (5-7 days)
 
-1. Create `mp3youtube-types` crate
-2. Create `mp3youtube-fs` crate
-3. Extract `mp3youtube-device` from core
-4. Extract `mp3youtube-youtube` from core
-5. Extract `mp3youtube-playlist` from core
+1. Create `youtun4-types` crate
+2. Create `youtun4-fs` crate
+3. Extract `youtun4-device` from core
+4. Extract `youtun4-youtube` from core
+5. Extract `youtun4-playlist` from core
 6. Update all imports and dependencies
 
 ---
@@ -426,7 +426,7 @@ mp3youtube-ui (types, leptos)
 | Clippy warnings | `cargo clippy 2>&1 \| grep -c "^warning:"` | 0                |
 | Test coverage   | `cargo tarpaulin --out Html`               | 80%              |
 | Build time      | `cargo build --timings`                    | <30s incremental |
-| Binary size     | `ls -lh target/release/mp3youtube`         | <20MB            |
+| Binary size     | `ls -lh target/release/youtun4`            | <20MB            |
 | Dependencies    | `cargo tree \| wc -l`                      | <200 total       |
 
 ---
@@ -450,7 +450,7 @@ cargo tarpaulin --workspace --out Html
 cargo tree --depth 2 | less
 
 # Check binary size
-cargo build --release && ls -lh target/release/mp3youtube
+cargo build --release && ls -lh target/release/youtun4
 
 # Find large files
 wc -l **/*.rs | sort -rn | head -20

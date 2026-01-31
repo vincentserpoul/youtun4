@@ -1,10 +1,10 @@
 [package]
-name = "mp3youtube"
+name = "youtun4"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Desktop/mobile app for managing MP3 playlists from YouTube"
+description = "Desktop/mobile app for managing MP4 playlists from YouTube"
 
 [build-dependencies]
 tauri-build.workspace = true
@@ -19,7 +19,7 @@ tracing-subscriber.workspace = true
 tracing-appender.workspace = true
 thiserror.workspace = true
 dirs.workspace = true
-mp3youtube-core.workspace = true
+youtun4-core.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

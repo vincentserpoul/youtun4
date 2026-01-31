@@ -1,4 +1,4 @@
-//! Async runtime configuration for the `MP3YouTube` application.
+//! Async runtime configuration for the `Youtun4` application.
 //!
 //! This module provides utilities for managing the Tokio async runtime,
 //! including task spawning, thread pool configuration, and task lifecycle management.
@@ -96,7 +96,7 @@ impl Default for RuntimeConfig {
             worker_threads: None, // Use Tokio's default (num CPUs)
             max_blocking_threads: 512,
             thread_keep_alive_secs: 10,
-            thread_name_prefix: "mp3youtube-worker".to_string(),
+            thread_name_prefix: "youtun4-worker".to_string(),
         }
     }
 }

@@ -3,7 +3,7 @@
 #
 # Detects secrets, API keys, passwords in code
 
-title = "mp3youtube gitleaks config"
+title = "youtun4 gitleaks config"
 
 [extend]
 # Use the default gitleaks config as base

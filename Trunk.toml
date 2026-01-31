@@ -1,6 +1,6 @@
 [build]
 # The HTML file to use
-target = "crates/mp3youtube-ui/index.html"
+target = "crates/youtun4-ui/index.html"
 # Output directory for the build
 dist = "dist"
 # Enable the WASM binary feature
@@ -8,7 +8,7 @@ features = "_wasm_bin"
 
 [watch]
 # Files to watch for changes
-watch = ["crates/mp3youtube-ui/src", "crates/mp3youtube-ui/styles", "crates/mp3youtube-ui/index.html"]
+watch = ["crates/youtun4-ui/src", "crates/youtun4-ui/styles", "crates/youtun4-ui/index.html"]
 # Ignore patterns
 ignore = ["target"]
 

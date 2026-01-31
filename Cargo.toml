@@ -1,17 +1,17 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/mp3youtube-core",
-    "crates/mp3youtube-ui",
+    "crates/youtun4-core",
+    "crates/youtun4-ui",
     "src-tauri",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-authors = ["MP3YouTube Team"]
+authors = ["Youtun4 Team"]
 license = "MIT"
-repository = "https://github.com/example/mp3youtube"
+repository = "https://github.com/example/youtun4"
 
 [workspace.dependencies]
 # Core dependencies - shared across multiple crates
@@ -59,7 +59,7 @@ console_error_panic_hook = "0.1"
 mockall = "0.14"
 
 # Internal workspace crates
-mp3youtube-core = { path = "crates/mp3youtube-core" }
+youtun4-core = { path = "crates/youtun4-core" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MP3YouTube",
+  "productName": "Youtun4",
   "version": "0.1.0",
-  "identifier": "com.mp3youtube.app",
+  "identifier": "com.youtun4.app",
   "build": {
     "beforeDevCommand": "trunk serve",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "MP3YouTube",
+        "title": "Youtun4",
         "width": 1024,
         "height": 768,
         "minWidth": 400,

@@ -1,4 +1,4 @@
-//! `MP3YouTube` - Desktop/Mobile app for managing MP3 playlists from `YouTube`.
+//! `Youtun4` - Desktop/Mobile app for managing MP4 playlists from `YouTube`.
 //!
 //! This is the main entry point for the Tauri application.
 
@@ -23,7 +23,7 @@ fn main() {
     // (development in debug builds, production in release builds)
     let _logging_guard = logging::init_auto().expect("Failed to initialize logging system");
 
-    info!("Starting MP3YouTube application");
+    info!("Starting Youtun4 application");
     info!(
         log_directory = %logging::default_log_directory().display(),
         "Logging initialized"

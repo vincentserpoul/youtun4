@@ -22,7 +22,7 @@ use tracing_subscriber::{
 pub struct LoggingConfig {
     /// Directory where log files are stored.
     pub log_directory: PathBuf,
-    /// Log file name prefix (e.g., "mp3youtube" -> "mp3youtube.2024-01-15.log").
+    /// Log file name prefix (e.g., "youtun4" -> "youtun4.2024-01-15.log").
     pub log_file_prefix: String,
     /// Maximum log level for console output.
     pub console_level: Level,
@@ -80,7 +80,7 @@ impl LoggingConfig {
     pub fn development() -> Self {
         Self {
             log_directory: default_log_directory(),
-            log_file_prefix: "mp3youtube".to_string(),
+            log_file_prefix: "youtun4".to_string(),
             console_level: Level::DEBUG,
             file_level: Level::TRACE,
             rotation: LogRotation::Hourly,
@@ -98,7 +98,7 @@ impl LoggingConfig {
     pub fn production() -> Self {
         Self {
             log_directory: default_log_directory(),
-            log_file_prefix: "mp3youtube".to_string(),
+            log_file_prefix: "youtun4".to_string(),
             console_level: Level::INFO,
             file_level: Level::DEBUG,
             rotation: LogRotation::Daily,
@@ -200,14 +200,14 @@ pub fn init(config: &LoggingConfig) -> Result<LoggingGuard, LoggingError> {
     // Default: INFO for dependencies, DEBUG for our crates only
     let console_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         EnvFilter::new("warn")
-            .add_directive("mp3youtube=info".parse().expect("valid directive"))
-            .add_directive("mp3youtube_core=info".parse().expect("valid directive"))
+            .add_directive("youtun4=info".parse().expect("valid directive"))
+            .add_directive("youtun4_core=info".parse().expect("valid directive"))
     });
 
     // Build environment filter for file (more verbose)
     let file_filter = EnvFilter::new(level_to_directive(config.file_level))
-        .add_directive("mp3youtube=trace".parse().expect("valid directive"))
-        .add_directive("mp3youtube_core=trace".parse().expect("valid directive"));
+        .add_directive("youtun4=trace".parse().expect("valid directive"))
+        .add_directive("youtun4_core=trace".parse().expect("valid directive"));
 
     // Configure span events
     let span_events = if config.log_span_events {
@@ -267,7 +267,7 @@ pub fn init_auto() -> Result<LoggingGuard, LoggingError> {
 pub fn default_log_directory() -> PathBuf {
     dirs::data_local_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("mp3youtube")
+        .join("youtun4")
         .join("logs")
 }
 
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn test_default_log_directory() {
         let dir = default_log_directory();
-        assert!(dir.to_string_lossy().contains("mp3youtube"));
+        assert!(dir.to_string_lossy().contains("youtun4"));
         assert!(dir.to_string_lossy().contains("logs"));
     }
 }
