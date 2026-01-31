@@ -10,16 +10,24 @@ description = "Core library for MP3YouTube - handles device detection, playlist 
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-anyhow.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 sysinfo.workspace = true
 walkdir.workspace = true
+dirs.workspace = true
+sha2.workspace = true
+filetime.workspace = true
+id3.workspace = true
+rusty_ytdl.workspace = true
+regex.workspace = true
+# TODO: Remove reqwest - use rusty_ytdl's HTTP client instead
+reqwest = { version = "0.12", features = ["blocking"] }
 
 [dev-dependencies]
 mockall.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["test-util", "macros"] }
+tracing-subscriber = { workspace = true }
 
 [lints]
 workspace = true

@@ -1,0 +1,100 @@
+# Pre-commit hooks configuration (using prek - faster Rust alternative)
+# https://prek.j178.dev/
+#
+# Install: brew install prek (or cargo install prek)
+# Setup: prek install
+# Run all: prek run --all-files
+
+# Global exclusions
+exclude: ^(\.automaker/|dist/|target/)
+
+repos:
+  # ============================================================================
+  # GENERAL HOOKS
+  # ============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Prevent large files from being committed
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      # Check for files that would conflict on case-insensitive filesystems
+      - id: check-case-conflict
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+      # Ensure files end with a newline
+      - id: end-of-file-fixer
+      # Trim trailing whitespace
+      - id: trailing-whitespace
+      # Check TOML syntax
+      - id: check-toml
+      # Check YAML syntax
+      - id: check-yaml
+      # Check JSON syntax
+      - id: check-json
+        exclude: ^tsconfig\.json$  # tsconfig allows comments
+      # Detect private keys
+      - id: detect-private-key
+      # Check for broken symlinks
+      - id: check-symlinks
+
+  # ============================================================================
+  # SECRET DETECTION
+  # ============================================================================
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.1
+    hooks:
+      - id: gitleaks
+
+  # ============================================================================
+  # RUST - Formatting & Linting
+  # ============================================================================
+  - repo: local
+    hooks:
+      # Format Rust code
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --all --
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+      # Run Clippy lints (lib and bins only, tests have relaxed rules)
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --lib --bins --all-features -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+      # Check licenses, bans, and security advisories
+      - id: cargo-deny
+        name: cargo deny
+        entry: cargo deny check
+        language: system
+        files: (Cargo\.(toml|lock)|deny\.toml)$
+        pass_filenames: false
+
+  # ============================================================================
+  # TYPESCRIPT/JAVASCRIPT
+  # ============================================================================
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, json, css, markdown]
+        exclude: ^(node_modules/|dist/|target/)
+
+  # ============================================================================
+  # MARKDOWN
+  # ============================================================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix', '--disable', 'MD013', 'MD033', 'MD041', '--']
+
+# CI configuration
+ci:
+  autofix_prs: true
+  autoupdate_schedule: monthly

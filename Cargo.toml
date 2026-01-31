@@ -14,34 +14,52 @@ license = "MIT"
 repository = "https://github.com/example/mp3youtube"
 
 [workspace.dependencies]
-# Core dependencies
+# Core dependencies - shared across multiple crates
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
-anyhow = "1.0"
 tokio = { version = "1.43", features = ["full"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
 
-# Tauri
+# Tauri framework
 tauri = { version = "2.2", features = [] }
 tauri-build = "2.0"
 
-# Leptos
+# Leptos UI framework
 leptos = { version = "0.8.15", features = ["csr"] }
 
 # Device detection
 sysinfo = "0.38"
 
-# YouTube downloading
-rustube = "0.6"
+# YouTube downloading (pure Rust) - use git version for 403 fix and android_sdkless player
+rusty_ytdl = { git = "https://github.com/Mithronn/rusty_ytdl", rev = "bfd7fed" }
+regex = "1.10"
 
 # File handling
 walkdir = "2.5"
 tempfile = "3.17"
+dirs = "6.0"
+sha2 = "0.10"
+filetime = "0.2"
+
+# Audio metadata
+id3 = "1.14"
+
+# WASM/JavaScript interop (UI crate)
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+serde-wasm-bindgen = "0.6"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["Window", "Document", "Element"] }
+console_error_panic_hook = "0.1"
 
 # Testing
 mockall = "0.14"
+
+# Internal workspace crates
+mp3youtube-core = { path = "crates/mp3youtube-core" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -59,9 +77,32 @@ unimplemented = "warn"
 # Allow precision loss for display purposes (percentages, progress)
 cast_precision_loss = "allow"
 # Allow doc_markdown warnings for known technical terms
-doc_markdown = "warn"
-# Allow missing error docs in initial implementation
-missing_errors_doc = "warn"
+doc_markdown = "allow"
+# Allow missing error docs - will add incrementally
+missing_errors_doc = "allow"
+# Allow must_use suggestions - will add incrementally
+must_use_candidate = "allow"
+# Allow future not Send in async contexts (Leptos WASM)
+future_not_send = "allow"
+# Allow unused self for trait consistency
+unused_self = "allow"
+# Allow pass by value for small Copy types
+needless_pass_by_value = "allow"
+# Allow map_or_else suggestions - if/else is often clearer
+option_if_let_else = "allow"
+# Allow float comparisons in tests
+float_cmp = "allow"
+# Allow significant drop - often intentional for RAII
+significant_drop_tightening = "allow"
+# Allow cast truncation - checked at runtime
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+# Allow items after statements in tests
+items_after_statements = "allow"
+# Allow multiple bools in config structs
+struct_excessive_bools = "allow"
+# Allow match arms with identical bodies - sometimes clearer
+match_same_arms = "allow"
 
 [profile.dev]
 opt-level = 0

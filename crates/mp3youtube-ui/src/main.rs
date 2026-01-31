@@ -14,12 +14,11 @@ pub fn start() {
     console_error_panic_hook::set_once();
 
     // Remove the loading spinner
-    if let Some(window) = web_sys::window() {
-        if let Some(document) = window.document() {
-            if let Some(loading) = document.get_element_by_id("loading") {
-                loading.remove();
-            }
-        }
+    if let Some(window) = web_sys::window()
+        && let Some(document) = window.document()
+        && let Some(loading) = document.get_element_by_id("loading")
+    {
+        loading.remove();
     }
 
     // Mount the Leptos app to the DOM

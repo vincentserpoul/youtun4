@@ -3,6 +3,8 @@
 target = "crates/mp3youtube-ui/index.html"
 # Output directory for the build
 dist = "dist"
+# Enable the WASM binary feature
+features = "_wasm_bin"
 
 [watch]
 # Files to watch for changes

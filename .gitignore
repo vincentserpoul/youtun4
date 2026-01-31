@@ -30,3 +30,8 @@ node_modules/
 
 # Logs
 *.log
+
+test-results
+.automaker
+playwright-report
+crates/mp3youtube-ui/dist/

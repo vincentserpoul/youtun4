@@ -46,6 +46,216 @@
       <name>Feature: 15e72062-7ff3-4d80-a374-458fca73b890</name>
       <description>Initial project setup</description>
     </feature>
+    <feature>
+      <name>Playlist Folder Structure Management</name>
+      <description>Create the core folder structure management system where each playlist is represented as a folder containing MP3 files. Implement utilities to create, read, and validate playlist folders in the local storage directory.</description>
+    </feature>
+    <feature>
+      <name>Error Handling Framework</name>
+      <description>Establish a comprehensive error handling framework using thiserror and anyhow. Define custom error types for all operations including device detection, downloads, transfers, and file management.</description>
+    </feature>
+    <feature>
+      <name>Async Runtime Setup</name>
+      <description>Configure Tokio async runtime for handling concurrent operations like downloads, file transfers, and device monitoring. Set up thread pools and async task spawning.</description>
+    </feature>
+    <feature>
+      <name>Local Storage Configuration</name>
+      <description>Implement a system to configure and manage the local storage directory where playlists will be stored. This includes setting up the default directory in userspace and allowing users to view/change the storage location through settings.</description>
+    </feature>
+    <feature>
+      <name>Playlist List View</name>
+      <description>Create a UI component to display all local playlists in a list or grid format. Show playlist thumbnails, titles, track counts, and sizes with smooth scrolling and loading states.</description>
+    </feature>
+    <feature>
+      <name>Basic UI Layout Structure</name>
+      <description>Create the fundamental UI layout structure using Leptos with a responsive design that works on both desktop and mobile. Implement navigation, main content area, and basic responsive breakpoints.</description>
+    </feature>
+    <feature>
+      <name>Playlist Selection Interface</name>
+      <description>Build an interface allowing users to select a single playlist for syncing to the device. Implement radio button selection with clear visual feedback on the selected playlist.</description>
+    </feature>
+    <feature>
+      <name>Local Playlist Deletion</name>
+      <description>Implement functionality to delete playlist folders from local storage safely. Include confirmation dialogs and ensure complete removal of all files and metadata.</description>
+    </feature>
+    <feature>
+      <name>Tauri Commands Setup</name>
+      <description>Set up the Tauri command infrastructure to expose Rust backend functions to the frontend. Define command handlers for all core operations with proper serialization.</description>
+    </feature>
+    <feature>
+      <name>Device API Commands</name>
+      <description>Create Tauri commands for device operations including detecting connected devices, getting device information, and checking device availability status.</description>
+    </feature>
+    <feature>
+      <name>USB Device Detection System</name>
+      <description>Implement automatic detection of USB storage devices when they are connected to the system. Use sysinfo and platform-specific APIs to monitor USB connections and identify mountable storage devices.</description>
+    </feature>
+    <feature>
+      <name>Device Mount Handler</name>
+      <description>Create a handler to manage the mounting and unmounting of detected USB MP3 devices. Ensure proper access permissions and handle platform-specific mounting mechanisms for Windows, macOS, and Linux.</description>
+    </feature>
+    <feature>
+      <name>Device Cleanup Handler</name>
+      <description>Create a system to safely delete existing data on the MP3 device before syncing new playlists. Ensure data integrity by verifying deletions and handling edge cases like protected files.</description>
+    </feature>
+    <feature>
+      <name>Device Status Indicator</name>
+      <description>Create a visual indicator showing the connection status of USB MP3 devices. Display device name, capacity, available space, and connection state with real-time updates.</description>
+    </feature>
+    <feature>
+      <name>Sync Button Component</name>
+      <description>Create a prominent sync button that triggers the playlist synchronization process. Disable when no device is connected or no playlist is selected, with tooltip explanations.</description>
+    </feature>
+    <feature>
+      <name>Device Operations Unit Tests</name>
+      <description>Create unit tests for device detection, mounting, and file transfer operations. Mock USB device interactions and file system operations.</description>
+    </feature>
+    <feature>
+      <name>Sync API Commands</name>
+      <description>Implement Tauri commands for synchronization operations including starting sync, canceling sync, and retrieving sync progress and status.</description>
+    </feature>
+    <feature>
+      <name>Playlist Sync Orchestrator</name>
+      <description>Implement the main synchronization logic that coordinates device cleanup and file transfer. Handle the complete workflow of deleting old content and copying selected playlists to the device.</description>
+    </feature>
+    <feature>
+      <name>File Transfer Engine</name>
+      <description>Build a robust file transfer engine that efficiently copies MP3 files from local storage to connected USB devices. Implement chunked transfers with progress tracking and integrity verification.</description>
+    </feature>
+    <feature>
+      <name>Cargo Workspace Configuration</name>
+      <description>Properly configure the Cargo workspace to separate concerns between core logic, Tauri backend, and shared utilities. Set up proper dependency management across workspace members.</description>
+    </feature>
+    <feature>
+      <name>YouTube URL Validator</name>
+      <description>Implement validation logic to verify that provided URLs are valid YouTube playlist URLs. Parse and extract playlist IDs while rejecting invalid or non-playlist URLs with appropriate error messages.</description>
+    </feature>
+    <feature>
+      <name>Core Logic Unit Tests</name>
+      <description>Write comprehensive unit tests for core functionality including playlist management, file operations, and data validation. Use mockall for mocking dependencies.</description>
+    </feature>
+    <feature>
+      <name>Playlist API Commands</name>
+      <description>Implement Tauri commands for playlist operations including listing playlists, creating from YouTube URLs, deleting playlists, and retrieving playlist details.</description>
+    </feature>
+    <feature>
+      <name>Playlist Creation Dialog</name>
+      <description>Design and implement a dialog for creating new playlists from YouTube URLs. Include input validation, loading indicators, and clear error messaging for invalid URLs.</description>
+    </feature>
+    <feature>
+      <name>YouTube Audio Downloader</name>
+      <description>Integrate a YouTube download library (use a pure rust library) to download audio from YouTube playlists. Configure it to extract audio in MP3 format with appropriate quality settings.</description>
+    </feature>
+    <feature>
+      <name>Dark Mode Theme Implementation</name>
+      <description>Implement the default dark mode theme with pastel and neon color accents. Create a cohesive color palette and apply it consistently across all UI components.</description>
+    </feature>
+    <feature>
+      <name>Deletion Confirmation Dialog</name>
+      <description>Create a confirmation dialog for playlist deletion with clear warnings about permanent data loss. Show playlist details in the confirmation to prevent accidental deletions.</description>
+    </feature>
+    <feature>
+      <name>Download Progress Tracking</name>
+      <description>Implement a progress tracking system for YouTube downloads that monitors download status, speed, estimated time remaining, and current file being processed. Emit events for UI updates.</description>
+    </feature>
+    <feature>
+      <name>Event Emission System</name>
+      <description>Set up Tauri&apos;s event system to emit real-time updates from backend to frontend for operations like download progress, transfer progress, and device connection changes.</description>
+    </feature>
+    <feature>
+      <name>Download Progress UI</name>
+      <description>Design and implement a progress display for YouTube downloads showing current progress, speed, time remaining, and the track currently being downloaded. Include cancel functionality.</description>
+    </feature>
+    <feature>
+      <name>Fira Sans Font Integration</name>
+      <description>Integrate the Fira Sans font family into the application and configure it as the default font for all text elements. Ensure proper fallbacks and loading optimization.</description>
+    </feature>
+    <feature>
+      <name>File Integrity Verification</name>
+      <description>Implement checksum verification for file transfers to ensure data integrity. Calculate and verify checksums before and after transfers to detect corruption.</description>
+    </feature>
+    <feature>
+      <name>Integration Tests</name>
+      <description>Implement integration tests that verify end-to-end workflows including playlist creation, device detection, and synchronization. Use test fixtures and temporary directories.</description>
+    </feature>
+    <feature>
+      <name>Logging and Tracing System</name>
+      <description>Set up a structured logging system using tracing to monitor all operations. Configure different log levels for development and production, and implement log file rotation.</description>
+    </feature>
+    <feature>
+      <name>Loading State Components</name>
+      <description>Implement consistent loading indicators and skeleton screens for all async operations. Ensure smooth transitions between loading and loaded states.</description>
+    </feature>
+    <feature>
+      <name>Notification System</name>
+      <description>Implement a toast notification system to provide feedback for operations like successful downloads, transfers, errors, and warnings. Support different notification types with appropriate styling.</description>
+    </feature>
+    <feature>
+      <name>MP3 Metadata Extraction</name>
+      <description>Extract and store ID3 tags from downloaded MP3 files including title, artist, album, duration, and track number. Use this metadata for display and organization.</description>
+    </feature>
+    <feature>
+      <name>Playlist Metadata Management</name>
+      <description>Create a system to store and manage metadata for each playlist including title, creation date, source URL, track count, and total size. Store metadata in JSON files within each playlist folder.</description>
+    </feature>
+    <feature>
+      <name>Device Capacity Checker</name>
+      <description>Implement functionality to check available space on connected devices before syncing. Warn users if the selected playlist is too large for the device.</description>
+    </feature>
+    <feature>
+      <name>Playlist Detail View</name>
+      <description>Implement a detailed view for individual playlists showing all tracks, metadata, source URL, creation date, and total size. Allow users to preview track information.</description>
+    </feature>
+    <feature>
+      <name>Responsive Mobile Layout</name>
+      <description>Optimize the UI layout for mobile screens with appropriate touch targets, mobile navigation patterns, and responsive component sizing. Test on various mobile screen sizes.</description>
+    </feature>
+    <feature>
+      <name>Playwright UI Tests</name>
+      <description>Write comprehensive Playwright tests for UI interactions including creating playlists, selecting devices, triggering syncs, and navigating the application.</description>
+    </feature>
+    <feature>
+      <name>Settings API Commands</name>
+      <description>Create Tauri commands for managing application settings including getting and updating configuration values for storage location, download preferences, and app behavior.</description>
+    </feature>
+    <feature>
+      <name>Transfer Progress Tracking</name>
+      <description>Create a progress tracking system for file transfers to USB devices. Track bytes transferred, transfer speed, estimated completion time, and current file being copied.</description>
+    </feature>
+    <feature>
+      <name>Settings Panel</name>
+      <description>Design and implement a settings panel where users can configure app preferences including storage location, download quality, theme options, and notification preferences.</description>
+    </feature>
+    <feature>
+      <name>Transfer Progress UI</name>
+      <description>Create a progress display for device transfers showing transfer progress, speed, estimated time, and current file. Include visual progress bars and the ability to cancel transfers.</description>
+    </feature>
+    <feature>
+      <name>Cache Management System</name>
+      <description>Implement caching for downloaded thumbnails, metadata, and temporary files. Include cache cleanup policies to prevent excessive disk usage.</description>
+    </feature>
+    <feature>
+      <name>Download Queue Manager</name>
+      <description>Create a queue system for managing multiple playlist download requests. Handle concurrent downloads with configurable limits and prioritization.</description>
+    </feature>
+    <feature>
+      <name>Empty State Components</name>
+      <description>Create informative empty state screens for when no playlists exist, no device is connected, or no results are found. Include helpful messages and action buttons to guide users.</description>
+    </feature>
+    <feature>
+      <name>Playlist Thumbnail Generation</name>
+      <description>Implement thumbnail extraction and generation for playlists using YouTube thumbnail data. Store and manage thumbnails locally for display in the playlist list.</description>
+    </feature>
+    <feature>
+      <name>Fix device detection list update issue</name>
+      <description>the device detection is broken
+it detects the conn and disconn but the device list stays empty, loading</description>
+    </feature>
+    <feature>
+      <name>Fix YouTube playlist track detection and download</name>
+      <description>when a playlist is created, it does not detect any tracks on the youtube playlist.
+it does not download any songs</description>
+    </feature>
   </implemented_features>
 
   <development_guidelines>

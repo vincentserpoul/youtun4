@@ -18,7 +18,7 @@ A desktop/mobile app for managing MP3 playlists from YouTube. Built with Tauri a
 
 ## Project Structure
 
-```
+```text
 mp3youtube/
 ├── crates/
 │   ├── mp3youtube-core/     # Core library (device detection, playlist management, YouTube)
@@ -66,6 +66,7 @@ cargo tauri dev
 ### Clippy Settings
 
 The project uses strict Clippy settings:
+
 - `unwrap_used = "deny"` - No bare unwraps
 - `unsafe_code = "forbid"` - No unsafe code
 - Pedantic and nursery lints enabled as warnings

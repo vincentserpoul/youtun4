@@ -4,6 +4,7 @@ use leptos::prelude::*;
 
 /// Application header component.
 #[component]
+
 pub fn Header() -> impl IntoView {
     view! {
         <header class="app-header">

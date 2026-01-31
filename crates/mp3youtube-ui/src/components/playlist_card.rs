@@ -23,6 +23,7 @@ fn format_bytes(bytes: u64) -> String {
 
 /// Playlist card component.
 #[component]
+
 pub fn PlaylistCard(
     /// The playlist metadata to display.
     playlist: PlaylistMetadata,
@@ -89,6 +90,32 @@ pub fn PlaylistCard(
         }
     });
 
+    // Thumbnail view - show image if URL available, otherwise show icon
+    let thumbnail_url = playlist.thumbnail_url.clone();
+    let thumbnail_view = move || {
+        if let Some(ref url) = thumbnail_url {
+            view! {
+                <div class="playlist-thumbnail">
+                    <img
+                        src=url.clone()
+                        alt="Playlist thumbnail"
+                        class="playlist-thumbnail-img"
+                        loading="lazy"
+                    />
+                </div>
+            }
+            .into_any()
+        } else {
+            view! {
+                <div class="playlist-icon">
+                    <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                        <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+                    </svg>
+                </div>
+            }.into_any()
+        }
+    };
+
     view! {
         <div
             class=move || if selected { "playlist-card selected" } else { "playlist-card" }
@@ -96,11 +123,7 @@ pub fn PlaylistCard(
                 on_select.run(playlist_clone.clone());
             }
         >
-            <div class="playlist-icon">
-                <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-                    <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
-                </svg>
-            </div>
+            {thumbnail_view}
             <div class="playlist-info">
                 <h4 class="playlist-name">{playlist_name}</h4>
                 <div class="playlist-meta">

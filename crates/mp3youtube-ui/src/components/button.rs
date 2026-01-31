@@ -31,17 +31,22 @@ impl ButtonVariant {
 
 /// Reusable button component.
 #[component]
+
 pub fn Button(
     /// Button text content.
     children: Children,
     /// Click handler.
-    #[prop(optional)] on_click: Option<Callback<()>>,
+    #[prop(optional)]
+    on_click: Option<Callback<()>>,
     /// Button variant.
-    #[prop(default = ButtonVariant::Primary)] variant: ButtonVariant,
+    #[prop(default = ButtonVariant::Primary)]
+    variant: ButtonVariant,
     /// Whether the button is disabled.
-    #[prop(default = false)] disabled: bool,
+    #[prop(default = false)]
+    disabled: bool,
     /// Whether the button is in loading state.
-    #[prop(default = false)] loading: bool,
+    #[prop(default = false)]
+    loading: bool,
 ) -> impl IntoView {
     let is_disabled = disabled || loading;
     let classes = variant.classes();

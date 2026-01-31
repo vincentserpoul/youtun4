@@ -9,20 +9,26 @@ description = "Leptos-based UI for MP3YouTube"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+# The binary is WASM-only - use `trunk build` or `cargo build --target wasm32-unknown-unknown`
 [[bin]]
 name = "mp3youtube-ui"
 path = "src/main.rs"
+required-features = ["_wasm_bin"]
+
+[features]
+_wasm_bin = []
 
 [dependencies]
 leptos.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
-serde-wasm-bindgen = "0.6"
-js-sys = "0.3"
-console_error_panic_hook = "0.1"
-web-sys = { version = "0.3", features = ["Window", "Document", "Element"] }
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+serde-wasm-bindgen.workspace = true
+js-sys.workspace = true
+console_error_panic_hook.workspace = true
+web-sys.workspace = true
+gloo-timers = { version = "0.3", features = ["futures"] }
 
 [dev-dependencies]
 

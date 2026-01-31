@@ -1,11 +1,12 @@
 {
   "version": 1,
-  "autoLoopWasRunning": true,
-  "maxConcurrency": 5,
+  "autoLoopWasRunning": false,
+  "maxConcurrency": 1,
   "projectPath": "/Users/vsm/workspace/trials-agent/mp3youtube",
   "branchName": null,
   "runningFeatureIds": [
-    "15e72062-7ff3-4d80-a374-458fca73b890"
+    "feature-1769786763091-2q1fzof61",
+    "feature-1769786810225-6la941jsq"
   ],
-  "savedAt": "2026-01-28T14:42:38.638Z"
+  "savedAt": "2026-01-30T15:26:58.323Z"
 }

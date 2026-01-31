@@ -1,0 +1,39 @@
+# Gitleaks configuration
+# https://github.com/gitleaks/gitleaks
+#
+# Detects secrets, API keys, passwords in code
+
+title = "mp3youtube gitleaks config"
+
+[extend]
+# Use the default gitleaks config as base
+useDefault = true
+
+# Paths to ignore (vendor code, build artifacts)
+[allowlist]
+paths = [
+    '''node_modules/''',
+    '''target/''',
+    '''dist/''',
+    '''\.git/''',
+    '''Cargo\.lock''',
+    '''package-lock\.json''',
+    '''playwright-report/''',
+    '''test-results/''',
+]
+
+# Specific patterns to allow (false positives)
+regexes = [
+    # Example YouTube video IDs (not secrets)
+    '''PLtest[A-Za-z0-9_-]+''',
+    # Example API endpoints (not secrets)
+    '''https://www\.youtube\.com/''',
+    '''https://music\.youtube\.com/''',
+]
+
+# Additional rules can be added here
+# [[rules]]
+# id = "custom-api-key"
+# description = "Custom API key pattern"
+# regex = '''custom_api_key['"]\s*[:=]\s*['"][a-zA-Z0-9]{32,}['"]'''
+# tags = ["key", "custom"]
