@@ -492,6 +492,23 @@ fn AppContent() -> impl IntoView {
         load_devices();
     });
 
+    let on_device_eject = Callback::new(move |mount_point: String| {
+        leptos::logging::log!("Device ejected: {}", mount_point);
+        // Clear selection if ejected device was selected
+        if selected_device
+            .get()
+            .as_ref()
+            .is_some_and(|d| d.mount_point == mount_point)
+        {
+            set_selected_device.set(None);
+        }
+        // Remove from device list
+        set_devices.update(|devs| {
+            devs.retain(|d| d.mount_point != mount_point);
+        });
+        notifications.success("Device safely ejected. You can now remove it.");
+    });
+
     let on_playlist_select = Callback::new(move |playlist: PlaylistMetadata| {
         set_selected_playlist.set(Some(playlist.clone()));
         // Navigate to detail view when clicking a playlist in management mode
@@ -833,6 +850,7 @@ fn AppContent() -> impl IntoView {
                     selected_device=selected_device
                     on_select=on_device_select
                     on_refresh=on_device_refresh
+                    on_eject=on_device_eject
                     state=device_list_state
                 />
                 <SyncButton
@@ -921,6 +939,7 @@ fn AppContent() -> impl IntoView {
                             <PlaylistList
                                 playlists=playlists
                                 selected_playlist=selected_playlist
+                                selected_device=selected_device
                                 state=playlist_list_state.get()
                                 error_message=playlist_error.get().unwrap_or_default()
                                 on_select=on_playlist_select

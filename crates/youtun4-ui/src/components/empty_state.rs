@@ -167,9 +167,9 @@ pub fn NoPlaylistsEmptyState(
     view! {
         <EmptyState
             icon=EmptyStateIcon::Music
-            title="No playlists yet"
-            message="Create your first playlist from a YouTube URL to start building your music library."
-            hint="Your downloaded tracks will be stored locally and ready to sync."
+            title="Start building your music library"
+            message="Paste a YouTube playlist URL to download tracks as MP3 files."
+            hint="Downloads are stored locally and can be synced to any MP3 player."
             size=size
             class="no-playlists-empty"
         >
@@ -181,7 +181,7 @@ pub fn NoPlaylistsEmptyState(
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                     </svg>
-                    "Create Playlist"
+                    "Add YouTube Playlist"
                 </button>
             })}
         </EmptyState>
@@ -204,9 +204,9 @@ pub fn NoDeviceEmptyState(
     view! {
         <EmptyState
             icon=EmptyStateIcon::Device
-            title="No device connected"
-            message="Connect an MP3 player or USB drive to sync your playlists."
-            hint="Devices are detected automatically when plugged in."
+            title="Connect your MP3 player"
+            message="Plug in your MP3 player or USB drive via USB to sync music."
+            hint="Most USB storage devices are detected automatically."
             size=size
             class="no-device-empty"
         >
@@ -218,7 +218,7 @@ pub fn NoDeviceEmptyState(
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                         <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                     </svg>
-                    "Refresh Devices"
+                    "Scan for Devices"
                 </button>
             })}
         </EmptyState>

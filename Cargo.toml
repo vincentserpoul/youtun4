@@ -11,21 +11,21 @@ version = "0.1.0"
 edition = "2024"
 authors = ["Youtun4 Team"]
 license = "MIT"
-repository = "https://github.com/example/youtun4"
+repository = "https://github.com/vincentserpoul/youtun4"
 
 [workspace.dependencies]
 # Core dependencies - shared across multiple crates
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
-tokio = { version = "1.43", features = ["full"] }
+tokio = { version = "1.49", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
 
 # Tauri framework
-tauri = { version = "2.2", features = [] }
-tauri-build = "2.0"
+tauri = { version = "2.9.5", features = [] }
+tauri-build = "2.5.3"
 
 # Leptos UI framework
 leptos = { version = "0.8.15", features = ["csr"] }
@@ -35,17 +35,17 @@ sysinfo = "0.38"
 
 # YouTube downloading (pure Rust) - use git version for 403 fix and android_sdkless player
 rusty_ytdl = { git = "https://github.com/Mithronn/rusty_ytdl", rev = "bfd7fed" }
-regex = "1.10"
+regex = "1.12"
 
 # File handling
 walkdir = "2.5"
-tempfile = "3.17"
+tempfile = "3.24"
 dirs = "6.0"
 sha2 = "0.10"
 filetime = "0.2"
 
 # Audio metadata
-id3 = "1.14"
+id3 = "1.16"
 
 # WASM/JavaScript interop (UI crate)
 wasm-bindgen = "0.2"

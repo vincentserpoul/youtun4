@@ -4,7 +4,7 @@ use leptos::prelude::*;
 
 use crate::components::PlaylistCard;
 use crate::components::empty_state::{EmptyStateSize, ErrorEmptyState, NoPlaylistsEmptyState};
-use crate::types::PlaylistMetadata;
+use crate::types::{DeviceInfo, PlaylistMetadata};
 
 /// Loading skeleton for a single playlist card.
 #[component]
@@ -120,6 +120,8 @@ pub fn PlaylistList(
     playlists: ReadSignal<Vec<PlaylistMetadata>>,
     /// Currently selected playlist.
     selected_playlist: ReadSignal<Option<PlaylistMetadata>>,
+    /// Currently selected device (for sync button state).
+    selected_device: ReadSignal<Option<DeviceInfo>>,
     /// Loading state of the list.
     #[prop(default = PlaylistListState::Loaded)]
     state: PlaylistListState,
@@ -205,6 +207,7 @@ pub fn PlaylistList(
                                                 on_select=on_select
                                                 on_delete=on_delete
                                                 on_sync=on_sync
+                                                selected_device=selected_device
                                                 selected=is_selected
                                             />
                                         }

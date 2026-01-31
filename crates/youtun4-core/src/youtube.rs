@@ -1738,6 +1738,7 @@ impl YouTubeDownloader for YtDlpDownloader {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -2401,7 +2402,7 @@ mod tests {
             };
 
             let result = DownloadResult {
-                video: video,
+                video,
                 success: true,
                 output_path: Some(PathBuf::from("/output/test.mp3")),
                 error: None,
@@ -2423,7 +2424,7 @@ mod tests {
             };
 
             let result = DownloadResult {
-                video: video,
+                video,
                 success: false,
                 output_path: None,
                 error: Some("Download failed".to_string()),

@@ -281,6 +281,7 @@ impl FileSystem for RealFileSystem {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::missing_panics_doc)]
 pub mod mock {
     //! Mock file system for testing.
 
@@ -438,19 +439,15 @@ pub mod mock {
 
             // Find direct children (files)
             for file_path in files.keys() {
-                if let Some(parent) = file_path.parent() {
-                    if parent == path {
-                        entries.insert(file_path.clone());
-                    }
+                if file_path.parent() == Some(path) {
+                    entries.insert(file_path.clone());
                 }
             }
 
             // Find direct children (dirs)
             for dir_path in dirs.iter() {
-                if let Some(parent) = dir_path.parent() {
-                    if parent == path && dir_path != path {
-                        entries.insert(dir_path.clone());
-                    }
+                if dir_path.parent() == Some(path) && dir_path != path {
+                    entries.insert(dir_path.clone());
                 }
             }
 
@@ -534,6 +531,7 @@ pub mod mock {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::mock::MockFileSystem;
     use super::*;

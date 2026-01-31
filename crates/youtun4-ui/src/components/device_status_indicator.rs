@@ -171,7 +171,7 @@ fn DeviceStatusDisconnected() -> impl IntoView {
                     <span class="device-status-badge disconnected">"Disconnected"</span>
                 </div>
                 <p class="device-status-hint">
-                    "Connect an MP3 player or USB drive to get started"
+                    "Plug in your MP3 player via USB"
                 </p>
             </div>
         </div>

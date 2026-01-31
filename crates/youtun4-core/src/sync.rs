@@ -943,6 +943,7 @@ impl SyncOrchestrator {
 // =============================================================================
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::device::DeviceInfo;
@@ -1137,8 +1138,10 @@ mod tests {
 
         let orchestrator = SyncOrchestrator::new();
         let request = SyncRequest::single("Test Playlist", device_dir.path());
-        let mut options = SyncOptions::default();
-        options.cleanup_enabled = false; // Skip cleanup for this test
+        let options = SyncOptions {
+            cleanup_enabled: false, // Skip cleanup for this test
+            ..Default::default()
+        };
 
         let result = orchestrator
             .sync(
@@ -1173,8 +1176,10 @@ mod tests {
 
         let orchestrator = SyncOrchestrator::new();
         let request = SyncRequest::single("Progress Test", device_dir.path());
-        let mut options = SyncOptions::default();
-        options.cleanup_enabled = false;
+        let options = SyncOptions {
+            cleanup_enabled: false,
+            ..Default::default()
+        };
 
         let progress_updates = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let updates_clone = Arc::clone(&progress_updates);
@@ -1552,8 +1557,10 @@ mod tests {
             vec!["Playlist 1".to_string(), "Playlist 2".to_string()],
             device_dir.path().to_path_buf(),
         );
-        let mut options = SyncOptions::default();
-        options.cleanup_enabled = false;
+        let options = SyncOptions {
+            cleanup_enabled: false,
+            ..Default::default()
+        };
 
         let result = orchestrator
             .sync(
@@ -1579,8 +1586,10 @@ mod tests {
 
         let orchestrator = SyncOrchestrator::new();
         let request = SyncRequest::new(Vec::new(), device_dir.path().to_path_buf());
-        let mut options = SyncOptions::default();
-        options.cleanup_enabled = false;
+        let options = SyncOptions {
+            cleanup_enabled: false,
+            ..Default::default()
+        };
 
         let result = orchestrator
             .sync(
@@ -1604,8 +1613,10 @@ mod tests {
 
         let orchestrator = SyncOrchestrator::new();
         let request = SyncRequest::single("Nonexistent Playlist", device_dir.path());
-        let mut options = SyncOptions::default();
-        options.cleanup_enabled = false;
+        let options = SyncOptions {
+            cleanup_enabled: false,
+            ..Default::default()
+        };
 
         let result = orchestrator.sync(
             &manager,

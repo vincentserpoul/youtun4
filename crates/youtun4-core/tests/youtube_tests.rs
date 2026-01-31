@@ -1,5 +1,7 @@
 //! Tests for `YouTube` playlist parsing.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use youtun4_core::{RustyYtdlDownloader, YouTubeDownloader};
 
 #[test]
@@ -36,7 +38,7 @@ fn test_parse_youtube_playlist() {
 
 /// Test `rusty_ytdl` directly without our wrapper (using async API)
 #[tokio::test]
-#[ignore] // Run with: cargo test --ignored -- --nocapture
+#[ignore = "requires network access - run with: cargo test --ignored -- --nocapture"]
 async fn test_rusty_ytdl_direct() {
     use rusty_ytdl::{Video, VideoOptions, VideoQuality, VideoSearchOptions};
 
@@ -103,7 +105,7 @@ async fn test_rusty_ytdl_direct() {
 }
 
 #[test]
-#[ignore] // This test actually downloads from YouTube - run with --ignored flag
+#[ignore = "downloads from YouTube - run with: cargo test --ignored -- --nocapture"]
 fn test_download_single_video() {
     // Initialize tracing for test output
     let _ = tracing_subscriber::fmt()
@@ -114,7 +116,9 @@ fn test_download_single_video() {
     let downloader = RustyYtdlDownloader::new();
 
     // Use the video that rusty_ytdl uses in their own tests
-    let _url = "https://www.youtube.com/watch?v=FZ8BxMU3BYc"; // Known working video for rusty_ytdl
+    // Known working video for rusty_ytdl
+    let url = "https://www.youtube.com/watch?v=FZ8BxMU3BYc";
+    let _ = url; // Mark as intentionally unused in this test
 
     let temp_dir = std::env::temp_dir().join("youtun4_test");
     std::fs::create_dir_all(&temp_dir).expect("Should create temp dir");

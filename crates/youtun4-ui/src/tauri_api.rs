@@ -267,6 +267,42 @@ pub async fn is_device_watcher_running() -> Result<bool, String> {
     invoke("is_device_watcher_running", Args {}).await
 }
 
+/// Eject result from eject operations.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct EjectResult {
+    /// The mount point that was ejected.
+    pub mount_point: String,
+    /// Whether the eject was successful.
+    pub success: bool,
+}
+
+/// Safely eject a device.
+///
+/// This unmounts the device and prepares it for safe removal.
+/// On macOS this calls `diskutil eject`, on Windows `mountvol /d`,
+/// and on Linux `eject` or `udisksctl unmount`.
+///
+/// Returns the eject result indicating success.
+pub async fn eject_device(mount_point: &str) -> Result<EjectResult, String> {
+    #[derive(serde::Serialize)]
+    struct Args<'a> {
+        mount_point: &'a str,
+    }
+
+    // The backend returns UnmountResult, which we map to our EjectResult
+    #[derive(serde::Deserialize)]
+    struct BackendResult {
+        mount_point: String,
+        success: bool,
+    }
+
+    let result: BackendResult = invoke("eject_device", Args { mount_point }).await?;
+    Ok(EjectResult {
+        mount_point: result.mount_point,
+        success: result.success,
+    })
+}
+
 /// Listen to device connected events.
 ///
 /// This event is emitted when a new USB device is connected.

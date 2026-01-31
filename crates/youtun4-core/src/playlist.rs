@@ -321,6 +321,7 @@ impl PlaylistManager {
             modified_at: now,
             track_count: 0,
             total_size_bytes: 0,
+            tracks: Vec::new(),
         };
 
         let metadata_path = playlist_path.join("playlist.json");
@@ -508,6 +509,7 @@ impl PlaylistManager {
                 modified_at: now,
                 track_count,
                 total_size_bytes,
+                tracks: Vec::new(),
             };
 
             let content = serde_json::to_string_pretty(&metadata)?;
@@ -564,6 +566,7 @@ impl PlaylistManager {
                 modified_at: now,
                 track_count,
                 total_size_bytes,
+                tracks: Vec::new(),
             };
 
             let content = serde_json::to_string_pretty(&metadata)?;
@@ -621,6 +624,7 @@ impl PlaylistManager {
             modified_at: now,
             track_count,
             total_size_bytes,
+            tracks: Vec::new(),
         };
 
         let metadata_file = folder_path.join("playlist.json");
@@ -727,6 +731,7 @@ impl PlaylistManager {
                 modified_at: now,
                 track_count,
                 total_size_bytes,
+                tracks: Vec::new(),
             })
         }
     }
@@ -804,6 +809,116 @@ impl PlaylistManager {
         let mut metadata = self.get_saved_metadata(name)?;
 
         // Recount tracks and size
+        let (track_count, total_size_bytes) = self.count_tracks(&playlist_path);
+        metadata.track_count = track_count;
+        metadata.total_size_bytes = total_size_bytes;
+        metadata.modified_at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+
+        // Save
+        let metadata_file = playlist_path.join("playlist.json");
+        let content = serde_json::to_string_pretty(&metadata)?;
+        fs::write(&metadata_file, content).map_err(|e| {
+            Error::FileSystem(FileSystemError::WriteFailed {
+                path: metadata_file,
+                reason: e.to_string(),
+            })
+        })?;
+
+        Ok(metadata)
+    }
+
+    /// Add a track to the playlist metadata.
+    ///
+    /// This updates the playlist.json with the new track's metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the playlist doesn't exist or metadata cannot be updated.
+    pub fn add_track_metadata(
+        &self,
+        name: &str,
+        track: SavedTrackMetadata,
+    ) -> Result<SavedPlaylistMetadata> {
+        let playlist_path = self.base_path.join(name);
+        if !playlist_path.exists() {
+            return Err(Error::Playlist(crate::error::PlaylistError::NotFound {
+                name: name.to_string(),
+            }));
+        }
+
+        let mut metadata = self.get_saved_metadata(name)?;
+
+        // Check if track already exists (by file_name)
+        if let Some(existing) = metadata
+            .tracks
+            .iter_mut()
+            .find(|t| t.file_name == track.file_name)
+        {
+            // Update existing track
+            *existing = track;
+        } else {
+            // Add new track
+            metadata.tracks.push(track);
+        }
+
+        // Update counts
+        let (track_count, total_size_bytes) = self.count_tracks(&playlist_path);
+        metadata.track_count = track_count;
+        metadata.total_size_bytes = total_size_bytes;
+        metadata.modified_at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+
+        // Save
+        let metadata_file = playlist_path.join("playlist.json");
+        let content = serde_json::to_string_pretty(&metadata)?;
+        fs::write(&metadata_file, content).map_err(|e| {
+            Error::FileSystem(FileSystemError::WriteFailed {
+                path: metadata_file,
+                reason: e.to_string(),
+            })
+        })?;
+
+        Ok(metadata)
+    }
+
+    /// Add multiple tracks to the playlist metadata at once.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the playlist doesn't exist or metadata cannot be updated.
+    pub fn add_tracks_metadata(
+        &self,
+        name: &str,
+        tracks: Vec<SavedTrackMetadata>,
+    ) -> Result<SavedPlaylistMetadata> {
+        let playlist_path = self.base_path.join(name);
+        if !playlist_path.exists() {
+            return Err(Error::Playlist(crate::error::PlaylistError::NotFound {
+                name: name.to_string(),
+            }));
+        }
+
+        let mut metadata = self.get_saved_metadata(name)?;
+
+        for track in tracks {
+            // Check if track already exists (by file_name)
+            if let Some(existing) = metadata
+                .tracks
+                .iter_mut()
+                .find(|t| t.file_name == track.file_name)
+            {
+                // Update existing track
+                *existing = track;
+            } else {
+                // Add new track
+                metadata.tracks.push(track);
+            }
+        }
+
+        // Update counts
         let (track_count, total_size_bytes) = self.count_tracks(&playlist_path);
         metadata.track_count = track_count;
         metadata.total_size_bytes = total_size_bytes;
@@ -952,6 +1067,63 @@ impl PlaylistManager {
     }
 }
 
+/// Metadata for a single track stored in playlist.json.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SavedTrackMetadata {
+    /// Track file name (e.g., "song.mp3").
+    pub file_name: String,
+    /// Original YouTube video ID.
+    #[serde(default)]
+    pub video_id: Option<String>,
+    /// Original YouTube video URL.
+    #[serde(default)]
+    pub source_url: Option<String>,
+    /// Video/track title from YouTube.
+    #[serde(default)]
+    pub title: Option<String>,
+    /// Channel/artist name from YouTube.
+    #[serde(default)]
+    pub channel: Option<String>,
+    /// Duration in seconds.
+    #[serde(default)]
+    pub duration_secs: Option<u64>,
+    /// Thumbnail URL.
+    #[serde(default)]
+    pub thumbnail_url: Option<String>,
+    /// Download timestamp (Unix epoch seconds).
+    #[serde(default)]
+    pub downloaded_at: u64,
+}
+
+impl SavedTrackMetadata {
+    /// Create a new track metadata from YouTube video info.
+    #[must_use]
+    pub fn from_youtube_video(
+        file_name: String,
+        video_id: &str,
+        title: Option<String>,
+        channel: Option<String>,
+        duration_secs: Option<u64>,
+        thumbnail_url: Option<String>,
+    ) -> Self {
+        let source_url = Some(format!("https://www.youtube.com/watch?v={video_id}"));
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+
+        Self {
+            file_name,
+            video_id: Some(video_id.to_string()),
+            source_url,
+            title,
+            channel,
+            duration_secs,
+            thumbnail_url,
+            downloaded_at: now,
+        }
+    }
+}
+
 /// Metadata saved to playlist.json.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SavedPlaylistMetadata {
@@ -979,6 +1151,9 @@ pub struct SavedPlaylistMetadata {
     /// Total size in bytes.
     #[serde(default)]
     pub total_size_bytes: u64,
+    /// Metadata for individual tracks (includes YouTube source URLs).
+    #[serde(default)]
+    pub tracks: Vec<SavedTrackMetadata>,
 }
 
 /// Check if a file is an audio file based on extension.
@@ -1132,6 +1307,7 @@ fn copy_directory_contents(src: &Path, dst: &Path) -> Result<()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
@@ -1249,7 +1425,7 @@ mod tests {
         let invalid_names = ["test/name", "test\\name", "test:name", "test*name"];
         for name in invalid_names {
             let result = validate_playlist_name(name);
-            assert!(result.is_err(), "Name '{}' should be invalid", name);
+            assert!(result.is_err(), "Name '{name}' should be invalid");
         }
     }
 
@@ -1321,5 +1497,397 @@ mod tests {
 
         // Verify playlist.json is NOT copied
         assert!(!device_dir.path().join("playlist.json").exists());
+    }
+
+    // =========================================================================
+    // Additional tests for better coverage
+    // =========================================================================
+
+    #[test]
+    fn test_get_folder_statistics() {
+        let (manager, _temp) = setup_test_manager();
+
+        let playlist_path = manager
+            .create_playlist("StatsTest", None)
+            .expect("Should create");
+
+        // Add some files
+        fs::write(playlist_path.join("song1.mp3"), "mp3 data 1").expect("Write");
+        fs::write(playlist_path.join("song2.mp3"), "mp3 data 2 longer").expect("Write");
+        fs::write(playlist_path.join("notes.txt"), "text").expect("Write");
+
+        let stats = manager
+            .get_folder_statistics("StatsTest")
+            .expect("Should get stats");
+
+        assert_eq!(stats.audio_files, 2);
+        assert_eq!(stats.other_files, 1);
+        assert!(stats.has_metadata);
+        assert!(stats.audio_size_bytes > 0);
+        assert!(stats.total_size_bytes > stats.audio_size_bytes);
+    }
+
+    #[test]
+    fn test_get_folder_statistics_nonexistent() {
+        let (manager, _temp) = setup_test_manager();
+        let result = manager.get_folder_statistics("NonExistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_folder_valid() {
+        let (manager, _temp) = setup_test_manager();
+
+        let playlist_path = manager
+            .create_playlist("ValidFolder", None)
+            .expect("Should create");
+        fs::write(playlist_path.join("track.mp3"), "mp3 data").expect("Write");
+
+        let result = manager.validate_folder("ValidFolder");
+        assert!(result.exists);
+        assert!(result.has_metadata);
+        assert!(result.metadata_valid);
+        assert_eq!(result.audio_file_count, 1);
+        assert!(result.is_valid());
+        assert!(result.issues.is_empty());
+    }
+
+    #[test]
+    fn test_validate_folder_nonexistent() {
+        let (manager, _temp) = setup_test_manager();
+        let result = manager.validate_folder("DoesNotExist");
+        assert!(!result.exists);
+        assert!(!result.is_valid());
+        assert!(!result.issues.is_empty());
+    }
+
+    #[test]
+    fn test_validate_folder_no_audio() {
+        let (manager, _temp) = setup_test_manager();
+
+        let playlist_path = manager
+            .create_playlist("NoAudio", None)
+            .expect("Should create");
+        fs::write(playlist_path.join("readme.txt"), "text only").expect("Write");
+
+        let result = manager.validate_folder("NoAudio");
+        assert!(result.exists);
+        assert!(result.has_metadata);
+        assert_eq!(result.audio_file_count, 0);
+        assert!(!result.is_valid());
+    }
+
+    #[test]
+    fn test_validate_folder_invalid_metadata() {
+        let (manager, _temp) = setup_test_manager();
+
+        let playlist_path = manager
+            .create_playlist("InvalidMeta", None)
+            .expect("Should create");
+        fs::write(playlist_path.join("track.mp3"), "mp3 data").expect("Write");
+        // Overwrite with invalid JSON
+        fs::write(playlist_path.join("playlist.json"), "not valid json {{{").expect("Write");
+
+        let result = manager.validate_folder("InvalidMeta");
+        assert!(result.exists);
+        assert!(result.has_metadata);
+        assert!(!result.metadata_valid);
+        assert!(!result.is_valid());
+    }
+
+    #[test]
+    fn test_ensure_folder_structure_creates_metadata() {
+        let (manager, temp) = setup_test_manager();
+
+        // Create a folder without using create_playlist
+        let folder_path = temp.path().join("ManualFolder");
+        fs::create_dir(&folder_path).expect("Create dir");
+        fs::write(folder_path.join("song.mp3"), "mp3 data").expect("Write");
+
+        // Ensure structure
+        manager
+            .ensure_folder_structure("ManualFolder")
+            .expect("Should succeed");
+
+        // Check metadata was created
+        assert!(folder_path.join("playlist.json").exists());
+    }
+
+    #[test]
+    fn test_ensure_folder_structure_nonexistent() {
+        let (manager, _temp) = setup_test_manager();
+        let result = manager.ensure_folder_structure("NonExistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_repair_folder_creates_metadata() {
+        let (manager, temp) = setup_test_manager();
+
+        // Create a folder without metadata
+        let folder_path = temp.path().join("NeedsRepair");
+        fs::create_dir(&folder_path).expect("Create dir");
+        fs::write(folder_path.join("song.mp3"), "mp3 data").expect("Write");
+
+        let repairs = manager.repair_folder("NeedsRepair").expect("Should repair");
+        assert!(!repairs.is_empty());
+        assert!(folder_path.join("playlist.json").exists());
+    }
+
+    #[test]
+    fn test_repair_folder_fixes_invalid_metadata() {
+        let (manager, _temp) = setup_test_manager();
+
+        let playlist_path = manager
+            .create_playlist("CorruptMeta", None)
+            .expect("Should create");
+        fs::write(playlist_path.join("track.mp3"), "mp3 data").expect("Write");
+        fs::write(playlist_path.join("playlist.json"), "invalid json").expect("Write");
+
+        let repairs = manager.repair_folder("CorruptMeta").expect("Should repair");
+        assert!(!repairs.is_empty());
+
+        // Verify metadata is now valid
+        let result = manager.validate_folder("CorruptMeta");
+        assert!(result.metadata_valid);
+    }
+
+    #[test]
+    fn test_repair_folder_nonexistent() {
+        let (manager, _temp) = setup_test_manager();
+        let result = manager.repair_folder("NonExistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_import_folder() {
+        let (manager, temp) = setup_test_manager();
+
+        // Create a folder outside the manager
+        let external_folder = temp.path().join("ExternalMusic");
+        fs::create_dir(&external_folder).expect("Create dir");
+        fs::write(external_folder.join("track1.mp3"), "mp3 data 1").expect("Write");
+        fs::write(external_folder.join("track2.mp3"), "mp3 data 2").expect("Write");
+
+        let url = "https://youtube.com/playlist?list=test";
+        let name = manager
+            .import_folder(&external_folder, Some(url.to_string()))
+            .expect("Should import");
+
+        assert_eq!(name, "ExternalMusic");
+        assert!(external_folder.join("playlist.json").exists());
+
+        // Check metadata contains source URL
+        let content = fs::read_to_string(external_folder.join("playlist.json")).expect("Read");
+        assert!(content.contains(url));
+    }
+
+    #[test]
+    fn test_import_folder_nonexistent() {
+        let (manager, temp) = setup_test_manager();
+        let fake_path = temp.path().join("DoesNotExist");
+        let result = manager.import_folder(&fake_path, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_playlist_path() {
+        let (manager, _temp) = setup_test_manager();
+
+        manager
+            .create_playlist("PathTest", None)
+            .expect("Should create");
+
+        let path = manager.get_playlist_path("PathTest").expect("Should get");
+        assert!(path.exists());
+        assert!(path.ends_with("PathTest"));
+    }
+
+    #[test]
+    fn test_get_playlist_path_nonexistent() {
+        let (manager, _temp) = setup_test_manager();
+        let result = manager.get_playlist_path("NonExistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_playlist_metadata() {
+        let (manager, _temp) = setup_test_manager();
+
+        let url = "https://youtube.com/test";
+        let playlist_path = manager
+            .create_playlist("MetadataTest", Some(url.to_string()))
+            .expect("Should create");
+        fs::write(playlist_path.join("song.mp3"), "mp3 data").expect("Write");
+
+        let metadata = manager
+            .get_playlist_metadata(&playlist_path)
+            .expect("Should get");
+
+        assert_eq!(metadata.name, "MetadataTest");
+        assert_eq!(metadata.source_url, Some(url.to_string()));
+        assert_eq!(metadata.track_count, 1);
+        assert!(metadata.total_bytes > 0);
+        assert!(metadata.created_at > 0);
+    }
+
+    #[test]
+    fn test_list_tracks_empty_playlist() {
+        let (manager, _temp) = setup_test_manager();
+        manager
+            .create_playlist("EmptyPlaylist", None)
+            .expect("Should create");
+
+        let tracks = manager.list_tracks("EmptyPlaylist").expect("Should list");
+        assert!(tracks.is_empty());
+    }
+
+    #[test]
+    fn test_list_tracks_nonexistent() {
+        let (manager, _temp) = setup_test_manager();
+        let result = manager.list_tracks("NonExistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sync_to_nonexistent_device() {
+        let (manager, _temp) = setup_test_manager();
+        manager
+            .create_playlist("SyncFail", None)
+            .expect("Should create");
+
+        let fake_device = PathBuf::from("/nonexistent/device/path");
+        let result = manager.sync_to_device("SyncFail", &fake_device);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sync_nonexistent_playlist() {
+        let (manager, _temp) = setup_test_manager();
+        let device_dir = TempDir::new().expect("Create device dir");
+
+        let result = manager.sync_to_device("NonExistent", device_dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_base_path() {
+        let (manager, temp) = setup_test_manager();
+        assert_eq!(manager.base_path(), temp.path());
+    }
+
+    #[test]
+    fn test_playlist_metadata_equality() {
+        let meta1 = PlaylistMetadata {
+            name: "Test".to_string(),
+            source_url: None,
+            created_at: 1000,
+            modified_at: 2000,
+            track_count: 5,
+            total_bytes: 1024,
+        };
+        let meta2 = meta1.clone();
+        assert_eq!(meta1, meta2);
+    }
+
+    #[test]
+    fn test_track_info_equality() {
+        let track1 = TrackInfo {
+            file_name: "song.mp3".to_string(),
+            path: PathBuf::from("/test/song.mp3"),
+            size_bytes: 1024,
+            metadata: None,
+        };
+        let track2 = track1.clone();
+        assert_eq!(track1, track2);
+    }
+
+    #[test]
+    fn test_folder_statistics_equality() {
+        let stats1 = FolderStatistics {
+            total_files: 10,
+            audio_files: 8,
+            other_files: 2,
+            audio_size_bytes: 1000,
+            total_size_bytes: 1200,
+            has_metadata: true,
+        };
+        let stats2 = stats1.clone();
+        assert_eq!(stats1, stats2);
+    }
+
+    #[test]
+    fn test_folder_validation_result_is_valid() {
+        let valid = FolderValidationResult {
+            exists: true,
+            has_metadata: true,
+            metadata_valid: true,
+            audio_file_count: 5,
+            issues: vec![],
+        };
+        assert!(valid.is_valid());
+
+        let no_audio = FolderValidationResult {
+            exists: true,
+            has_metadata: true,
+            metadata_valid: true,
+            audio_file_count: 0,
+            issues: vec![],
+        };
+        assert!(!no_audio.is_valid());
+    }
+
+    #[test]
+    fn test_validate_playlist_name_valid() {
+        assert!(validate_playlist_name("My Playlist").is_ok());
+        assert!(validate_playlist_name("playlist-2024").is_ok());
+        assert!(validate_playlist_name("Rock & Roll").is_ok());
+    }
+
+    #[test]
+    fn test_validate_playlist_name_too_long() {
+        let long_name = "a".repeat(300);
+        let result = validate_playlist_name(&long_name);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_is_audio_file_various_extensions() {
+        // Supported audio formats
+        assert!(is_audio_file(Path::new("file.mp3")));
+        assert!(is_audio_file(Path::new("file.m4a")));
+        assert!(is_audio_file(Path::new("file.mp4"))); // mp4 can contain audio
+        assert!(is_audio_file(Path::new("file.wav")));
+        assert!(is_audio_file(Path::new("file.flac")));
+        assert!(is_audio_file(Path::new("file.ogg")));
+        assert!(is_audio_file(Path::new("file.aac")));
+
+        // Case insensitive
+        assert!(is_audio_file(Path::new("file.MP3")));
+        assert!(is_audio_file(Path::new("file.FLAC")));
+        assert!(is_audio_file(Path::new("file.M4A")));
+
+        // Not supported
+        assert!(!is_audio_file(Path::new("file.txt")));
+        assert!(!is_audio_file(Path::new("file.jpg")));
+        assert!(!is_audio_file(Path::new("file.wma"))); // not in current supported list
+        assert!(!is_audio_file(Path::new("file.opus"))); // not in current supported list
+        assert!(!is_audio_file(Path::new("file")));
+    }
+
+    #[test]
+    fn test_list_playlists_empty() {
+        let (manager, _temp) = setup_test_manager();
+        let playlists = manager.list_playlists().expect("Should list");
+        assert!(playlists.is_empty());
+    }
+
+    #[test]
+    fn test_create_playlist_creates_directory() {
+        let (manager, _temp) = setup_test_manager();
+        let path = manager
+            .create_playlist("NewPlaylist", None)
+            .expect("Should create");
+        assert!(path.is_dir());
     }
 }

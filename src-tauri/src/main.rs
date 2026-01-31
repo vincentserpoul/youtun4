@@ -8,20 +8,24 @@
 )]
 // Tauri main function is inherently long
 #![allow(clippy::too_many_lines)]
-// expect_used is acceptable in app startup (fail fast on bad config)
-#![allow(clippy::expect_used)]
 
 mod commands;
 pub mod logging;
 pub mod runtime;
 
 use commands::AppState;
-use tracing::info;
+use tracing::{error, info};
 
 fn main() {
     // Initialize structured logging with automatic configuration
     // (development in debug builds, production in release builds)
-    let _logging_guard = logging::init_auto().expect("Failed to initialize logging system");
+    let _logging_guard = match logging::init_auto() {
+        Ok(guard) => guard,
+        Err(e) => {
+            eprintln!("FATAL: Failed to initialize logging system: {e}");
+            std::process::exit(1);
+        }
+    };
 
     info!("Starting Youtun4 application");
     info!(
@@ -30,7 +34,13 @@ fn main() {
     );
 
     // Create app state (loads config automatically)
-    let app_state = AppState::new().expect("Failed to create app state");
+    let app_state = match AppState::new() {
+        Ok(state) => state,
+        Err(e) => {
+            error!("Failed to create application state: {e}");
+            std::process::exit(1);
+        }
+    };
 
     tauri::Builder::default()
         .manage(app_state)
@@ -161,5 +171,8 @@ fn main() {
             commands::queue_set_max_concurrent,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|e| {
+            error!("Tauri application error: {e}");
+            std::process::exit(1);
+        });
 }

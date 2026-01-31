@@ -269,13 +269,23 @@ impl DeviceCleanupHandler {
         let mut entries_to_delete = Vec::new();
         let mut skipped = Vec::new();
 
+        // SECURITY: Canonicalize mount_point to resolve any symlinks and get absolute path
+        let canonical_mount = mount_point.canonicalize().map_err(|e| {
+            Error::FileSystem(FileSystemError::InvalidPath {
+                path: mount_point.to_path_buf(),
+                reason: format!("failed to canonicalize mount point: {e}"),
+            })
+        })?;
+
         // Build walker with depth configuration
+        // SECURITY: follow_links(false) prevents following symlinks outside mount point
         let walker = if options.max_depth < 0 {
-            WalkDir::new(mount_point).min_depth(1)
+            WalkDir::new(mount_point).min_depth(1).follow_links(false)
         } else {
             WalkDir::new(mount_point)
                 .min_depth(1)
                 .max_depth(options.max_depth as usize)
+                .follow_links(false)
         };
 
         // Collect all entries first (we'll process from deepest to shallowest)
@@ -289,6 +299,25 @@ impl DeviceCleanupHandler {
 
         for entry in all_entries {
             let path = entry.path().to_path_buf();
+
+            // SECURITY: Skip symlinks entirely to prevent path traversal attacks
+            if entry.file_type().is_symlink() {
+                debug!("Skipping symlink: {}", path.display());
+                skipped.push((path, "symlink".to_string()));
+                continue;
+            }
+
+            // SECURITY: Verify the path resolves within the mount point
+            if let Ok(canonical_path) = path.canonicalize()
+                && !canonical_path.starts_with(&canonical_mount)
+            {
+                warn!(
+                    "SECURITY: Path {} resolves outside mount point, skipping",
+                    path.display()
+                );
+                skipped.push((path, "path escapes mount point".to_string()));
+                continue;
+            }
 
             // Check if protected
             if let Some(reason) = self.is_protected(&path, options) {
@@ -531,17 +560,27 @@ impl DeviceCleanupHandler {
             }));
         }
 
+        // SECURITY: Canonicalize mount_point to resolve any symlinks and get absolute path
+        let canonical_mount = mount_point.canonicalize().map_err(|e| {
+            Error::FileSystem(FileSystemError::InvalidPath {
+                path: mount_point.to_path_buf(),
+                reason: format!("failed to canonicalize mount point: {e}"),
+            })
+        })?;
+
         let audio_extensions: HashSet<&str> = ["mp3", "m4a", "wav", "flac", "ogg", "aac"]
             .iter()
             .copied()
             .collect();
 
+        // SECURITY: follow_links(false) prevents following symlinks outside mount point
         let walker = if options.max_depth < 0 {
-            WalkDir::new(mount_point).min_depth(1)
+            WalkDir::new(mount_point).min_depth(1).follow_links(false)
         } else {
             WalkDir::new(mount_point)
                 .min_depth(1)
                 .max_depth(options.max_depth as usize)
+                .follow_links(false)
         };
 
         let mut entries = Vec::new();
@@ -552,6 +591,25 @@ impl DeviceCleanupHandler {
 
             // Skip directories for audio-only cleanup
             if entry.file_type().is_dir() {
+                continue;
+            }
+
+            // SECURITY: Skip symlinks entirely to prevent path traversal attacks
+            if entry.file_type().is_symlink() {
+                debug!("Skipping symlink: {}", path.display());
+                skipped_entries.push((path, "symlink".to_string()));
+                continue;
+            }
+
+            // SECURITY: Verify the path resolves within the mount point
+            if let Ok(canonical_path) = path.canonicalize()
+                && !canonical_path.starts_with(&canonical_mount)
+            {
+                warn!(
+                    "SECURITY: Path {} resolves outside mount point, skipping",
+                    path.display()
+                );
+                skipped_entries.push((path, "path escapes mount point".to_string()));
                 continue;
             }
 
@@ -648,6 +706,7 @@ impl DeviceCleanupHandler {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
     use crate::device::MockDeviceDetector;
@@ -716,8 +775,10 @@ mod tests {
     #[test]
     fn test_is_protected_hidden_disabled() {
         let handler = DeviceCleanupHandler::new();
-        let mut options = CleanupOptions::default();
-        options.skip_hidden = false;
+        let options = CleanupOptions {
+            skip_hidden: false,
+            ..Default::default()
+        };
 
         let hidden_path = PathBuf::from("/test/.hidden");
         let result = handler.is_protected(&hidden_path, &options);
@@ -739,8 +800,10 @@ mod tests {
     #[test]
     fn test_is_protected_system_file_disabled() {
         let handler = DeviceCleanupHandler::new();
-        let mut options = CleanupOptions::default();
-        options.skip_system_files = false;
+        let options = CleanupOptions {
+            skip_system_files: false,
+            ..Default::default()
+        };
 
         let system_path = PathBuf::from("/test/System Volume Information");
         let result = handler.is_protected(&system_path, &options);
@@ -1410,6 +1473,6 @@ mod tests {
 
         // Duration is tracked (can be 0 if cleanup is very fast, which is fine)
         // Just verify the field exists and result is valid
-        assert!(result.files_deleted > 0 || result.duration_ms >= 0);
+        assert!(result.files_deleted > 0);
     }
 }

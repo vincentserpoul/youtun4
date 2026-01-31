@@ -918,8 +918,223 @@ impl std::fmt::Debug for DownloadQueueManager {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    // ========== DownloadPriority Tests ==========
+
+    #[test]
+    fn test_download_priority_default() {
+        let priority = DownloadPriority::default();
+        assert_eq!(priority, DownloadPriority::Normal);
+    }
+
+    #[test]
+    fn test_download_priority_ordering() {
+        assert!(DownloadPriority::Low < DownloadPriority::Normal);
+        assert!(DownloadPriority::Normal < DownloadPriority::High);
+        assert!(DownloadPriority::Low < DownloadPriority::High);
+    }
+
+    #[test]
+    fn test_download_priority_display() {
+        assert_eq!(format!("{}", DownloadPriority::Low), "Low");
+        assert_eq!(format!("{}", DownloadPriority::Normal), "Normal");
+        assert_eq!(format!("{}", DownloadPriority::High), "High");
+    }
+
+    #[test]
+    fn test_download_priority_serde() {
+        let high = DownloadPriority::High;
+        let json = serde_json::to_string(&high).unwrap();
+        assert_eq!(json, "\"high\"");
+
+        let deserialized: DownloadPriority = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, DownloadPriority::High);
+    }
+
+    // ========== QueueItemStatus Tests ==========
+
+    #[test]
+    fn test_queue_item_status_display() {
+        assert_eq!(format!("{}", QueueItemStatus::Pending), "Pending");
+        assert_eq!(format!("{}", QueueItemStatus::Downloading), "Downloading");
+        assert_eq!(format!("{}", QueueItemStatus::Completed), "Completed");
+        assert_eq!(
+            format!("{}", QueueItemStatus::Failed("network error".to_string())),
+            "Failed: network error"
+        );
+        assert_eq!(format!("{}", QueueItemStatus::Cancelled), "Cancelled");
+    }
+
+    #[test]
+    fn test_queue_item_status_serde() {
+        let pending = QueueItemStatus::Pending;
+        let json = serde_json::to_string(&pending).unwrap();
+        assert_eq!(json, "\"pending\"");
+
+        let failed = QueueItemStatus::Failed("test".to_string());
+        let json = serde_json::to_string(&failed).unwrap();
+        assert!(json.contains("failed"));
+    }
+
+    // ========== QueueConfig Tests ==========
+
+    #[test]
+    fn test_queue_config_default() {
+        let config = QueueConfig::default();
+        assert_eq!(
+            config.max_concurrent_downloads,
+            DEFAULT_MAX_CONCURRENT_DOWNLOADS
+        );
+        assert!(config.auto_start);
+        assert!(!config.auto_retry);
+        assert_eq!(config.max_retries, 3);
+    }
+
+    #[test]
+    fn test_queue_config_validate_clamps_min() {
+        let mut config = QueueConfig {
+            max_concurrent_downloads: 0,
+            ..Default::default()
+        };
+        config.validate();
+        assert_eq!(config.max_concurrent_downloads, MIN_CONCURRENT_DOWNLOADS);
+    }
+
+    #[test]
+    fn test_queue_config_validate_clamps_max() {
+        let mut config = QueueConfig {
+            max_concurrent_downloads: 100,
+            ..Default::default()
+        };
+        config.validate();
+        assert_eq!(config.max_concurrent_downloads, MAX_CONCURRENT_DOWNLOADS);
+    }
+
+    #[test]
+    fn test_queue_config_validate_keeps_valid() {
+        let mut config = QueueConfig {
+            max_concurrent_downloads: 3,
+            ..Default::default()
+        };
+        config.validate();
+        assert_eq!(config.max_concurrent_downloads, 3);
+    }
+
+    #[test]
+    fn test_queue_config_serde() {
+        let config = QueueConfig {
+            max_concurrent_downloads: 3,
+            auto_start: false,
+            auto_retry: true,
+            max_retries: 5,
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: QueueConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, config);
+    }
+
+    // ========== DownloadRequest Tests ==========
+
+    #[test]
+    fn test_download_request_new() {
+        let request = DownloadRequest::new("https://youtube.com/playlist", "/tmp/output");
+        assert_eq!(request.url, "https://youtube.com/playlist");
+        assert_eq!(request.output_dir, PathBuf::from("/tmp/output"));
+        assert!(request.playlist_name.is_none());
+        assert!(request.audio_quality.is_none());
+        assert!(request.embed_thumbnail.is_none());
+        assert_eq!(request.priority, DownloadPriority::Normal);
+    }
+
+    #[test]
+    fn test_download_request_builders() {
+        let request = DownloadRequest::new("url", "/tmp")
+            .with_playlist_name("My Playlist")
+            .with_audio_quality("320")
+            .with_embed_thumbnail(true)
+            .with_priority(DownloadPriority::High);
+
+        assert_eq!(request.playlist_name, Some("My Playlist".to_string()));
+        assert_eq!(request.audio_quality, Some("320".to_string()));
+        assert_eq!(request.embed_thumbnail, Some(true));
+        assert_eq!(request.priority, DownloadPriority::High);
+    }
+
+    // ========== QueueItem Tests ==========
+
+    #[test]
+    fn test_queue_item_display_name_with_name() {
+        let request = DownloadRequest::new("url", "/tmp").with_playlist_name("Test Playlist");
+        let item = QueueItem::new(1, request);
+        assert_eq!(item.display_name(), "Test Playlist");
+    }
+
+    #[test]
+    fn test_queue_item_display_name_without_name() {
+        let request = DownloadRequest::new("https://youtube.com/playlist", "/tmp");
+        let item = QueueItem::new(1, request);
+        assert_eq!(item.display_name(), "https://youtube.com/playlist");
+    }
+
+    #[test]
+    fn test_queue_item_is_finished() {
+        let request = DownloadRequest::new("url", "/tmp");
+
+        let mut item = QueueItem::new(1, request);
+        assert!(!item.is_finished());
+
+        item.status = QueueItemStatus::Downloading;
+        assert!(!item.is_finished());
+
+        item.status = QueueItemStatus::Completed;
+        assert!(item.is_finished());
+
+        item.status = QueueItemStatus::Failed("error".to_string());
+        assert!(item.is_finished());
+
+        item.status = QueueItemStatus::Cancelled;
+        assert!(item.is_finished());
+    }
+
+    #[test]
+    fn test_queue_item_can_retry() {
+        let request = DownloadRequest::new("url", "/tmp");
+        let mut item = QueueItem::new(1, request);
+
+        // Pending items cannot be retried
+        assert!(!item.can_retry(3));
+
+        // Failed items can be retried
+        item.status = QueueItemStatus::Failed("error".to_string());
+        assert!(item.can_retry(3));
+
+        // But not if max retries exceeded
+        item.retry_count = 3;
+        assert!(!item.can_retry(3));
+
+        // Or if it's not failed
+        item.retry_count = 0;
+        item.status = QueueItemStatus::Completed;
+        assert!(!item.can_retry(3));
+    }
+
+    // ========== QueueStats Tests ==========
+
+    #[test]
+    fn test_queue_stats_default() {
+        let stats = QueueStats::default();
+        assert_eq!(stats.total_items, 0);
+        assert_eq!(stats.pending_count, 0);
+        assert_eq!(stats.downloading_count, 0);
+        assert_eq!(stats.completed_count, 0);
+        assert_eq!(stats.failed_count, 0);
+        assert_eq!(stats.cancelled_count, 0);
+    }
+
+    // ========== DownloadQueueManager Basic Tests ==========
 
     #[tokio::test]
     async fn test_queue_add_and_get() {
@@ -945,6 +1160,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_queue_get_nonexistent_item() {
+        let queue = DownloadQueueManager::new();
+        let item = queue.get_item(999).await;
+        assert!(item.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_queue_add_batch() {
+        let queue = DownloadQueueManager::new();
+
+        let requests = vec![
+            DownloadRequest::new("url1", "/tmp/1"),
+            DownloadRequest::new("url2", "/tmp/2"),
+            DownloadRequest::new("url3", "/tmp/3"),
+        ];
+
+        let ids = queue.add_batch(requests).await;
+        assert_eq!(ids.len(), 3);
+        assert_eq!(ids, vec![0, 1, 2]);
+
+        let stats = queue.stats().await;
+        assert_eq!(stats.total_items, 3);
+    }
+
+    #[tokio::test]
+    async fn test_queue_get_all_items() {
+        let queue = DownloadQueueManager::new();
+
+        queue.add(DownloadRequest::new("url1", "/tmp/1")).await;
+        queue.add(DownloadRequest::new("url2", "/tmp/2")).await;
+
+        let items = queue.get_all_items().await;
+        assert_eq!(items.len(), 2);
+    }
+
+    #[tokio::test]
     async fn test_queue_stats() {
         let queue = DownloadQueueManager::new();
 
@@ -957,6 +1208,8 @@ mod tests {
         assert_eq!(stats.pending_count, 3);
         assert_eq!(stats.downloading_count, 0);
     }
+
+    // ========== Priority Tests ==========
 
     #[tokio::test]
     async fn test_queue_priority() {
@@ -985,6 +1238,72 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_queue_set_priority() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+
+        // Change priority
+        let result = queue.set_priority(id, DownloadPriority::High).await;
+        assert!(result);
+
+        let item = queue.get_item(id).await.unwrap();
+        assert_eq!(item.request.priority, DownloadPriority::High);
+    }
+
+    #[tokio::test]
+    async fn test_queue_set_priority_nonexistent() {
+        let queue = DownloadQueueManager::new();
+        let result = queue.set_priority(999, DownloadPriority::High).await;
+        assert!(!result);
+    }
+
+    #[tokio::test]
+    async fn test_queue_set_priority_finished_item() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        queue.cancel(id).await;
+
+        // Cannot change priority of finished item
+        let result = queue.set_priority(id, DownloadPriority::High).await;
+        assert!(!result);
+    }
+
+    #[tokio::test]
+    async fn test_queue_move_to_front() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        let result = queue.move_to_front(id).await;
+        assert!(result);
+
+        let item = queue.get_item(id).await.unwrap();
+        assert_eq!(item.request.priority, DownloadPriority::High);
+    }
+
+    #[tokio::test]
+    async fn test_queue_get_pending_items_sorted() {
+        let queue = DownloadQueueManager::new();
+
+        queue
+            .add(DownloadRequest::new("low", "/tmp").with_priority(DownloadPriority::Low))
+            .await;
+        queue
+            .add(DownloadRequest::new("high", "/tmp").with_priority(DownloadPriority::High))
+            .await;
+        queue.add(DownloadRequest::new("normal", "/tmp")).await;
+
+        let pending = queue.get_pending_items().await;
+        assert_eq!(pending.len(), 3);
+        assert_eq!(pending[0].request.priority, DownloadPriority::High);
+        assert_eq!(pending[1].request.priority, DownloadPriority::Normal);
+        assert_eq!(pending[2].request.priority, DownloadPriority::Low);
+    }
+
+    // ========== Concurrent Limit Tests ==========
+
+    #[tokio::test]
     async fn test_queue_concurrent_limit() {
         let config = QueueConfig {
             max_concurrent_downloads: 2,
@@ -1003,6 +1322,68 @@ mod tests {
         // Third should fail due to limit
         assert!(queue.start_next().await.is_none());
     }
+
+    #[tokio::test]
+    async fn test_queue_can_start_download() {
+        let queue = DownloadQueueManager::new();
+
+        // No items - cannot start
+        assert!(!queue.can_start_download().await);
+
+        queue.add(DownloadRequest::new("url", "/tmp")).await;
+
+        // Has pending items - can start
+        assert!(queue.can_start_download().await);
+    }
+
+    #[tokio::test]
+    async fn test_queue_can_start_download_paused() {
+        let queue = DownloadQueueManager::new();
+        queue.add(DownloadRequest::new("url", "/tmp")).await;
+        queue.pause().await;
+
+        // Paused - cannot start
+        assert!(!queue.can_start_download().await);
+    }
+
+    #[tokio::test]
+    async fn test_queue_set_max_concurrent() {
+        let queue = DownloadQueueManager::new();
+
+        queue.set_max_concurrent(3).await;
+        let config = queue.config().await;
+        assert_eq!(config.max_concurrent_downloads, 3);
+    }
+
+    #[tokio::test]
+    async fn test_queue_set_max_concurrent_clamped() {
+        let queue = DownloadQueueManager::new();
+
+        // Test clamping to min
+        queue.set_max_concurrent(0).await;
+        let config = queue.config().await;
+        assert_eq!(config.max_concurrent_downloads, MIN_CONCURRENT_DOWNLOADS);
+
+        // Test clamping to max
+        queue.set_max_concurrent(100).await;
+        let config = queue.config().await;
+        assert_eq!(config.max_concurrent_downloads, MAX_CONCURRENT_DOWNLOADS);
+    }
+
+    #[tokio::test]
+    async fn test_queue_get_downloading_items() {
+        let queue = DownloadQueueManager::new();
+
+        queue.add(DownloadRequest::new("url1", "/tmp/1")).await;
+        queue.add(DownloadRequest::new("url2", "/tmp/2")).await;
+
+        queue.start_next().await;
+
+        let downloading = queue.get_downloading_items().await;
+        assert_eq!(downloading.len(), 1);
+    }
+
+    // ========== Pause/Resume Tests ==========
 
     #[tokio::test]
     async fn test_queue_pause_resume() {
@@ -1024,6 +1405,25 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_queue_pause_idempotent() {
+        let queue = DownloadQueueManager::new();
+
+        queue.pause().await;
+        queue.pause().await; // Should not error
+        assert!(queue.is_paused().await);
+    }
+
+    #[tokio::test]
+    async fn test_queue_resume_idempotent() {
+        let queue = DownloadQueueManager::new();
+
+        queue.resume().await; // Should not error even if not paused
+        assert!(!queue.is_paused().await);
+    }
+
+    // ========== Cancel Tests ==========
+
+    #[tokio::test]
     async fn test_queue_cancel() {
         let queue = DownloadQueueManager::new();
 
@@ -1033,7 +1433,75 @@ mod tests {
 
         let item = queue.get_item(id).await.unwrap();
         assert!(matches!(item.status, QueueItemStatus::Cancelled));
+        assert!(item.finished_at.is_some());
     }
+
+    #[tokio::test]
+    async fn test_queue_cancel_nonexistent() {
+        let queue = DownloadQueueManager::new();
+        let result = queue.cancel(999).await;
+        assert!(!result);
+    }
+
+    #[tokio::test]
+    async fn test_queue_cancel_already_finished() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        queue.start_next().await;
+        queue.mark_completed(id).await;
+
+        // Cannot cancel completed item
+        let result = queue.cancel(id).await;
+        assert!(!result);
+    }
+
+    // ========== Remove Tests ==========
+
+    #[tokio::test]
+    async fn test_queue_remove_pending() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        let result = queue.remove(id).await;
+        assert!(result);
+
+        let item = queue.get_item(id).await;
+        assert!(item.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_queue_remove_nonexistent() {
+        let queue = DownloadQueueManager::new();
+        let result = queue.remove(999).await;
+        assert!(!result);
+    }
+
+    #[tokio::test]
+    async fn test_queue_remove_downloading() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        queue.start_next().await;
+
+        // Cannot remove downloading item
+        let result = queue.remove(id).await;
+        assert!(!result);
+    }
+
+    #[tokio::test]
+    async fn test_queue_remove_finished() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        queue.cancel(id).await;
+
+        // Can remove finished (cancelled) item
+        let result = queue.remove(id).await;
+        assert!(result);
+    }
+
+    // ========== Retry Tests ==========
 
     #[tokio::test]
     async fn test_queue_retry() {
@@ -1051,7 +1519,116 @@ mod tests {
         let item = queue.get_item(id).await.unwrap();
         assert!(matches!(item.status, QueueItemStatus::Pending));
         assert_eq!(item.retry_count, 1);
+        assert!(item.task_id.is_none());
+        assert!(item.started_at.is_none());
+        assert!(item.finished_at.is_none());
+        assert_eq!(item.progress, 0.0);
     }
+
+    #[tokio::test]
+    async fn test_queue_retry_nonexistent() {
+        let queue = DownloadQueueManager::new();
+        let result = queue.retry(999).await;
+        assert!(!result);
+    }
+
+    #[tokio::test]
+    async fn test_queue_retry_max_exceeded() {
+        let config = QueueConfig {
+            max_retries: 2,
+            ..Default::default()
+        };
+        let queue = DownloadQueueManager::with_config(config);
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+
+        // Fail and retry twice
+        for _ in 0..2 {
+            queue.start_next().await;
+            queue.mark_failed(id, "error".to_string()).await;
+            queue.retry(id).await;
+        }
+
+        // Third failure
+        queue.start_next().await;
+        queue.mark_failed(id, "error".to_string()).await;
+
+        // Should not be able to retry anymore
+        let result = queue.retry(id).await;
+        assert!(!result);
+    }
+
+    #[tokio::test]
+    async fn test_queue_retry_not_failed() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+
+        // Cannot retry pending item
+        let result = queue.retry(id).await;
+        assert!(!result);
+    }
+
+    // ========== Progress and Status Updates ==========
+
+    #[tokio::test]
+    async fn test_queue_mark_started() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        queue.start_next().await;
+        queue.mark_started(id, 42).await;
+
+        let item = queue.get_item(id).await.unwrap();
+        assert_eq!(item.task_id, Some(42));
+    }
+
+    #[tokio::test]
+    async fn test_queue_update_progress() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        queue.start_next().await;
+
+        queue
+            .update_progress(id, 0.5, Some("video_1.mp3".to_string()), Some(10), Some(5))
+            .await;
+
+        let item = queue.get_item(id).await.unwrap();
+        assert_eq!(item.progress, 0.5);
+        assert_eq!(item.current_video, Some("video_1.mp3".to_string()));
+        assert_eq!(item.total_videos, Some(10));
+        assert_eq!(item.videos_completed, Some(5));
+    }
+
+    #[tokio::test]
+    async fn test_queue_mark_completed() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        queue.start_next().await;
+        queue.mark_completed(id).await;
+
+        let item = queue.get_item(id).await.unwrap();
+        assert!(matches!(item.status, QueueItemStatus::Completed));
+        assert_eq!(item.progress, 1.0);
+        assert!(item.finished_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_queue_mark_failed() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        queue.start_next().await;
+        queue.mark_failed(id, "network error".to_string()).await;
+
+        let item = queue.get_item(id).await.unwrap();
+        assert!(matches!(item.status, QueueItemStatus::Failed(ref msg) if msg == "network error"));
+        assert!(item.finished_at.is_some());
+    }
+
+    // ========== Clear Tests ==========
 
     #[tokio::test]
     async fn test_queue_clear_finished() {
@@ -1091,5 +1668,220 @@ mod tests {
         let stats = queue.stats().await;
         assert_eq!(stats.total_items, 1);
         assert_eq!(stats.pending_count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_queue_clear_finished_none() {
+        let queue = DownloadQueueManager::new();
+
+        queue.add(DownloadRequest::new("url", "/tmp")).await;
+
+        let removed = queue.clear_finished().await;
+        assert_eq!(removed, 0);
+    }
+
+    #[tokio::test]
+    async fn test_queue_clear_all() {
+        let queue = DownloadQueueManager::new();
+
+        queue.add(DownloadRequest::new("url1", "/tmp/1")).await;
+        queue.add(DownloadRequest::new("url2", "/tmp/2")).await;
+        let id3 = queue.add(DownloadRequest::new("url3", "/tmp/3")).await;
+
+        // Start one download
+        queue.start_next().await;
+
+        // Cancel another
+        queue.cancel(id3).await;
+
+        // Clear all - should keep the downloading one
+        let removed = queue.clear_all().await;
+        assert_eq!(removed, 2);
+
+        let stats = queue.stats().await;
+        assert_eq!(stats.total_items, 1);
+        assert_eq!(stats.downloading_count, 1);
+    }
+
+    // ========== Config Tests ==========
+
+    #[tokio::test]
+    async fn test_queue_get_config() {
+        let config = QueueConfig {
+            max_concurrent_downloads: 3,
+            auto_start: false,
+            auto_retry: true,
+            max_retries: 5,
+        };
+        let queue = DownloadQueueManager::with_config(config.clone());
+
+        let retrieved = queue.config().await;
+        assert_eq!(retrieved, config);
+    }
+
+    #[tokio::test]
+    async fn test_queue_set_config() {
+        let queue = DownloadQueueManager::new();
+
+        let new_config = QueueConfig {
+            max_concurrent_downloads: 3,
+            auto_start: false,
+            auto_retry: true,
+            max_retries: 10,
+        };
+        queue.set_config(new_config.clone()).await;
+
+        let retrieved = queue.config().await;
+        assert_eq!(retrieved, new_config);
+    }
+
+    // ========== Event Tests ==========
+
+    #[tokio::test]
+    async fn test_queue_try_recv_event() {
+        let queue = DownloadQueueManager::new();
+
+        queue.add(DownloadRequest::new("url", "/tmp")).await;
+
+        let event = queue.try_recv_event().await;
+        assert!(event.is_some());
+        assert!(matches!(event.unwrap(), QueueEvent::ItemAdded(_)));
+    }
+
+    #[tokio::test]
+    async fn test_queue_try_recv_event_none() {
+        let queue = DownloadQueueManager::new();
+
+        let event = queue.try_recv_event().await;
+        assert!(event.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_queue_event_sender() {
+        let queue = DownloadQueueManager::new();
+
+        let sender = queue.event_sender();
+        let _ = sender.send(QueueEvent::QueuePaused);
+
+        let event = queue.try_recv_event().await;
+        assert!(event.is_some());
+        assert!(matches!(event.unwrap(), QueueEvent::QueuePaused));
+    }
+
+    // ========== Default and Debug Tests ==========
+
+    #[tokio::test]
+    async fn test_queue_default() {
+        let queue = DownloadQueueManager::default();
+        let config = queue.config().await;
+        assert_eq!(
+            config.max_concurrent_downloads,
+            DEFAULT_MAX_CONCURRENT_DOWNLOADS
+        );
+    }
+
+    #[test]
+    fn test_queue_debug() {
+        let queue = DownloadQueueManager::new();
+        let debug_str = format!("{queue:?}");
+        assert!(debug_str.contains("DownloadQueueManager"));
+    }
+
+    // ========== QueueEvent Serde Tests ==========
+
+    #[test]
+    fn test_queue_event_serde() {
+        let events = vec![
+            QueueEvent::QueuePaused,
+            QueueEvent::QueueResumed,
+            QueueEvent::QueueCleared,
+            QueueEvent::ItemCompleted { item_id: 1 },
+            QueueEvent::ItemCancelled { item_id: 2 },
+            QueueEvent::ItemRemoved { item_id: 3 },
+            QueueEvent::ItemFailed {
+                item_id: 4,
+                error: "test".to_string(),
+            },
+            QueueEvent::ItemStarted {
+                item_id: 5,
+                task_id: 100,
+            },
+            QueueEvent::ItemPriorityChanged {
+                item_id: 6,
+                priority: DownloadPriority::High,
+            },
+            QueueEvent::ItemProgress {
+                item_id: 7,
+                progress: 0.5,
+                current_video: Some("video".to_string()),
+                total_videos: Some(10),
+                videos_completed: Some(5),
+            },
+        ];
+
+        for event in events {
+            let json = serde_json::to_string(&event).unwrap();
+            let deserialized: QueueEvent = serde_json::from_str(&json).unwrap();
+            // Just verify it round-trips without error
+            let _ = serde_json::to_string(&deserialized).unwrap();
+        }
+    }
+
+    // ========== Edge Cases ==========
+
+    #[tokio::test]
+    async fn test_queue_start_next_empty() {
+        let queue = DownloadQueueManager::new();
+        let result = queue.start_next().await;
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_queue_fifo_within_same_priority() {
+        let queue = DownloadQueueManager::new();
+
+        // Add items with same priority
+        let id1 = queue.add(DownloadRequest::new("first", "/tmp/1")).await;
+        let id2 = queue.add(DownloadRequest::new("second", "/tmp/2")).await;
+        let id3 = queue.add(DownloadRequest::new("third", "/tmp/3")).await;
+
+        // Should be processed in FIFO order
+        let next = queue.start_next().await.unwrap();
+        assert_eq!(next.id, id1);
+
+        let next = queue.start_next().await.unwrap();
+        assert_eq!(next.id, id2);
+
+        // Complete first two so we can start third
+        queue.mark_completed(id1).await;
+        queue.mark_completed(id2).await;
+
+        let next = queue.start_next().await.unwrap();
+        assert_eq!(next.id, id3);
+    }
+
+    #[tokio::test]
+    async fn test_queue_item_timestamps() {
+        let queue = DownloadQueueManager::new();
+
+        let id = queue.add(DownloadRequest::new("url", "/tmp")).await;
+        let item = queue.get_item(id).await.unwrap();
+
+        // Should have added_at set
+        assert!(item.added_at > 0);
+        assert!(item.started_at.is_none());
+        assert!(item.finished_at.is_none());
+
+        // Start download
+        queue.start_next().await;
+        let item = queue.get_item(id).await.unwrap();
+        assert!(item.started_at.is_some());
+        assert!(item.started_at.unwrap() >= item.added_at);
+
+        // Complete download
+        queue.mark_completed(id).await;
+        let item = queue.get_item(id).await.unwrap();
+        assert!(item.finished_at.is_some());
+        assert!(item.finished_at.unwrap() >= item.started_at.unwrap());
     }
 }

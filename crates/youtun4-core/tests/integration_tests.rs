@@ -7,6 +7,8 @@
 //!
 //! All tests use temporary directories as fixtures to simulate device behavior.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

@@ -35,3 +35,5 @@ test-results
 .automaker
 playwright-report
 crates/youtun4-ui/dist/
+
+*.profraw

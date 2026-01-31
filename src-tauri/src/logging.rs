@@ -198,16 +198,20 @@ pub fn init(config: &LoggingConfig) -> Result<LoggingGuard, LoggingError> {
     // Build environment filter for console
     // Allows overriding via RUST_LOG environment variable
     // Default: INFO for dependencies, DEBUG for our crates only
+    // SAFETY: These are compile-time constant strings that always parse successfully
+    #[allow(clippy::unwrap_used)]
     let console_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         EnvFilter::new("warn")
-            .add_directive("youtun4=info".parse().expect("valid directive"))
-            .add_directive("youtun4_core=info".parse().expect("valid directive"))
+            .add_directive("youtun4=info".parse().unwrap())
+            .add_directive("youtun4_core=info".parse().unwrap())
     });
 
     // Build environment filter for file (more verbose)
+    // SAFETY: These are compile-time constant strings that always parse successfully
+    #[allow(clippy::unwrap_used)]
     let file_filter = EnvFilter::new(level_to_directive(config.file_level))
-        .add_directive("youtun4=trace".parse().expect("valid directive"))
-        .add_directive("youtun4_core=trace".parse().expect("valid directive"));
+        .add_directive("youtun4=trace".parse().unwrap())
+        .add_directive("youtun4_core=trace".parse().unwrap());
 
     // Configure span events
     let span_events = if config.log_span_events {

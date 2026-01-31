@@ -1148,6 +1148,7 @@ impl Default for TransferEngine {
 // =============================================================================
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use std::io::Write;
@@ -1351,8 +1352,10 @@ mod tests {
         let source_path = create_test_file(source_dir.path(), "large.mp3", &content);
 
         let mut engine = TransferEngine::new();
-        let mut options = TransferOptions::default();
-        options.progress_interval = Duration::from_millis(1); // Fast updates for testing
+        let options = TransferOptions {
+            progress_interval: Duration::from_millis(1), // Fast updates for testing
+            ..Default::default()
+        };
 
         let progress_updates = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let updates_clone = Arc::clone(&progress_updates);
@@ -1584,8 +1587,10 @@ mod tests {
         let source_path = create_test_file(source_dir.path(), "large.mp3", &large_content);
 
         let mut engine = TransferEngine::new();
-        let mut options = TransferOptions::default();
-        options.chunk_size = 8 * 1024; // 8 KB chunks
+        let options = TransferOptions {
+            chunk_size: 8 * 1024, // 8 KB chunks
+            ..Default::default()
+        };
 
         let result = engine
             .transfer_files(
@@ -1674,8 +1679,10 @@ mod tests {
         create_test_file(dest_dir.path(), "test.mp3", content);
 
         let mut engine = TransferEngine::new();
-        let mut options = TransferOptions::default();
-        options.skip_existing = false;
+        let options = TransferOptions {
+            skip_existing: false,
+            ..Default::default()
+        };
 
         let result = engine
             .transfer_files(
@@ -1782,8 +1789,10 @@ mod tests {
         let source_path = create_test_file(source_dir.path(), "test.mp3", &content);
 
         let mut engine = TransferEngine::new();
-        let mut options = TransferOptions::default();
-        options.progress_interval = Duration::from_nanos(1); // Very fast updates
+        let options = TransferOptions {
+            progress_interval: Duration::from_nanos(1), // Very fast updates
+            ..Default::default()
+        };
 
         let progress_count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let count_clone = Arc::clone(&progress_count);

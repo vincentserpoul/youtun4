@@ -1100,6 +1100,7 @@ pub fn create_and_save_manifest(directory: &Path) -> Result<ChecksumManifest> {
 // =============================================================================
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use std::io::Write;

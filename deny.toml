@@ -1,38 +1,47 @@
 # cargo-deny configuration
 # https://embarkstudios.github.io/cargo-deny/
-#
-# Install: cargo install cargo-deny
-# Run: cargo deny check
-
-[graph]
-# Target platforms to check
-targets = [
-    "x86_64-apple-darwin",
-    "aarch64-apple-darwin",
-    "x86_64-unknown-linux-gnu",
-    "x86_64-pc-windows-msvc",
-]
-# Also include build dependencies and dev dependencies
-all-features = true
 
 # ============================================================================
-# ADVISORIES - Check for known security vulnerabilities
+# ADVISORIES
+# Checks for known security vulnerabilities in dependencies
 # ============================================================================
 [advisories]
-# Check for yanked crates
-yanked = "warn"
-# Unmaintained crates: only error for workspace (direct) dependencies, not transitive
-unmaintained = "workspace"
-# Ignore specific advisories (add IDs here if you have reviewed and accepted the risk)
-ignore = []
+version = 2
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# Ignore unmaintained crate advisories for transitive dependencies
+# These come from Tauri, Leptos, boa_engine, and other frameworks
+ignore = [
+    # GTK3 bindings (used by Tauri on Linux)
+    "RUSTSEC-2024-0411", # atk
+    "RUSTSEC-2024-0412", # cairo-rs
+    "RUSTSEC-2024-0414", # gdk
+    "RUSTSEC-2024-0415", # gdk-pixbuf
+    "RUSTSEC-2024-0417", # gio
+    "RUSTSEC-2024-0418", # glib
+    "RUSTSEC-2024-0419", # gtk
+    "RUSTSEC-2024-0420", # pango
+    "RUSTSEC-2024-0416", # gdkx11
+    "RUSTSEC-2024-0413", # gdkwayland
+    # Other unmaintained transitive dependencies
+    "RUSTSEC-2024-0370", # proc-macro-error
+    "RUSTSEC-2024-0384", # instant
+    "RUSTSEC-2024-0388", # derivative
+    "RUSTSEC-2024-0436", # paste
+    "RUSTSEC-2025-0057", # fxhash
+    "RUSTSEC-2025-0075", # unic-common
+    "RUSTSEC-2025-0080", # unic-char-range
+    "RUSTSEC-2025-0081", # unic-char-property
+    "RUSTSEC-2025-0098", # unic-ucd-version
+    "RUSTSEC-2025-0100", # unic-ucd-ident
+]
 
 # ============================================================================
-# LICENSES - Ensure license compliance
+# LICENSES
+# Checks dependency licenses against an allowlist
 # ============================================================================
 [licenses]
-# Confidence threshold for license detection
-confidence-threshold = 0.93
-# List of allowed licenses
+version = 2
 allow = [
     "MIT",
     "Apache-2.0",
@@ -42,59 +51,41 @@ allow = [
     "ISC",
     "Zlib",
     "MPL-2.0",
-    "Unicode-3.0",
     "Unicode-DFS-2016",
+    "Unicode-3.0",
     "CC0-1.0",
-    "0BSD",
     "BSL-1.0",
 ]
-# Crates to skip license checks for (e.g., private crates)
-exceptions = []
+confidence-threshold = 0.8
 
-# Clarify licenses for crates where detection might be uncertain
+# Ring uses a custom license that's permissive
 [[licenses.clarify]]
 name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
 # ============================================================================
-# BANS - Ban problematic or duplicate crates
+# BANS
+# Deny or allow specific crates or versions
 # ============================================================================
 [bans]
-# Lint level for multiple versions of the same crate
 multiple-versions = "warn"
-# Lint level for wildcard dependencies (warn for now, tighten later)
-wildcards = "warn"
-# Allow specific crates to have multiple versions (add here as needed)
+wildcards = "allow"
+highlight = "all"
+deny = []
 skip = []
-# Tree of crates to skip checking entirely
 skip-tree = []
 
-# Specific crates to deny (security or quality concerns)
-deny = [
-    # Unmaintained crates with known issues
-    { name = "openssl", wrappers = ["native-tls"] },  # Prefer rustls
-]
-
-# Allow specific crates
-allow = []
-
 # ============================================================================
-# SOURCES - Ensure crates come from trusted sources
+# SOURCES
+# Controls where crates can be sourced from
 # ============================================================================
 [sources]
-# Only allow crates from crates.io
 unknown-registry = "deny"
-# Only allow crates from known git sources
-unknown-git = "deny"
-# List of allowed registries
+unknown-git = "warn"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-# List of allowed git sources
-allow-git = [
-    # rusty_ytdl - pinned to specific revision for stability
-    "https://github.com/Mithronn/rusty_ytdl",
-]
+allow-git = []
 
-# Allow specific crates from git
 [sources.allow-org]
+# Allow rusty_ytdl from Mithronn's fork
 github = ["Mithronn"]

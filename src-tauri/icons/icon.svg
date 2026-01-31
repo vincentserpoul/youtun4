@@ -1,50 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <!-- Main gradient: indigo to pink -->
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#8b5cf6"/>
-      <stop offset="50%" style="stop-color:#a855f7"/>
-      <stop offset="100%" style="stop-color:#ec4899"/>
-    </linearGradient>
-
-    <!-- Subtle inner glow -->
-    <linearGradient id="glowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.15"/>
-      <stop offset="50%" style="stop-color:#ffffff;stop-opacity:0"/>
+    <!-- App brand gradient - violet to rose -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed"/>
+      <stop offset="100%" style="stop-color:#db2777"/>
     </linearGradient>
   </defs>
 
   <!-- Background rounded square -->
-  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#bgGradient)"/>
+  <rect x="0" y="0" width="512" height="512" rx="110" ry="110" fill="url(#bgGrad)"/>
 
-  <!-- Subtle top highlight for depth -->
-  <rect x="16" y="16" width="480" height="240" rx="96" ry="96" fill="url(#glowGradient)"/>
+  <!-- Portable audio player body -->
+  <rect x="136" y="72" width="240" height="368" rx="32" ry="32" fill="rgba(255,255,255,0.95)"/>
 
-  <!-- Audio waveform/equalizer bars (clean, centered design) -->
-  <g fill="#ffffff">
-    <!-- Bar 1 (leftmost, short) -->
-    <rect x="104" y="224" width="40" height="64" rx="20"/>
+  <!-- Screen area with YouTube-style rounded shape -->
+  <rect x="160" y="96" width="192" height="140" rx="20" ry="20" fill="url(#bgGrad)"/>
 
-    <!-- Bar 2 (medium-short) -->
-    <rect x="164" y="192" width="40" height="128" rx="20"/>
+  <!-- Play triangle - centered in screen -->
+  <polygon points="280,166 232,138 232,194" fill="rgba(255,255,255,0.95)"/>
 
-    <!-- Bar 3 (tall) -->
-    <rect x="224" y="144" width="40" height="224" rx="20"/>
+  <!-- Click wheel / control circle -->
+  <circle cx="256" cy="330" r="72" fill="none" stroke="rgba(124,58,237,0.3)" stroke-width="6"/>
 
-    <!-- Bar 4 (tallest - center emphasis) -->
-    <rect x="284" y="112" width="48" height="288" rx="24"/>
+  <!-- Center button -->
+  <circle cx="256" cy="330" r="32" fill="url(#bgGrad)"/>
 
-    <!-- Bar 5 (medium) -->
-    <rect x="352" y="176" width="40" height="160" rx="20"/>
+  <!-- Play/pause icon in center button -->
+  <polygon points="264,330 252,322 252,338" fill="white"/>
 
-    <!-- Bar 6 (rightmost, short) -->
-    <rect x="412" y="216" width="40" height="80" rx="20"/>
+  <!-- Audio wave lines (subtle, same color family) -->
+  <g stroke="rgba(255,255,255,0.35)" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M100,200 Q80,256 100,312"/>
+    <path d="M72,176 Q44,256 72,336"/>
+
+    <path d="M412,200 Q432,256 412,312"/>
+    <path d="M440,176 Q468,256 440,336"/>
   </g>
-
-  <!-- Small play triangle accent (subtle, bottom-left of center) -->
-  <polygon
-    points="136,380 136,340 168,360"
-    fill="#06b6d4"
-    opacity="0.9"
-  />
 </svg>

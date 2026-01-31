@@ -994,6 +994,7 @@ impl DeviceMountHandler for PlatformMountHandler {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
@@ -1632,7 +1633,7 @@ mod tests {
         if let Ok(status) = result {
             // If it succeeds, just verify the struct is valid
             // is_mounted could be true or false depending on platform interpretation
-            assert!(status.is_mounted || !status.is_mounted);
+            let _ = status.is_mounted; // Just verify we can access the field
         } else {
             // On macOS, temp dirs aren't under /Volumes, so NotFound is acceptable
             // This is expected behavior, not a failure

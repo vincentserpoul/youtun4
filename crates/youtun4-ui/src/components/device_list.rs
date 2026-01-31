@@ -1,10 +1,12 @@
 //! Device list component for displaying connected USB devices.
 
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 
 use crate::components::empty_state::{EmptyStateSize, ErrorEmptyState, NoDeviceEmptyState};
 use crate::components::layout::MobileMenuContext;
 use crate::components::loading::{LoadingState, Skeleton, SkeletonText};
+use crate::tauri_api;
 use crate::types::DeviceInfo;
 
 /// Format bytes to human-readable string.
@@ -69,15 +71,49 @@ fn DeviceItem(
     device: DeviceInfo,
     /// Callback when device is selected.
     on_select: Callback<DeviceInfo>,
+    /// Callback when device is ejected.
+    on_eject: Callback<String>,
     /// Whether this device is selected.
     #[prop(default = false)]
     selected: bool,
 ) -> impl IntoView {
     let device_clone = device.clone();
+    let device_for_eject = device.clone();
     let usage = device.usage_percentage();
 
     // Try to get mobile menu context to close menu on selection
     let menu_ctx = use_context::<MobileMenuContext>();
+
+    // Eject state
+    let (ejecting, set_ejecting) = signal(false);
+
+    let handle_eject = move |e: web_sys::MouseEvent| {
+        e.stop_propagation();
+        if ejecting.get() {
+            return;
+        }
+
+        set_ejecting.set(true);
+        let mount_point = device_for_eject.mount_point.clone();
+        let on_eject = on_eject;
+
+        spawn_local(async move {
+            match tauri_api::eject_device(&mount_point).await {
+                Ok(result) => {
+                    if result.success {
+                        leptos::logging::log!("Device ejected successfully: {}", mount_point);
+                        on_eject.run(mount_point);
+                    } else {
+                        leptos::logging::error!("Failed to eject device: {}", mount_point);
+                    }
+                }
+                Err(e) => {
+                    leptos::logging::error!("Failed to eject device: {}", e);
+                }
+            }
+            set_ejecting.set(false);
+        });
+    };
 
     view! {
         <div
@@ -109,6 +145,31 @@ fn DeviceItem(
                         {format_bytes(device.available_bytes)} " free of " {format_bytes(device.total_bytes)}
                     </div>
                 </div>
+                // Eject button
+                <div class="device-actions">
+                    <button
+                        class="btn btn-eject"
+                        title="Safely eject device"
+                        disabled=move || ejecting.get()
+                        on:click=handle_eject
+                    >
+                        {move || {
+                            if ejecting.get() {
+                                view! {
+                                    <span class="spinner"></span>
+                                    <span>"Ejecting..."</span>
+                                }.into_any()
+                            } else {
+                                view! {
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                        <path d="M5 17h14v2H5zm7-12L5.33 15h13.34z"/>
+                                    </svg>
+                                    <span>"Eject"</span>
+                                }.into_any()
+                            }
+                        }}
+                    </button>
+                </div>
             </div>
         </div>
     }
@@ -120,6 +181,7 @@ fn DeviceItem(
 /// - Loading state with skeleton placeholders
 /// - Empty state for when no devices connected
 /// - Refresh button with loading indicator
+/// - Safe eject button for connected devices
 /// - Smooth transitions between states
 #[component]
 
@@ -132,6 +194,8 @@ pub fn DeviceList(
     on_select: Callback<DeviceInfo>,
     /// Callback to refresh the device list.
     on_refresh: Callback<()>,
+    /// Callback when a device is ejected.
+    on_eject: Callback<String>,
     /// Loading state of the device list (as a signal for reactivity).
     state: ReadSignal<LoadingState>,
 ) -> impl IntoView {
@@ -192,6 +256,7 @@ pub fn DeviceList(
                                                 <DeviceItem
                                                     device=device
                                                     on_select=on_select
+                                                    on_eject=on_eject
                                                     selected=is_selected
                                                 />
                                             }

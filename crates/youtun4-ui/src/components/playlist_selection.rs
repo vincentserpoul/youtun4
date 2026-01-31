@@ -91,8 +91,27 @@ pub fn PlaylistSelectionCard(
         >
             <RadioIndicator selected=selected />
             <div class="playlist-icon">
-                <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-                    <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+                <svg viewBox="0 0 512 512" width="48" height="48">
+                    <defs>
+                        <linearGradient id="brandGrad-selection" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#8b5cf6"/>
+                            <stop offset="100%" style="stop-color:#ec4899"/>
+                        </linearGradient>
+                    </defs>
+                    <rect x="0" y="0" width="512" height="512" rx="110" ry="110" fill="url(#brandGrad-selection)"/>
+                    <g transform="translate(125.5, 50) scale(9, 9)">
+                        <path d="M14.4848 20C14.4848 20 23.5695 20 25.8229 19.4C27.0917 19.06 28.0459 18.08 28.3808 16.87C29 14.65 29 9.98 29 9.98C29 9.98 29 5.34 28.3808 3.14C28.0459 1.9 27.0917 0.94 25.8229 0.61C23.5695 0 14.4848 0 14.4848 0C14.4848 0 5.42037 0 3.17711 0.61C1.9286 0.94 0.954148 1.9 0.59888 3.14C0 5.34 0 9.98 0 9.98C0 9.98 0 14.65 0.59888 16.87C0.954148 18.08 1.9286 19.06 3.17711 19.4C5.42037 20 14.4848 20 14.4848 20Z" fill="white" opacity="0.95"/>
+                        <path d="M19 10L11.5 5.75V14.25L19 10Z" fill="url(#brandGrad-selection)"/>
+                    </g>
+                    <g opacity="0.9">
+                        <circle cx="256" cy="300" r="30" fill="none" stroke="white" stroke-width="9"/>
+                        <polygon points="243,270 256,257 269,270" fill="white"/>
+                        <polygon points="269,330 256,343 243,330" fill="white"/>
+                    </g>
+                    <rect x="70" y="390" width="372" height="70" rx="16" ry="16" fill="white" opacity="0.9"/>
+                    <circle cx="160" cy="425" r="11" fill="#8b5cf6"/>
+                    <circle cx="256" cy="425" r="11" fill="#ec4899"/>
+                    <circle cx="352" cy="425" r="11" fill="#ef4444"/>
                 </svg>
             </div>
             <div class="playlist-info">
