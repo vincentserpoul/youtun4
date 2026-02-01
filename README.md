@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/vincentserpoul/youtun4/actions/workflows/ci.yml/badge.svg)](https://github.com/vincentserpoul/youtun4/actions/workflows/ci.yml)
 [![Security](https://github.com/vincentserpoul/youtun4/actions/workflows/security.yml/badge.svg)](https://github.com/vincentserpoul/youtun4/actions/workflows/security.yml)
-[![codecov](https://codecov.io/gh/vincentserpoul/youtun4/branch/main/graph/badge.svg)](https://codecov.io/gh/vincentserpoul/youtun4)
+[![codecov](https://codecov.io/gh/vincentserpoul/youtun4/graph/badge.svg?token=91PBO9UKNN)](https://codecov.io/gh/vincentserpoul/youtun4)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.93%2B-orange.svg)](https://www.rust-lang.org/)
 [![Tauri](https://img.shields.io/badge/tauri-2.x-blue.svg)](https://tauri.app/)

@@ -21,10 +21,10 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
 
@@ -38,7 +38,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install system dependencies
         run: |
@@ -52,7 +52,7 @@ jobs:
             libayatana-appindicator3-dev
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
 
@@ -76,7 +76,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
@@ -92,7 +92,7 @@ jobs:
             libayatana-appindicator3-dev
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
@@ -113,7 +113,7 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install system dependencies
         run: |
@@ -127,7 +127,7 @@ jobs:
             libayatana-appindicator3-dev
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
@@ -149,7 +149,7 @@ jobs:
             --timeout 300
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: coverage/cobertura.xml
           fail_ci_if_error: false
@@ -164,10 +164,10 @@ jobs:
     name: Build WASM UI
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
@@ -188,7 +188,7 @@ jobs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install system dependencies
         run: |
@@ -202,7 +202,7 @@ jobs:
             libayatana-appindicator3-dev
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
@@ -222,7 +222,7 @@ jobs:
     name: MSRV Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install system dependencies
         run: |
@@ -236,7 +236,7 @@ jobs:
             libayatana-appindicator3-dev
 
       - name: Install Rust (MSRV)
-        uses: dtolnay/rust-action@1.82.0
+        uses: dtolnay/rust-toolchain@1.82.0
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
