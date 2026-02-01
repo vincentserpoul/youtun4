@@ -712,11 +712,13 @@ impl PlatformMountHandler {
                 .lines()
                 .find(|line| line.contains("Mounted"))
                 .and_then(|line| line.split(" at ").nth(1))
-                .map_or(
-                    mount_point.map_or_else(
-                        || PathBuf::from("/media/unknown"),
-                        std::path::Path::to_path_buf,
-                    ),
+                .map_or_else(
+                    || {
+                        mount_point.map_or_else(
+                            || PathBuf::from("/media/unknown"),
+                            std::path::Path::to_path_buf,
+                        )
+                    },
                     |s| PathBuf::from(s.trim().trim_end_matches('.')),
                 );
 
