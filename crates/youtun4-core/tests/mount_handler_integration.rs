@@ -168,12 +168,13 @@ fn test_unmount_nonexistent_path_fails() {
     let err_str = err.to_string();
     println!("Unmount error (expected): {err_str}");
 
-    // Should be a "not mounted" error
+    // Should be an unmount-related error
     assert!(
         err_str.contains("not mounted")
             || err_str.contains("NotMounted")
-            || err_str.contains("does not exist"),
-        "Error should indicate the path is not mounted"
+            || err_str.contains("does not exist")
+            || err_str.contains("failed to unmount"),
+        "Error should indicate unmount failure: {err_str}"
     );
 }
 

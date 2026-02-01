@@ -669,7 +669,7 @@ impl PlatformMountHandler {
         }
 
         let mounts = std::fs::read_to_string("/proc/mounts")
-            .map_err(|e| Error::Internal(format!("Failed to read /proc/mounts: {}", e)))?;
+            .map_err(|e| Error::Internal(format!("Failed to read /proc/mounts: {e}")))?;
 
         for line in mounts.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
@@ -704,49 +704,51 @@ impl PlatformMountHandler {
         info!("Mounting device on Linux: {}", device_str);
 
         // Try udisksctl first
-        if let Ok(output) = self.execute_command("udisksctl", &["mount", "-b", &device_str]) {
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let mount_point = stdout
-                    .lines()
-                    .find(|line| line.contains("Mounted"))
-                    .and_then(|line| line.split(" at ").nth(1))
-                    .map(|s| PathBuf::from(s.trim().trim_end_matches('.')))
-                    .unwrap_or_else(|| {
-                        mount_point
-                            .map(|p| p.to_path_buf())
-                            .unwrap_or_else(|| PathBuf::from("/media/unknown"))
-                    });
-
-                info!("Device mounted at {:?}", mount_point);
-                return Ok(MountResult {
-                    mount_point,
-                    device_name: device_str.to_string(),
-                    success: true,
-                    message: Some(stdout.trim().to_string()),
+        if let Ok(output) = self.execute_command("udisksctl", &["mount", "-b", &device_str])
+            && output.status.success()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let resolved_mount_point = stdout
+                .lines()
+                .find(|line| line.contains("Mounted"))
+                .and_then(|line| line.split(" at ").nth(1))
+                .map(|s| PathBuf::from(s.trim().trim_end_matches('.')))
+                .unwrap_or_else(|| {
+                    mount_point.map_or_else(
+                        || PathBuf::from("/media/unknown"),
+                        std::path::Path::to_path_buf,
+                    )
                 });
-            }
+
+            info!("Device mounted at {:?}", resolved_mount_point);
+            return Ok(MountResult {
+                mount_point: resolved_mount_point,
+                device_name: device_str.to_string(),
+                success: true,
+                message: Some(stdout.trim().to_string()),
+            });
         }
 
         // Try gio mount
-        if let Ok(output) = self.execute_command("gio", &["mount", "-d", &device_str]) {
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let status = self.platform_get_mount_status(device_path)?;
-                let mount_point = status.mount_point.unwrap_or_else(|| {
-                    mount_point
-                        .map(|p| p.to_path_buf())
-                        .unwrap_or_else(|| PathBuf::from("/media/unknown"))
-                });
+        if let Ok(output) = self.execute_command("gio", &["mount", "-d", &device_str])
+            && output.status.success()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let status = self.platform_get_mount_status(device_path)?;
+            let resolved_mount_point = status.mount_point.unwrap_or_else(|| {
+                mount_point.map_or_else(
+                    || PathBuf::from("/media/unknown"),
+                    std::path::Path::to_path_buf,
+                )
+            });
 
-                info!("Device mounted via gio at {:?}", mount_point);
-                return Ok(MountResult {
-                    mount_point,
-                    device_name: device_str.to_string(),
-                    success: true,
-                    message: Some(stdout.trim().to_string()),
-                });
-            }
+            info!("Device mounted via gio at {:?}", resolved_mount_point);
+            return Ok(MountResult {
+                mount_point: resolved_mount_point,
+                device_name: device_str.to_string(),
+                success: true,
+                message: Some(stdout.trim().to_string()),
+            });
         }
 
         Err(Error::mount_failed(
@@ -768,29 +770,29 @@ impl PlatformMountHandler {
         }
 
         // Try udisksctl
-        if let Ok(output) = self.execute_command("udisksctl", &["unmount", "-p", &path_str]) {
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                info!("Device unmounted via udisksctl");
-                return Ok(UnmountResult {
-                    mount_point: mount_point.to_path_buf(),
-                    success: true,
-                    message: Some(stdout.trim().to_string()),
-                });
-            }
+        if let Ok(output) = self.execute_command("udisksctl", &["unmount", "-p", &path_str])
+            && output.status.success()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            info!("Device unmounted via udisksctl");
+            return Ok(UnmountResult {
+                mount_point: mount_point.to_path_buf(),
+                success: true,
+                message: Some(stdout.trim().to_string()),
+            });
         }
 
         // Try gio
-        if let Ok(output) = self.execute_command("gio", &["mount", "-u", &path_str]) {
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                info!("Device unmounted via gio");
-                return Ok(UnmountResult {
-                    mount_point: mount_point.to_path_buf(),
-                    success: true,
-                    message: Some(stdout.trim().to_string()),
-                });
-            }
+        if let Ok(output) = self.execute_command("gio", &["mount", "-u", &path_str])
+            && output.status.success()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            info!("Device unmounted via gio");
+            return Ok(UnmountResult {
+                mount_point: mount_point.to_path_buf(),
+                success: true,
+                message: Some(stdout.trim().to_string()),
+            });
         }
 
         // Fallback to umount
