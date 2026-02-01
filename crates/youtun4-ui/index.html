@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link data-trunk rel="rust" data-bin="youtun4-ui" data-wasm-opt="z" />
+  <link data-trunk rel="rust" data-bin="youtun4-ui" data-bindgen-target="web" data-wasm-opt="z" data-wasm-opt-params="--enable-bulk-memory --enable-nontrapping-float-to-int" />
   <style>
     /* Loading styles before app mounts */
     body {
