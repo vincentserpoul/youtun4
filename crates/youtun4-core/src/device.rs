@@ -712,13 +712,13 @@ impl PlatformMountHandler {
                 .lines()
                 .find(|line| line.contains("Mounted"))
                 .and_then(|line| line.split(" at ").nth(1))
-                .map(|s| PathBuf::from(s.trim().trim_end_matches('.')))
-                .unwrap_or_else(|| {
+                .map_or(
                     mount_point.map_or_else(
                         || PathBuf::from("/media/unknown"),
                         std::path::Path::to_path_buf,
-                    )
-                });
+                    ),
+                    |s| PathBuf::from(s.trim().trim_end_matches('.')),
+                );
 
             info!("Device mounted at {:?}", resolved_mount_point);
             return Ok(MountResult {
