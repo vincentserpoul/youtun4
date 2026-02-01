@@ -28,27 +28,25 @@ fn test_platform_mount_handler_reports_platform() {
 }
 
 /// Test mount status detection for an existing mounted volume.
+#[cfg(target_os = "macos")]
 #[test]
 fn test_get_mount_status_for_root_volume() {
+    let handler = PlatformMountHandler::new();
     // On macOS, /Volumes/Macintosh HD should exist but may not be detected as "mounted"
     // because our implementation treats it specially
-    #[cfg(target_os = "macos")]
-    {
-        let handler = PlatformMountHandler::new();
-        // Test with the root volume path
-        let result = handler.get_mount_status(&PathBuf::from("/"));
-        // This should not panic - the result depends on how the handler interprets it
-        match result {
-            Ok(status) => {
-                println!(
-                    "Root volume status: is_mounted={}, is_accessible={}",
-                    status.is_mounted, status.is_accessible
-                );
-            }
-            Err(e) => {
-                // NotFound is acceptable for non-/Volumes paths
-                println!("Root volume check returned error (acceptable): {e}");
-            }
+    // Test with the root volume path
+    let result = handler.get_mount_status(&PathBuf::from("/"));
+    // This should not panic - the result depends on how the handler interprets it
+    match result {
+        Ok(status) => {
+            println!(
+                "Root volume status: is_mounted={}, is_accessible={}",
+                status.is_mounted, status.is_accessible
+            );
+        }
+        Err(e) => {
+            // NotFound is acceptable for non-/Volumes paths
+            println!("Root volume check returned error (acceptable): {e}");
         }
     }
 }
