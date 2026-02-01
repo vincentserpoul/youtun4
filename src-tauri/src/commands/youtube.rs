@@ -433,7 +433,10 @@ pub async fn download_youtube_playlist(
                 video_id: r.video.id.clone(),
                 title: r.video.title.clone(),
                 success: r.success,
-                output_path: r.output_path.as_ref().map(|p| p.display().to_string()),
+                output_path: r
+                    .output_path
+                    .as_ref()
+                    .map(|p: &std::path::PathBuf| p.display().to_string()),
                 error: r.error.clone(),
             })
             .collect();
@@ -473,6 +476,255 @@ pub async fn download_youtube_playlist(
     Ok(task_id)
 }
 
+// =============================================================================
+// Helper functions for download_youtube_to_playlist
+// =============================================================================
+
+/// Audio file extensions recognized for track counting.
+const AUDIO_EXTENSIONS: &[&str] = &[
+    "mp3", "m4a", "mp4", "wav", "flac", "ogg", "aac", "webm", "opus",
+];
+
+/// Create a failure payload for download errors.
+fn create_failure_payload(
+    task_id: TaskId,
+    error: &Error,
+    total_count: usize,
+) -> DownloadResultPayload {
+    let category = classify_error(error);
+    DownloadResultPayload {
+        task_id,
+        success: false,
+        successful_count: 0,
+        failed_count: 0,
+        skipped_count: 0,
+        total_count,
+        results: vec![],
+        error_message: Some(error.to_string()),
+        error_category: Some(category),
+        error_title: Some(category.title().to_string()),
+        error_description: Some(category.description().to_string()),
+    }
+}
+
+/// Emit a failure event for download errors.
+fn emit_failure_event(app_handle: &AppHandle, error: &Error, payload: &DownloadResultPayload) {
+    let event = if matches!(
+        error,
+        Error::Download(youtun4_core::error::DownloadError::Cancelled)
+    ) {
+        youtube_events::DOWNLOAD_CANCELLED
+    } else {
+        youtube_events::DOWNLOAD_FAILED
+    };
+
+    if let Err(emit_err) = app_handle.emit(event, payload) {
+        error!("Failed to emit {} event: {}", event, emit_err);
+    }
+}
+
+/// Update playlist.json with source URL and thumbnail before download.
+fn update_playlist_metadata_before_download(
+    playlist_json_path: &std::path::Path,
+    source_url: &str,
+    playlist_info: &PlaylistInfo,
+) {
+    if !playlist_json_path.exists() {
+        return;
+    }
+
+    let Ok(content) = std::fs::read_to_string(playlist_json_path) else {
+        return;
+    };
+    let Ok(mut metadata) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return;
+    };
+    let Some(obj) = metadata.as_object_mut() else {
+        return;
+    };
+
+    obj.insert("source_url".to_string(), serde_json::json!(source_url));
+
+    if let Some(thumb) = &playlist_info.thumbnail_url {
+        obj.insert("thumbnail_url".to_string(), serde_json::json!(thumb));
+    }
+
+    if let Ok(updated) = serde_json::to_string_pretty(&metadata) {
+        let _ = std::fs::write(playlist_json_path, updated);
+    }
+}
+
+/// Count audio files and calculate total size in a directory.
+fn count_audio_files(dir: &std::path::Path) -> (usize, u64) {
+    let mut track_count = 0usize;
+    let mut total_size = 0u64;
+
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return (track_count, total_size);
+    };
+
+    for entry in entries.filter_map(std::result::Result::ok) {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+
+        let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+            continue;
+        };
+
+        if AUDIO_EXTENSIONS.contains(&ext.to_lowercase().as_str()) {
+            track_count += 1;
+            if let Ok(meta) = std::fs::metadata(&path) {
+                total_size += meta.len();
+            }
+        }
+    }
+
+    (track_count, total_size)
+}
+
+/// Build track metadata from download results.
+fn build_tracks_metadata(
+    results: &[youtun4_core::youtube::DownloadResult],
+) -> Vec<serde_json::Value> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+
+    results
+        .iter()
+        .filter(|r| r.success && r.output_path.is_some())
+        .map(|r| {
+            let file_name = r
+                .output_path
+                .as_ref()
+                .and_then(|p: &std::path::PathBuf| p.file_name())
+                .and_then(|n: &std::ffi::OsStr| n.to_str())
+                .unwrap_or("")
+                .to_string();
+
+            serde_json::json!({
+                "file_name": file_name,
+                "video_id": r.video.id,
+                "source_url": format!("https://www.youtube.com/watch?v={}", r.video.id),
+                "title": r.video.title,
+                "channel": r.video.channel,
+                "duration_secs": r.video.duration_secs,
+                "thumbnail_url": r.video.thumbnail_url,
+                "downloaded_at": now
+            })
+        })
+        .collect()
+}
+
+/// Update playlist.json with track count, size, and metadata after download.
+fn update_playlist_metadata_after_download(
+    playlist_json_path: &std::path::Path,
+    output_path: &std::path::Path,
+    results: &[youtun4_core::youtube::DownloadResult],
+) {
+    let Ok(content) = std::fs::read_to_string(playlist_json_path) else {
+        return;
+    };
+    let Ok(mut metadata) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return;
+    };
+    let Some(obj) = metadata.as_object_mut() else {
+        return;
+    };
+
+    let (track_count, total_size) = count_audio_files(output_path);
+
+    obj.insert("track_count".to_string(), serde_json::json!(track_count));
+    obj.insert(
+        "total_size_bytes".to_string(),
+        serde_json::json!(total_size),
+    );
+    obj.insert(
+        "modified_at".to_string(),
+        serde_json::json!(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_secs())
+        ),
+    );
+
+    let tracks_metadata = build_tracks_metadata(results);
+    obj.insert("tracks".to_string(), serde_json::json!(tracks_metadata));
+
+    if let Ok(updated) = serde_json::to_string_pretty(&metadata) {
+        let _ = std::fs::write(playlist_json_path, updated);
+    }
+
+    info!(
+        "Updated playlist.json: {} tracks, {} bytes, {} track metadata entries",
+        track_count,
+        total_size,
+        tracks_metadata.len()
+    );
+}
+
+/// Create a success payload from download results.
+fn create_success_payload(
+    task_id: TaskId,
+    results: &[youtun4_core::youtube::DownloadResult],
+) -> DownloadResultPayload {
+    let successful_count = results.iter().filter(|r| r.success).count();
+    let failed_count = results
+        .iter()
+        .filter(|r| !r.success && r.error.is_some())
+        .count();
+    let skipped_count = results.len() - successful_count - failed_count;
+
+    let video_results: Vec<VideoDownloadResult> = results
+        .iter()
+        .map(|r| VideoDownloadResult {
+            video_id: r.video.id.clone(),
+            title: r.video.title.clone(),
+            success: r.success,
+            output_path: r
+                .output_path
+                .as_ref()
+                .map(|p: &std::path::PathBuf| p.display().to_string()),
+            error: r.error.clone(),
+        })
+        .collect();
+
+    DownloadResultPayload {
+        task_id,
+        success: failed_count == 0,
+        successful_count,
+        failed_count,
+        skipped_count,
+        total_count: results.len(),
+        results: video_results,
+        error_message: None,
+        error_category: None,
+        error_title: None,
+        error_description: None,
+    }
+}
+
+/// Log download completion status.
+fn log_download_completion(playlist_name: &str, payload: &DownloadResultPayload) {
+    if payload.failed_count == 0 {
+        info!(
+            "Download to playlist '{}' completed: {} successful, {} skipped",
+            playlist_name, payload.successful_count, payload.skipped_count
+        );
+    } else {
+        info!(
+            "Download to playlist '{}' completed with errors: {} successful, {} failed, {} skipped",
+            playlist_name, payload.successful_count, payload.failed_count, payload.skipped_count
+        );
+    }
+}
+
+// =============================================================================
+// Download command
+// =============================================================================
+
 /// Download a YouTube playlist directly to a local playlist folder.
 #[tauri::command]
 pub async fn download_youtube_to_playlist(
@@ -510,250 +762,13 @@ pub async fn download_youtube_to_playlist(
     let output_path = playlist_path;
 
     std::thread::spawn(move || {
-        let config = RustyYtdlConfig::default();
-        let downloader = RustyYtdlDownloader::with_config(config);
-
-        if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_STARTED, &task_id) {
-            error!("Failed to emit download-started event: {}", e);
-        }
-
-        let playlist_info = match downloader.parse_playlist_url(&url_clone) {
-            Ok(info) => info,
-            Err(e) => {
-                error!("Failed to parse playlist: {}", e);
-                let category = classify_error(&e);
-                let payload = DownloadResultPayload {
-                    task_id,
-                    success: false,
-                    successful_count: 0,
-                    failed_count: 0,
-                    skipped_count: 0,
-                    total_count: 0,
-                    results: vec![],
-                    error_message: Some(e.to_string()),
-                    error_category: Some(category),
-                    error_title: Some(category.title().to_string()),
-                    error_description: Some(category.description().to_string()),
-                };
-                if let Err(emit_err) = app_handle.emit(youtube_events::DOWNLOAD_FAILED, &payload) {
-                    error!("Failed to emit download-failed event: {}", emit_err);
-                }
-                return;
-            }
-        };
-
-        info!(
-            "Playlist '{}' has {} videos",
-            playlist_info.title, playlist_info.video_count
-        );
-
-        // Update playlist metadata
-        let playlist_json_path = output_path.join("playlist.json");
-        if playlist_json_path.exists()
-            && let Ok(content) = std::fs::read_to_string(&playlist_json_path)
-            && let Ok(mut metadata) = serde_json::from_str::<serde_json::Value>(&content)
-            && let Some(obj) = metadata.as_object_mut()
-        {
-            obj.insert("source_url".to_string(), serde_json::json!(&url_clone));
-
-            if let Some(thumb) = &playlist_info.thumbnail_url {
-                obj.insert("thumbnail_url".to_string(), serde_json::json!(thumb));
-            }
-
-            if let Ok(updated) = serde_json::to_string_pretty(&metadata) {
-                let _ = std::fs::write(&playlist_json_path, updated);
-            }
-        }
-
-        let app_handle_for_progress = app_handle.clone();
-        let progress_callback = move |progress: DownloadProgress| {
-            let payload = DownloadProgressPayload::from_progress(task_id, &progress);
-            if let Err(e) =
-                app_handle_for_progress.emit(youtube_events::DOWNLOAD_PROGRESS, &payload)
-            {
-                error!("Failed to emit download-progress event: {}", e);
-            }
-        };
-
-        let results = match downloader.download_playlist(
-            &playlist_info,
-            &output_path,
-            Some(Box::new(progress_callback)),
-        ) {
-            Ok(results) => results,
-            Err(e) => {
-                error!("Download failed: {}", e);
-                let category = classify_error(&e);
-
-                let event = if matches!(
-                    e,
-                    Error::Download(youtun4_core::error::DownloadError::Cancelled)
-                ) {
-                    youtube_events::DOWNLOAD_CANCELLED
-                } else {
-                    youtube_events::DOWNLOAD_FAILED
-                };
-
-                let payload = DownloadResultPayload {
-                    task_id,
-                    success: false,
-                    successful_count: 0,
-                    failed_count: 0,
-                    skipped_count: 0,
-                    total_count: playlist_info.video_count,
-                    results: vec![],
-                    error_message: Some(e.to_string()),
-                    error_category: Some(category),
-                    error_title: Some(category.title().to_string()),
-                    error_description: Some(category.description().to_string()),
-                };
-                if let Err(emit_err) = app_handle.emit(event, &payload) {
-                    error!("Failed to emit {} event: {}", event, emit_err);
-                }
-                return;
-            }
-        };
-
-        let successful_count = results.iter().filter(|r| r.success).count();
-        let failed_count = results
-            .iter()
-            .filter(|r| !r.success && r.error.is_some())
-            .count();
-        let skipped_count = results.len() - successful_count - failed_count;
-
-        let video_results: Vec<VideoDownloadResult> = results
-            .iter()
-            .map(|r| VideoDownloadResult {
-                video_id: r.video.id.clone(),
-                title: r.video.title.clone(),
-                success: r.success,
-                output_path: r.output_path.as_ref().map(|p| p.display().to_string()),
-                error: r.error.clone(),
-            })
-            .collect();
-
-        let payload = DownloadResultPayload {
+        run_playlist_download(
             task_id,
-            success: failed_count == 0,
-            successful_count,
-            failed_count,
-            skipped_count,
-            total_count: results.len(),
-            results: video_results,
-            error_message: None,
-            error_category: None,
-            error_title: None,
-            error_description: None,
-        };
-
-        if failed_count == 0 {
-            info!(
-                "Download to playlist '{}' completed: {} successful, {} skipped",
-                playlist_name_clone, successful_count, skipped_count
-            );
-        } else {
-            info!(
-                "Download to playlist '{}' completed with errors: {} successful, {} failed, {} skipped",
-                playlist_name_clone, successful_count, failed_count, skipped_count
-            );
-        }
-
-        // Update playlist.json with actual track count, total size, and track metadata
-        let playlist_json_path = output_path.join("playlist.json");
-        if let Ok(content) = std::fs::read_to_string(&playlist_json_path)
-            && let Ok(mut metadata) = serde_json::from_str::<serde_json::Value>(&content)
-            && let Some(obj) = metadata.as_object_mut()
-        {
-            let mut track_count = 0usize;
-            let mut total_size: u64 = 0;
-            if let Ok(entries) = std::fs::read_dir(&output_path) {
-                for entry in entries.filter_map(std::result::Result::ok) {
-                    let path = entry.path();
-                    if path.is_file()
-                        && let Some(ext) = path.extension().and_then(|e| e.to_str())
-                    {
-                        let ext_lower = ext.to_lowercase();
-                        if matches!(
-                            ext_lower.as_str(),
-                            "mp3"
-                                | "m4a"
-                                | "mp4"
-                                | "wav"
-                                | "flac"
-                                | "ogg"
-                                | "aac"
-                                | "webm"
-                                | "opus"
-                        ) {
-                            track_count += 1;
-                            if let Ok(meta) = std::fs::metadata(&path) {
-                                total_size += meta.len();
-                            }
-                        }
-                    }
-                }
-            }
-
-            obj.insert("track_count".to_string(), serde_json::json!(track_count));
-            obj.insert(
-                "total_size_bytes".to_string(),
-                serde_json::json!(total_size),
-            );
-            obj.insert(
-                "modified_at".to_string(),
-                serde_json::json!(
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map_or(0, |d| d.as_secs())
-                ),
-            );
-
-            // Build track metadata array with YouTube URLs
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_secs());
-
-            let tracks_metadata: Vec<serde_json::Value> = results
-                .iter()
-                .filter(|r| r.success && r.output_path.is_some())
-                .map(|r| {
-                    let file_name = r
-                        .output_path
-                        .as_ref()
-                        .and_then(|p| p.file_name())
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("")
-                        .to_string();
-
-                    serde_json::json!({
-                        "file_name": file_name,
-                        "video_id": r.video.id,
-                        "source_url": format!("https://www.youtube.com/watch?v={}", r.video.id),
-                        "title": r.video.title,
-                        "channel": r.video.channel,
-                        "duration_secs": r.video.duration_secs,
-                        "thumbnail_url": r.video.thumbnail_url,
-                        "downloaded_at": now
-                    })
-                })
-                .collect();
-
-            obj.insert("tracks".to_string(), serde_json::json!(tracks_metadata));
-
-            if let Ok(updated) = serde_json::to_string_pretty(&metadata) {
-                let _ = std::fs::write(&playlist_json_path, updated);
-            }
-            info!(
-                "Updated playlist.json: {} tracks, {} bytes, {} track metadata entries",
-                track_count,
-                total_size,
-                tracks_metadata.len()
-            );
-        }
-
-        if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_COMPLETED, &payload) {
-            error!("Failed to emit download-completed event: {}", e);
-        }
+            &app_handle,
+            &url_clone,
+            &playlist_name_clone,
+            &output_path,
+        );
     });
 
     info!(
@@ -761,4 +776,75 @@ pub async fn download_youtube_to_playlist(
         task_id, playlist_name
     );
     Ok(task_id)
+}
+
+/// Run the playlist download in a background thread.
+fn run_playlist_download(
+    task_id: TaskId,
+    app_handle: &AppHandle,
+    url: &str,
+    playlist_name: &str,
+    output_path: &std::path::Path,
+) {
+    let config = RustyYtdlConfig::default();
+    let downloader = RustyYtdlDownloader::with_config(config);
+
+    if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_STARTED, &task_id) {
+        error!("Failed to emit download-started event: {}", e);
+    }
+
+    // Parse playlist
+    let playlist_info = match downloader.parse_playlist_url(url) {
+        Ok(info) => info,
+        Err(e) => {
+            error!("Failed to parse playlist: {}", e);
+            let payload = create_failure_payload(task_id, &e, 0);
+            emit_failure_event(app_handle, &e, &payload);
+            return;
+        }
+    };
+
+    info!(
+        "Playlist '{}' has {} videos",
+        playlist_info.title, playlist_info.video_count
+    );
+
+    // Update playlist metadata before download
+    let playlist_json_path = output_path.join("playlist.json");
+    update_playlist_metadata_before_download(&playlist_json_path, url, &playlist_info);
+
+    // Set up progress callback
+    let app_handle_for_progress = app_handle.clone();
+    let progress_callback = move |progress: DownloadProgress| {
+        let payload = DownloadProgressPayload::from_progress(task_id, &progress);
+        if let Err(e) = app_handle_for_progress.emit(youtube_events::DOWNLOAD_PROGRESS, &payload) {
+            error!("Failed to emit download-progress event: {}", e);
+        }
+    };
+
+    // Download playlist
+    let results = match downloader.download_playlist(
+        &playlist_info,
+        output_path,
+        Some(Box::new(progress_callback)),
+    ) {
+        Ok(results) => results,
+        Err(e) => {
+            error!("Download failed: {}", e);
+            let payload = create_failure_payload(task_id, &e, playlist_info.video_count);
+            emit_failure_event(app_handle, &e, &payload);
+            return;
+        }
+    };
+
+    // Create success payload and log completion
+    let payload = create_success_payload(task_id, &results);
+    log_download_completion(playlist_name, &payload);
+
+    // Update playlist metadata after download
+    update_playlist_metadata_after_download(&playlist_json_path, output_path, &results);
+
+    if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_COMPLETED, &payload) {
+        error!("Failed to emit download-completed event: {}", e);
+    }
 }

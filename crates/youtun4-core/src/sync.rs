@@ -582,32 +582,131 @@ impl SyncOrchestrator {
             request.device_mount_point.display()
         );
 
-        // Send initial progress
-        if let Some(cb) = &progress_callback {
-            cb(&progress);
-        }
+        Self::emit_progress(progress_callback.as_ref(), &progress);
 
         // Check for cancellation
-        if self.is_cancelled() {
-            progress.cancelled();
-            result.was_cancelled = true;
-            result.final_phase = SyncPhase::Cancelled;
-            if let Some(cb) = &progress_callback {
-                cb(&progress);
-            }
+        if self.check_cancelled(&mut progress, &mut result, progress_callback.as_ref()) {
             return Ok(result);
         }
 
         // Phase 1: Verify device
+        self.run_verification_phase(
+            device_detector,
+            playlist_manager,
+            &request,
+            &mut progress,
+            &mut result,
+            progress_callback.as_ref(),
+        )?;
+
+        // Check for cancellation
+        if self.check_cancelled(&mut progress, &mut result, progress_callback.as_ref()) {
+            return Ok(result);
+        }
+
+        // Phase 2: Cleanup (if enabled)
+        if options.cleanup_enabled {
+            self.run_cleanup_phase(
+                device_detector,
+                &request,
+                options,
+                &mut progress,
+                &mut result,
+                progress_callback.as_ref(),
+            )?;
+        }
+
+        // Check for cancellation
+        if self.check_cancelled(&mut progress, &mut result, progress_callback.as_ref()) {
+            return Ok(result);
+        }
+
+        // Phase 3: Transfer playlists
+        self.run_transfer_phase(
+            playlist_manager,
+            device_detector,
+            &request,
+            options,
+            &mut progress,
+            &mut result,
+            progress_callback.as_ref(),
+        )?;
+
+        // Finalize result
+        let duration_secs = start_time.elapsed().as_secs_f64();
+        result.finalize(duration_secs);
+        progress.completed(duration_secs);
+
+        info!("{}", result.summary());
+
+        Self::emit_progress(progress_callback.as_ref(), &progress);
+
+        Ok(result)
+    }
+
+    /// Emit progress to callback if present.
+    fn emit_progress<F: Fn(&SyncProgress)>(callback: Option<&F>, progress: &SyncProgress) {
+        if let Some(cb) = callback {
+            cb(progress);
+        }
+    }
+
+    /// Check if cancelled and update state accordingly. Returns true if cancelled.
+    fn check_cancelled<F: Fn(&SyncProgress)>(
+        &self,
+        progress: &mut SyncProgress,
+        result: &mut SyncResult,
+        callback: Option<&F>,
+    ) -> bool {
+        if self.is_cancelled() {
+            progress.cancelled();
+            result.was_cancelled = true;
+            result.final_phase = SyncPhase::Cancelled;
+            Self::emit_progress(callback, progress);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Handle a sync failure by updating progress and result.
+    fn handle_failure<F: Fn(&SyncProgress)>(
+        progress: &mut SyncProgress,
+        result: &mut SyncResult,
+        callback: Option<&F>,
+        message: String,
+        error: &Error,
+    ) {
+        progress.failed(message);
+        result.error_message = Some(error.to_string());
+        result.final_phase = SyncPhase::Failed;
+        Self::emit_progress(callback, progress);
+    }
+
+    /// Run Phase 1: Device verification.
+    fn run_verification_phase<D, F>(
+        &self,
+        device_detector: &D,
+        playlist_manager: &PlaylistManager,
+        request: &SyncRequest,
+        progress: &mut SyncProgress,
+        result: &mut SyncResult,
+        callback: Option<&F>,
+    ) -> Result<()>
+    where
+        D: DeviceDetector,
+        F: Fn(&SyncProgress),
+    {
         info!("Phase 1: Verifying device...");
         if let Err(e) = self.verify_device(device_detector, &request.device_mount_point) {
             error!("Device verification failed: {}", e);
-            progress.failed(format!("Device verification failed: {e}"));
-            result.error_message = Some(e.to_string());
-            result.final_phase = SyncPhase::Failed;
-            if let Some(cb) = &progress_callback {
-                cb(&progress);
-            }
+            Self::handle_failure(
+                progress,
+                result,
+                callback,
+                format!("Device verification failed: {e}"),
+                &e,
+            );
             return Err(e);
         }
 
@@ -618,99 +717,102 @@ impl SyncOrchestrator {
         // Verify device has enough space
         self.verify_device_space(&request.device_mount_point, total_bytes)?;
 
-        // Check for cancellation
-        if self.is_cancelled() {
-            progress.cancelled();
-            result.was_cancelled = true;
-            result.final_phase = SyncPhase::Cancelled;
-            if let Some(cb) = &progress_callback {
-                cb(&progress);
-            }
-            return Ok(result);
-        }
+        Ok(())
+    }
 
-        // Phase 2: Cleanup (if enabled)
-        if options.cleanup_enabled {
-            info!("Phase 2: Cleaning device...");
-            progress.cleaning("Cleaning device contents...");
-            progress.overall_progress_percent = 5.0;
-            if let Some(cb) = &progress_callback {
-                cb(&progress);
-            }
+    /// Run Phase 2: Device cleanup.
+    fn run_cleanup_phase<D, F>(
+        &self,
+        device_detector: &D,
+        request: &SyncRequest,
+        options: &SyncOptions,
+        progress: &mut SyncProgress,
+        result: &mut SyncResult,
+        callback: Option<&F>,
+    ) -> Result<()>
+    where
+        D: DeviceDetector,
+        F: Fn(&SyncProgress),
+    {
+        info!("Phase 2: Cleaning device...");
+        progress.cleaning("Cleaning device contents...");
+        progress.overall_progress_percent = 5.0;
+        Self::emit_progress(callback, progress);
 
-            match self.cleanup_device(
-                device_detector,
-                &request.device_mount_point,
-                &options.cleanup_options,
-            ) {
-                Ok(cleanup_result) => {
-                    info!(
-                        "Cleanup complete: {} files, {} directories deleted ({} bytes freed)",
-                        cleanup_result.files_deleted,
-                        cleanup_result.directories_deleted,
-                        cleanup_result.bytes_freed
+        match self.cleanup_device(
+            device_detector,
+            &request.device_mount_point,
+            &options.cleanup_options,
+        ) {
+            Ok(cleanup_result) => {
+                info!(
+                    "Cleanup complete: {} files, {} directories deleted ({} bytes freed)",
+                    cleanup_result.files_deleted,
+                    cleanup_result.directories_deleted,
+                    cleanup_result.bytes_freed
+                );
+                progress.cleanup_result = Some(cleanup_result.clone());
+                result.cleanup_result = Some(cleanup_result);
+                progress.overall_progress_percent = 10.0;
+            }
+            Err(e) => {
+                error!("Cleanup failed: {}", e);
+                if options.abort_on_cleanup_failure {
+                    Self::handle_failure(
+                        progress,
+                        result,
+                        callback,
+                        format!("Cleanup failed: {e}"),
+                        &e,
                     );
-                    progress.cleanup_result = Some(cleanup_result.clone());
-                    result.cleanup_result = Some(cleanup_result);
-                    progress.overall_progress_percent = 10.0;
+                    return Err(e);
                 }
-                Err(e) => {
-                    error!("Cleanup failed: {}", e);
-                    if options.abort_on_cleanup_failure {
-                        progress.failed(format!("Cleanup failed: {e}"));
-                        result.error_message = Some(e.to_string());
-                        result.final_phase = SyncPhase::Failed;
-                        if let Some(cb) = &progress_callback {
-                            cb(&progress);
-                        }
-                        return Err(e);
-                    }
-                    warn!("Cleanup failed but continuing: {}", e);
-                }
-            }
-
-            // Verify device again after cleanup
-            if options.verify_device_between_phases
-                && let Err(e) = self.verify_device(device_detector, &request.device_mount_point)
-            {
-                error!("Device disconnected during cleanup: {}", e);
-                progress.failed(format!("Device disconnected: {e}"));
-                result.error_message = Some(e.to_string());
-                result.final_phase = SyncPhase::Failed;
-                if let Some(cb) = &progress_callback {
-                    cb(&progress);
-                }
-                return Err(e);
+                warn!("Cleanup failed but continuing: {}", e);
             }
         }
 
-        // Check for cancellation
-        if self.is_cancelled() {
-            progress.cancelled();
-            result.was_cancelled = true;
-            result.final_phase = SyncPhase::Cancelled;
-            if let Some(cb) = &progress_callback {
-                cb(&progress);
-            }
-            return Ok(result);
+        // Verify device again after cleanup
+        if options.verify_device_between_phases
+            && let Err(e) = self.verify_device(device_detector, &request.device_mount_point)
+        {
+            error!("Device disconnected during cleanup: {}", e);
+            Self::handle_failure(
+                progress,
+                result,
+                callback,
+                format!("Device disconnected: {e}"),
+                &e,
+            );
+            return Err(e);
         }
 
-        // Phase 3: Transfer playlists
+        Ok(())
+    }
+
+    /// Run Phase 3: Transfer playlists.
+    #[allow(clippy::too_many_arguments)]
+    fn run_transfer_phase<D, F>(
+        &self,
+        playlist_manager: &PlaylistManager,
+        device_detector: &D,
+        request: &SyncRequest,
+        options: &SyncOptions,
+        progress: &mut SyncProgress,
+        result: &mut SyncResult,
+        callback: Option<&F>,
+    ) -> Result<()>
+    where
+        D: DeviceDetector,
+        F: Fn(&SyncProgress),
+    {
         info!("Phase 3: Transferring playlists...");
         let mut transfer_engine = TransferEngine::with_cancellation(Arc::clone(&self.cancelled));
+        let total_playlists = request.playlists.len();
 
         for (index, playlist_name) in request.playlists.iter().enumerate() {
-            let playlist_index = index + 1;
-
             // Check for cancellation
-            if self.is_cancelled() {
-                progress.cancelled();
-                result.was_cancelled = true;
-                result.final_phase = SyncPhase::Cancelled;
-                if let Some(cb) = &progress_callback {
-                    cb(&progress);
-                }
-                return Ok(result);
+            if self.check_cancelled(progress, result, callback) {
+                return Ok(());
             }
 
             // Verify device before each playlist (if enabled)
@@ -719,129 +821,171 @@ impl SyncOrchestrator {
                 && let Err(e) = self.verify_device(device_detector, &request.device_mount_point)
             {
                 error!("Device disconnected during transfer: {}", e);
-                progress.failed(format!("Device disconnected: {e}"));
-                result.error_message = Some(e.to_string());
-                result.final_phase = SyncPhase::Failed;
-                if let Some(cb) = &progress_callback {
-                    cb(&progress);
-                }
+                Self::handle_failure(
+                    progress,
+                    result,
+                    callback,
+                    format!("Device disconnected: {e}"),
+                    &e,
+                );
                 return Err(e);
             }
 
-            info!(
-                "Transferring playlist {}/{}: {}",
-                playlist_index, total_playlists, playlist_name
-            );
-            progress.transferring(playlist_name.clone(), playlist_index);
-            if let Some(cb) = &progress_callback {
-                cb(&progress);
+            self.transfer_single_playlist(
+                &mut transfer_engine,
+                playlist_manager,
+                playlist_name,
+                index,
+                total_playlists,
+                request,
+                options,
+                progress,
+                result,
+                callback,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    /// Transfer a single playlist to the device.
+    #[allow(clippy::too_many_arguments)]
+    fn transfer_single_playlist<F>(
+        &self,
+        transfer_engine: &mut TransferEngine,
+        playlist_manager: &PlaylistManager,
+        playlist_name: &str,
+        index: usize,
+        total_playlists: usize,
+        request: &SyncRequest,
+        options: &SyncOptions,
+        progress: &mut SyncProgress,
+        result: &mut SyncResult,
+        callback: Option<&F>,
+    ) -> Result<()>
+    where
+        F: Fn(&SyncProgress),
+    {
+        let playlist_index = index + 1;
+
+        info!(
+            "Transferring playlist {}/{}: {}",
+            playlist_index, total_playlists, playlist_name
+        );
+        progress.transferring(playlist_name.to_string(), playlist_index);
+        Self::emit_progress(callback, progress);
+
+        let playlist_path = playlist_manager.get_playlist_path(playlist_name)?;
+        let playlist_weight = if total_playlists > 0 {
+            1.0 / total_playlists as f64
+        } else {
+            1.0
+        };
+
+        let transfer_result = transfer_engine.transfer_playlist(
+            &playlist_path,
+            &request.device_mount_point,
+            &options.transfer_options,
+            None::<fn(&TransferProgress)>,
+        );
+
+        match transfer_result {
+            Ok(transfer_result) => {
+                self.handle_transfer_success(
+                    playlist_name,
+                    transfer_result,
+                    playlist_weight,
+                    progress,
+                    result,
+                    callback,
+                );
+                Ok(())
             }
+            Err(e) => self.handle_transfer_error(playlist_name, e, progress, result, callback),
+        }
+    }
 
-            // Get playlist path
-            let playlist_path = playlist_manager.get_playlist_path(playlist_name)?;
+    /// Handle successful playlist transfer.
+    fn handle_transfer_success<F>(
+        &self,
+        playlist_name: &str,
+        transfer_result: TransferResult,
+        playlist_weight: f64,
+        progress: &mut SyncProgress,
+        result: &mut SyncResult,
+        callback: Option<&F>,
+    ) where
+        F: Fn(&SyncProgress),
+    {
+        info!(
+            "Playlist '{}' transferred: {} files, {} bytes",
+            playlist_name, transfer_result.files_transferred, transfer_result.bytes_transferred
+        );
 
-            // Calculate weight for this playlist in overall progress
-            let playlist_weight = if total_playlists > 0 {
-                1.0 / total_playlists as f64
+        let fake_progress = TransferProgress {
+            status: if transfer_result.success {
+                TransferStatus::Completed
             } else {
-                1.0
-            };
+                TransferStatus::Failed
+            },
+            current_file_index: transfer_result.total_files,
+            total_files: transfer_result.total_files,
+            current_file_name: String::new(),
+            current_file_bytes: 0,
+            current_file_total: 0,
+            total_bytes_transferred: transfer_result.bytes_transferred,
+            total_bytes: transfer_result.bytes_transferred + transfer_result.bytes_skipped,
+            files_completed: transfer_result.files_transferred,
+            files_skipped: transfer_result.files_skipped,
+            files_failed: transfer_result.files_failed,
+            transfer_speed_bps: transfer_result.average_speed_bps,
+            estimated_remaining_secs: Some(0.0),
+            elapsed_secs: transfer_result.duration_secs,
+        };
+        progress.update_transfer_progress(&fake_progress, playlist_weight);
 
-            // Perform transfer (without nested callback to avoid borrow issues)
-            // We'll update progress after the transfer completes
-            let transfer_result = transfer_engine.transfer_playlist(
-                &playlist_path,
-                &request.device_mount_point,
-                &options.transfer_options,
-                None::<fn(&TransferProgress)>,
-            );
-
-            match transfer_result {
-                Ok(transfer_result) => {
-                    info!(
-                        "Playlist '{}' transferred: {} files, {} bytes",
-                        playlist_name,
-                        transfer_result.files_transferred,
-                        transfer_result.bytes_transferred
-                    );
-
-                    // Update progress after transfer completes
-                    let fake_progress = TransferProgress {
-                        status: if transfer_result.success {
-                            TransferStatus::Completed
-                        } else {
-                            TransferStatus::Failed
-                        },
-                        current_file_index: transfer_result.total_files,
-                        total_files: transfer_result.total_files,
-                        current_file_name: String::new(),
-                        current_file_bytes: 0,
-                        current_file_total: 0,
-                        total_bytes_transferred: transfer_result.bytes_transferred,
-                        total_bytes: transfer_result.bytes_transferred
-                            + transfer_result.bytes_skipped,
-                        files_completed: transfer_result.files_transferred,
-                        files_skipped: transfer_result.files_skipped,
-                        files_failed: transfer_result.files_failed,
-                        transfer_speed_bps: transfer_result.average_speed_bps,
-                        estimated_remaining_secs: Some(0.0),
-                        elapsed_secs: transfer_result.duration_secs,
-                    };
-                    progress.update_transfer_progress(&fake_progress, playlist_weight);
-
-                    if transfer_result.was_cancelled {
-                        progress.cancelled();
-                        result.was_cancelled = true;
-                        result.add_transfer_result(playlist_name.clone(), transfer_result);
-                        result.final_phase = SyncPhase::Cancelled;
-                        if let Some(cb) = &progress_callback {
-                            cb(&progress);
-                        }
-                        return Ok(result);
-                    }
-
-                    result.add_transfer_result(playlist_name.clone(), transfer_result);
-
-                    // Update progress callback
-                    if let Some(cb) = &progress_callback {
-                        cb(&progress);
-                    }
-                }
-                Err(e) => {
-                    if matches!(e, Error::Cancelled) {
-                        progress.cancelled();
-                        result.was_cancelled = true;
-                        result.final_phase = SyncPhase::Cancelled;
-                        if let Some(cb) = &progress_callback {
-                            cb(&progress);
-                        }
-                        return Ok(result);
-                    }
-
-                    error!("Failed to transfer playlist '{}': {}", playlist_name, e);
-                    progress.failed(format!("Transfer failed for '{playlist_name}': {e}"));
-                    result.error_message = Some(e.to_string());
-                    result.final_phase = SyncPhase::Failed;
-                    if let Some(cb) = &progress_callback {
-                        cb(&progress);
-                    }
-                    return Err(e);
-                }
-            }
+        if transfer_result.was_cancelled {
+            progress.cancelled();
+            result.was_cancelled = true;
+            result.add_transfer_result(playlist_name.to_string(), transfer_result);
+            result.final_phase = SyncPhase::Cancelled;
+            Self::emit_progress(callback, progress);
+            return;
         }
 
-        // Finalize result
-        let duration_secs = start_time.elapsed().as_secs_f64();
-        result.finalize(duration_secs);
-        progress.completed(duration_secs);
+        result.add_transfer_result(playlist_name.to_string(), transfer_result);
+        Self::emit_progress(callback, progress);
+    }
 
-        info!("{}", result.summary());
-
-        if let Some(cb) = &progress_callback {
-            cb(&progress);
+    /// Handle transfer error for a playlist.
+    fn handle_transfer_error<F>(
+        &self,
+        playlist_name: &str,
+        error: Error,
+        progress: &mut SyncProgress,
+        result: &mut SyncResult,
+        callback: Option<&F>,
+    ) -> Result<()>
+    where
+        F: Fn(&SyncProgress),
+    {
+        if matches!(error, Error::Cancelled) {
+            progress.cancelled();
+            result.was_cancelled = true;
+            result.final_phase = SyncPhase::Cancelled;
+            Self::emit_progress(callback, progress);
+            return Ok(());
         }
 
-        Ok(result)
+        error!("Failed to transfer playlist '{}': {}", playlist_name, error);
+        Self::handle_failure(
+            progress,
+            result,
+            callback,
+            format!("Transfer failed for '{playlist_name}': {error}"),
+            &error,
+        );
+        Err(error)
     }
 
     /// Verify that the device is connected and accessible.
