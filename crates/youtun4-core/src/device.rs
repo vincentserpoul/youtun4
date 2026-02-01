@@ -473,6 +473,7 @@ impl PlatformMountHandler {
             .map_err(|e| Error::Internal(format!("Failed to execute {program}: {e}")))
     }
 
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     fn path_is_mount_point(&self, path: &Path) -> bool {
         path.exists() && path.is_dir()
     }
