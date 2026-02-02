@@ -34,7 +34,8 @@ leptos = { version = "0.8.15", features = ["csr"] }
 sysinfo = "0.38"
 
 # YouTube downloading (pure Rust) - use git version for 403 fix and android_sdkless player
-rusty_ytdl = { git = "https://github.com/Mithronn/rusty_ytdl", rev = "bfd7fed" }
+# Note: version is for publishing; git rev is used locally until fix is released
+rusty_ytdl = { version = "0.7.4", git = "https://github.com/Mithronn/rusty_ytdl", rev = "bfd7fed" }
 regex = "1.12"
 
 # File handling
@@ -59,7 +60,7 @@ console_error_panic_hook = "0.1"
 mockall = "0.14"
 
 # Internal workspace crates
-youtun4-core = { path = "crates/youtun4-core" }
+youtun4-core = { version = "0.1.0", path = "crates/youtun4-core" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
