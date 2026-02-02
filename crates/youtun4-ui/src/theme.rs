@@ -33,12 +33,12 @@ pub mod colors {
 
     /// Accent colors (vibrant and modern).
     pub mod accent {
-        /// Primary accent - refined violet with more saturation.
-        pub const PRIMARY: &str = "#a78bfa";
-        /// Primary accent darker variant for hover states.
-        pub const PRIMARY_DIM: &str = "#7c3aed";
-        /// Secondary accent - vibrant rose.
-        pub const SECONDARY: &str = "#f472b6";
+        /// Primary accent - vibrant violet matching logo.
+        pub const PRIMARY: &str = "#8B5CF6";
+        /// Primary accent lighter variant for hover states.
+        pub const PRIMARY_DIM: &str = "#7C3AED";
+        /// Secondary accent - hot pink matching logo gradient end.
+        pub const SECONDARY: &str = "#EC4899";
         /// Tertiary accent - electric cyan.
         pub const TERTIARY: &str = "#22d3ee";
         /// Success - vibrant emerald.
@@ -65,10 +65,10 @@ pub mod colors {
 
     /// Shadow/overlay colors (refined for depth).
     pub mod shadow {
-        /// Primary shadow (violet) - more pronounced.
-        pub const PRIMARY_GLOW: &str = "rgba(167, 139, 250, 0.3)";
-        /// Secondary shadow (pink).
-        pub const SECONDARY_GLOW: &str = "rgba(244, 114, 182, 0.25)";
+        /// Primary shadow (violet) - matches logo.
+        pub const PRIMARY_GLOW: &str = "rgba(139, 92, 246, 0.3)";
+        /// Secondary shadow (pink) - matches logo.
+        pub const SECONDARY_GLOW: &str = "rgba(236, 72, 153, 0.25)";
         /// Tertiary shadow (cyan).
         pub const TERTIARY_GLOW: &str = "rgba(34, 211, 238, 0.25)";
         /// Success shadow.
@@ -87,11 +87,11 @@ pub mod colors {
 
     /// Gradient definitions.
     pub mod gradient {
-        /// Brand gradient (primary to secondary) - more vibrant.
-        pub const BRAND: &str = "linear-gradient(135deg, #a78bfa 0%, #f472b6 100%)";
+        /// Brand gradient (primary to secondary) - matches logo.
+        pub const BRAND: &str = "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)";
         /// Brand gradient subtle for backgrounds.
         pub const BRAND_SUBTLE: &str =
-            "linear-gradient(135deg, rgba(167, 139, 250, 0.1) 0%, rgba(244, 114, 182, 0.1) 100%)";
+            "linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)";
         /// Success gradient - fresh and vibrant.
         pub const SUCCESS: &str = "linear-gradient(135deg, #34d399 0%, #22d3ee 100%)";
         /// Warm gradient - energetic.

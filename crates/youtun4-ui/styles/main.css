@@ -22,15 +22,15 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  /* Subtle ambient gradient for depth */
+  /* Subtle ambient gradient for depth - matches logo colors */
   background-image: radial-gradient(
       ellipse 80% 50% at 50% -20%,
-      rgba(167, 139, 250, 0.08) 0%,
+      rgba(139, 92, 246, 0.08) 0%,
       transparent 50%
     ),
     radial-gradient(
       ellipse 60% 40% at 100% 100%,
-      rgba(244, 114, 182, 0.05) 0%,
+      rgba(236, 72, 153, 0.05) 0%,
       transparent 50%
     );
   background-attachment: fixed;
@@ -51,7 +51,7 @@ h6 {
 
 /* Selection styling */
 ::selection {
-  background: rgba(167, 139, 250, 0.3);
+  background: rgba(139, 92, 246, 0.3);
   color: var(--text-primary);
 }
 
