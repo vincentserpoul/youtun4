@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src-tauri/icons/icon.svg" alt="Youtun4 Logo" width="128" height="128">
+</p>
+
 # Youtun4
 
 [![CI](https://github.com/vincentserpoul/youtun4/actions/workflows/ci.yml/badge.svg)](https://github.com/vincentserpoul/youtun4/actions/workflows/ci.yml)
