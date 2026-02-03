@@ -21,7 +21,7 @@ id3.workspace = true
 rusty_ytdl.workspace = true
 regex.workspace = true
 # TODO: Remove reqwest - use rusty_ytdl's HTTP client instead
-reqwest = { version = "0.12", features = ["blocking"] }
+reqwest = { version = "0.13", features = ["blocking"] }
 
 [dev-dependencies]
 mockall.workspace = true
