@@ -94,14 +94,13 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      - name: Upload macOS DMG
+      - name: Upload macOS artifacts
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.create-release.outputs.release_id && github.ref_name || inputs.tag }}
           files: |
-            /Users/runner/work/youtun4/youtun4/target/universal-apple-darwin/release/bundle/macos/*.app
-            /Users/runner/work/youtun4/youtun4/target/universal-apple-darwin/release/bundle/macos/*.dmg
-            /Users/runner/work/youtun4/youtun4/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+            target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -148,8 +147,8 @@ jobs:
         with:
           tag_name: ${{ needs.create-release.outputs.release_id && github.ref_name || inputs.tag }}
           files: |
-            D:\a\youtun4\youtun4\target\release\bundle\msi\*.msi
-            D:\a\youtun4\youtun4\target\release\bundle\nsis\*.exe
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -207,9 +206,8 @@ jobs:
         with:
           tag_name: ${{ needs.create-release.outputs.release_id && github.ref_name || inputs.tag }}
           files: |
-            /home/runner/work/youtun4/youtun4/target/release/bundle/deb/*.deb
-            /home/runner/work/youtun4/youtun4/target/release/bundle/rpm/*.rpm
-            /home/runner/work/youtun4/youtun4/target/release/bundle/appimage/*.AppImage
+            target/release/bundle/deb/*.deb
+            target/release/bundle/appimage/*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

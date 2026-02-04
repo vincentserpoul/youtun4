@@ -150,8 +150,7 @@ jobs:
           files: coverage/cobertura.xml
           fail_ci_if_error: false
           verbose: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   # ============================================================================
   # BUILD WASM UI
