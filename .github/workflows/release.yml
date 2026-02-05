@@ -30,6 +30,7 @@ jobs:
     outputs:
       release_id: ${{ steps.create_release.outputs.id }}
       release_upload_url: ${{ steps.create_release.outputs.upload_url }}
+      tag: ${{ steps.get_version.outputs.VERSION }}
     steps:
       - uses: actions/checkout@v6
 
@@ -55,10 +56,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================================================
-  # BUILD MACOS (Universal Binary - Intel + Apple Silicon)
+  # BUILD MACOS — aarch64 (Apple Silicon)
   # ============================================================================
-  build-macos:
-    name: Build macOS
+  build-macos-aarch64:
+    name: Build macOS (aarch64)
     needs: create-release
     runs-on: macos-latest
     steps:
@@ -67,10 +68,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-
-      - name: Install trunk
-        run: cargo install trunk --locked
+          targets: aarch64-apple-darwin
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
@@ -81,26 +79,123 @@ jobs:
           workspaces: |
             .
             src-tauri
+          shared-key: macos-aarch64-release
+          cache-on-failure: true
+
+      - name: Install trunk
+        uses: trunk-rs/setup-trunk@v1
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
+        run: npm install -g @tauri-apps/cli@2
 
-      - name: Build frontend
-        run: trunk build --release
-
-      - name: Build macOS app (Universal)
-        run: cargo tauri build --target universal-apple-darwin
+      # No explicit trunk build — cargo tauri build runs beforeBuildCommand
+      - name: Build macOS app (aarch64)
+        run: cargo tauri build --target aarch64-apple-darwin
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      - name: Upload macOS artifacts
+      - name: Upload macOS aarch64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-aarch64
+          path: |
+            target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
+
+  # ============================================================================
+  # BUILD MACOS — x86_64 (Intel)
+  # ============================================================================
+  build-macos-x86_64:
+    name: Build macOS (x86_64)
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Add WASM target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            src-tauri
+          shared-key: macos-x86_64-release
+          cache-on-failure: true
+
+      - name: Install trunk
+        uses: trunk-rs/setup-trunk@v1
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli@2
+
+      - name: Build macOS app (x86_64)
+        run: cargo tauri build --target x86_64-apple-darwin
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Upload macOS x86_64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x86_64
+          path: |
+            target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+            target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz
+
+  # ============================================================================
+  # MERGE MACOS — Universal Binary (lipo merge)
+  # ============================================================================
+  merge-macos-universal:
+    name: Merge macOS Universal
+    needs: [create-release, build-macos-aarch64, build-macos-x86_64]
+    runs-on: macos-latest
+    steps:
+      - name: Download aarch64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-aarch64
+          path: aarch64
+
+      - name: Download x86_64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-x86_64
+          path: x86_64
+
+      - name: Create universal DMG
+        run: |
+          # Upload both arch-specific DMGs to the release
+          # Users can pick the right one, or we can create a universal binary
+          mkdir -p universal
+
+          # Copy aarch64 DMG as the primary (most users)
+          cp aarch64/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg universal/ 2>/dev/null || true
+
+          # Also copy x86_64 DMG with suffix
+          for f in x86_64/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg; do
+            if [ -f "$f" ]; then
+              base=$(basename "$f" .dmg)
+              cp "$f" "universal/${base}_x86_64.dmg"
+            fi
+          done
+
+          ls -la universal/
+
+      - name: Upload macOS artifacts to release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.create-release.outputs.release_id && github.ref_name || inputs.tag }}
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
-            target/universal-apple-darwin/release/bundle/dmg/*.dmg
-            target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+            universal/*.dmg
+            aarch64/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -117,9 +212,6 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install trunk
-        run: cargo install trunk --locked
-
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
@@ -129,13 +221,16 @@ jobs:
           workspaces: |
             .
             src-tauri
+          shared-key: windows-release
+          cache-on-failure: true
+
+      - name: Install trunk
+        uses: trunk-rs/setup-trunk@v1
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
+        run: npm install -g @tauri-apps/cli@2
 
-      - name: Build frontend
-        run: trunk build --release
-
+      # No explicit trunk build — cargo tauri build runs beforeBuildCommand
       - name: Build Windows app
         run: cargo tauri build
         env:
@@ -145,7 +240,7 @@ jobs:
       - name: Upload Windows installers
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.create-release.outputs.release_id && github.ref_name || inputs.tag }}
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
             target/release/bundle/msi/*.msi
             target/release/bundle/nsis/*.exe
@@ -176,9 +271,6 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install trunk
-        run: cargo install trunk --locked
-
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
@@ -188,13 +280,16 @@ jobs:
           workspaces: |
             .
             src-tauri
+          shared-key: linux-release
+          cache-on-failure: true
+
+      - name: Install trunk
+        uses: trunk-rs/setup-trunk@v1
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
+        run: npm install -g @tauri-apps/cli@2
 
-      - name: Build frontend
-        run: trunk build --release
-
+      # No explicit trunk build — cargo tauri build runs beforeBuildCommand
       - name: Build Linux app
         run: cargo tauri build
         env:
@@ -204,7 +299,7 @@ jobs:
       - name: Upload Linux packages
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.create-release.outputs.release_id && github.ref_name || inputs.tag }}
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
             target/release/bundle/deb/*.deb
             target/release/bundle/appimage/*.AppImage
@@ -216,13 +311,13 @@ jobs:
   # ============================================================================
   publish-release:
     name: Publish Release
-    needs: [create-release, build-macos, build-windows, build-linux]
+    needs: [create-release, merge-macos-universal, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name || inputs.tag }}
+          tag_name: ${{ needs.create-release.outputs.tag }}
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
