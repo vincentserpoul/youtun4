@@ -83,10 +83,10 @@ jobs:
           cache-on-failure: true
 
       - name: Install trunk
-        uses: trunk-rs/setup-trunk@v1
+        run: cargo install trunk --locked
 
       - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@2
+        run: cargo install tauri-cli --locked
 
       # No explicit trunk build — cargo tauri build runs beforeBuildCommand
       - name: Build macOS app (aarch64)
@@ -131,10 +131,10 @@ jobs:
           cache-on-failure: true
 
       - name: Install trunk
-        uses: trunk-rs/setup-trunk@v1
+        run: cargo install trunk --locked
 
       - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@2
+        run: cargo install tauri-cli --locked
 
       - name: Build macOS app (x86_64)
         run: cargo tauri build --target x86_64-apple-darwin
@@ -225,10 +225,10 @@ jobs:
           cache-on-failure: true
 
       - name: Install trunk
-        uses: trunk-rs/setup-trunk@v1
+        run: cargo install trunk --locked
 
       - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@2
+        run: cargo install tauri-cli --locked
 
       # No explicit trunk build — cargo tauri build runs beforeBuildCommand
       - name: Build Windows app
@@ -284,10 +284,10 @@ jobs:
           cache-on-failure: true
 
       - name: Install trunk
-        uses: trunk-rs/setup-trunk@v1
+        run: cargo install trunk --locked
 
       - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@2
+        run: cargo install tauri-cli --locked
 
       # No explicit trunk build — cargo tauri build runs beforeBuildCommand
       - name: Build Linux app
