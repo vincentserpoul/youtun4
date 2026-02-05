@@ -35,6 +35,9 @@ pub struct SyncTaskInfo {
 /// Type alias for sync task storage to reduce complexity.
 type SyncTaskMap = HashMap<TaskId, (SyncTaskInfo, Arc<AtomicBool>)>;
 
+/// Type alias for download task storage (task_id -> cancel flag).
+type DownloadTaskMap = HashMap<TaskId, Arc<AtomicBool>>;
+
 /// Application state managed by Tauri.
 pub struct AppState {
     /// Configuration manager (async-safe).
@@ -51,6 +54,8 @@ pub struct AppState {
     pub(crate) mount_handler: Arc<PlatformMountHandler>,
     /// Active sync tasks with their cancellation tokens.
     pub(crate) sync_tasks: Arc<RwLock<SyncTaskMap>>,
+    /// Active download tasks with their cancellation flags.
+    pub(crate) download_tasks: Arc<RwLock<DownloadTaskMap>>,
     /// Download queue manager for handling multiple playlist downloads.
     pub(crate) download_queue: Arc<DownloadQueueManager>,
 }
@@ -89,6 +94,7 @@ impl AppState {
             device_watcher_handle: Arc::new(RwLock::new(None)),
             mount_handler: Arc::new(PlatformMountHandler::new()),
             sync_tasks: Arc::new(RwLock::new(HashMap::new())),
+            download_tasks: Arc::new(RwLock::new(HashMap::new())),
             download_queue: Arc::new(download_queue),
         })
     }
@@ -193,5 +199,31 @@ impl AppState {
     /// Get a clone of the download queue manager Arc.
     pub fn download_queue_arc(&self) -> Arc<DownloadQueueManager> {
         Arc::clone(&self.download_queue)
+    }
+
+    /// Register a download task with its cancellation flag.
+    pub async fn register_download_task(&self, task_id: TaskId, cancel_flag: Arc<AtomicBool>) {
+        let mut tasks = self.download_tasks.write().await;
+        tasks.insert(task_id, cancel_flag);
+    }
+
+    /// Unregister a download task (called when download completes or fails).
+    #[allow(dead_code)]
+    pub async fn unregister_download_task(&self, task_id: TaskId) {
+        let mut tasks = self.download_tasks.write().await;
+        tasks.remove(&task_id);
+    }
+
+    /// Cancel a download task by task ID.
+    pub async fn cancel_download_task(&self, task_id: TaskId) -> bool {
+        let tasks = self.download_tasks.read().await;
+        if let Some(cancel_flag) = tasks.get(&task_id) {
+            cancel_flag.store(true, Ordering::SeqCst);
+            info!("Download task {} cancellation requested", task_id);
+            true
+        } else {
+            debug!("Download task {} not found for cancellation", task_id);
+            false
+        }
     }
 }

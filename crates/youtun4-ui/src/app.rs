@@ -400,6 +400,7 @@ fn AppContent() -> impl IntoView {
             // Listen for download progress events
             let set_download_progress_listener = set_download_progress;
             let set_download_panel_state_progress = set_download_panel_state;
+            let prev_videos_failed = std::cell::Cell::new(0usize);
             if let Err(e) = tauri_api::listen_to_download_progress(move |progress| {
                 leptos::logging::log!(
                     "Download progress: {}/{} videos, current: {}",
@@ -407,6 +408,23 @@ fn AppContent() -> impl IntoView {
                     progress.total_videos,
                     progress.current_title
                 );
+                // Reset counter if a new download started
+                if progress.videos_failed < prev_videos_failed.get() {
+                    prev_videos_failed.set(0);
+                }
+                // Show a toast when a video fails to download
+                if progress.videos_failed > prev_videos_failed.get() {
+                    let reason = if progress.status.starts_with("failed: ") {
+                        progress.status.trim_start_matches("failed: ").to_string()
+                    } else {
+                        "Unknown error".to_string()
+                    };
+                    notifications.warning(format!(
+                        "Failed to download \"{}\": {}",
+                        progress.current_title, reason
+                    ));
+                }
+                prev_videos_failed.set(progress.videos_failed);
                 set_download_progress_listener.set(Some(progress));
                 set_download_panel_state_progress.set(DownloadPanelState::Downloading);
             })
@@ -861,6 +879,14 @@ fn AppContent() -> impl IntoView {
                 />
             </LayoutSidebar>
             <LayoutMain>
+                // Download Progress Panel (inline in content area)
+                <DownloadProgressPanel
+                    progress=download_progress
+                    state=download_panel_state
+                    on_cancel=on_download_cancel
+                    on_dismiss=on_download_dismiss
+                />
+
                 // Content switches between management mode, selection mode, and detail view
                 {move || {
                     // Check if we're viewing a playlist detail
@@ -987,14 +1013,6 @@ fn AppContent() -> impl IntoView {
             on_cancel=on_transfer_cancel
             on_dismiss=on_transfer_dismiss
             task_id=current_sync_task_id
-        />
-
-        // Download Progress Panel
-        <DownloadProgressPanel
-            progress=download_progress
-            state=download_panel_state
-            on_cancel=on_download_cancel
-            on_dismiss=on_download_dismiss
         />
     }
 }

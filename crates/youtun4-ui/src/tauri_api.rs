@@ -159,6 +159,7 @@ pub async fn list_devices() -> Result<Vec<DeviceInfo>, String> {
 /// file system type, and whether the device is removable.
 pub async fn get_device_info(mount_point: &str) -> Result<DeviceInfo, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         mount_point: &'a str,
     }
@@ -172,6 +173,7 @@ pub async fn get_device_info(mount_point: &str) -> Result<DeviceInfo, String> {
 /// mounted, and accessible; `false` otherwise.
 pub async fn check_device_available(mount_point: &str) -> Result<bool, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         mount_point: &'a str,
     }
@@ -186,6 +188,7 @@ pub async fn check_device_available(mount_point: &str) -> Result<bool, String> {
 /// with details about available vs required space if insufficient.
 pub async fn verify_device_space(mount_point: &str, required_bytes: u64) -> Result<bool, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         mount_point: &'a str,
         required_bytes: u64,
@@ -221,6 +224,7 @@ pub async fn check_sync_capacity(
     device_mount_point: &str,
 ) -> Result<CapacityCheckResult, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         playlist_names: Vec<String>,
         device_mount_point: &'a str,
@@ -285,12 +289,14 @@ pub struct EjectResult {
 /// Returns the eject result indicating success.
 pub async fn eject_device(mount_point: &str) -> Result<EjectResult, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         mount_point: &'a str,
     }
 
     // The backend returns UnmountResult, which we map to our EjectResult
     #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
     struct BackendResult {
         mount_point: String,
         success: bool,
@@ -381,6 +387,7 @@ pub async fn list_playlists() -> Result<Vec<PlaylistMetadata>, String> {
 /// Create a new playlist.
 pub async fn create_playlist(name: &str, source_url: Option<&str>) -> Result<String, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         name: &'a str,
         source_url: Option<&'a str>,
@@ -411,6 +418,7 @@ pub async fn delete_playlist(name: &str) -> Result<(), String> {
 /// Sync a playlist to a device.
 pub async fn sync_playlist(playlist_name: &str, device_mount_point: &str) -> Result<(), String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         playlist_name: &'a str,
         device_mount_point: &'a str,
@@ -519,6 +527,7 @@ pub async fn import_playlist_folder(
     source_url: Option<&str>,
 ) -> Result<String, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         folder_name: &'a str,
         source_url: Option<&'a str>,
@@ -539,6 +548,7 @@ pub async fn import_playlist_folder(
 /// This renames the playlist folder and updates any metadata as needed.
 pub async fn rename_playlist(old_name: &str, new_name: &str) -> Result<(), String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         old_name: &'a str,
         new_name: &'a str,
@@ -604,6 +614,7 @@ pub async fn update_playlist_metadata(
     source_url: Option<Option<&str>>,
 ) -> Result<SavedPlaylistMetadata, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         name: &'a str,
         title: Option<&'a str>,
@@ -645,6 +656,7 @@ pub async fn refresh_playlist_stats(name: &str) -> Result<SavedPlaylistMetadata,
 /// Returns the status as a string (e.g., "Running", "Completed", "Failed(error)", "Cancelled").
 pub async fn get_task_status(task_id: TaskId) -> Result<Option<String>, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args {
         task_id: TaskId,
     }
@@ -669,6 +681,7 @@ pub async fn get_running_tasks() -> Result<Vec<TaskCount>, String> {
 /// Returns `true` if the task was successfully cancelled, `false` otherwise.
 pub async fn cancel_task(task_id: TaskId) -> Result<bool, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args {
         task_id: TaskId,
     }
@@ -747,6 +760,7 @@ pub async fn sync_playlist_with_progress(
     skip_existing: bool,
 ) -> Result<TransferResult, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         playlist_name: &'a str,
         device_mount_point: &'a str,
@@ -799,6 +813,7 @@ pub async fn transfer_files_to_device(
     options: &TransferOptions,
 ) -> Result<TransferResult, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         source_files: Vec<String>,
         device_mount_point: &'a str,
@@ -819,6 +834,7 @@ pub async fn transfer_files_to_device(
 /// Compute the SHA-256 checksum of a file.
 pub async fn compute_file_checksum(file_path: &str) -> Result<String, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         file_path: &'a str,
     }
@@ -834,6 +850,7 @@ pub async fn verify_file_integrity(
     destination_path: &str,
 ) -> Result<bool, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         source_path: &'a str,
         destination_path: &'a str,
@@ -910,6 +927,7 @@ pub async fn start_sync(
     skip_existing: bool,
 ) -> Result<TaskId, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         playlist_name: &'a str,
         device_mount_point: &'a str,
@@ -935,6 +953,7 @@ pub async fn start_sync(
 /// the sync task was not found (may have already completed).
 pub async fn cancel_sync(task_id: TaskId) -> Result<bool, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args {
         task_id: TaskId,
     }
@@ -947,6 +966,7 @@ pub async fn cancel_sync(task_id: TaskId) -> Result<bool, String> {
 /// Returns information about the sync task, or None if the task was not found.
 pub async fn get_sync_status(task_id: TaskId) -> Result<Option<SyncTaskInfo>, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args {
         task_id: TaskId,
     }
@@ -1262,6 +1282,7 @@ pub async fn start_orchestrated_sync(
     skip_existing: bool,
 ) -> Result<TaskId, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         playlists: Vec<String>,
         device_mount_point: &'a str,
@@ -1460,6 +1481,7 @@ pub async fn download_youtube_playlist(
     embed_thumbnail: Option<bool>,
 ) -> Result<TaskId, String> {
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Args<'a> {
         url: &'a str,
         output_dir: &'a str,
@@ -1511,7 +1533,10 @@ where
     F: Fn(TaskId) + 'static,
 {
     listen_to_event(youtube_events::DOWNLOAD_STARTED, move |value| {
-        if let Ok(task_id) = serde_wasm_bindgen::from_value::<TaskId>(value) {
+        if let Ok(payload) =
+            js_sys::Reflect::get(&value, &wasm_bindgen::JsValue::from_str("payload"))
+            && let Ok(task_id) = serde_wasm_bindgen::from_value::<TaskId>(payload)
+        {
             handler(task_id);
         }
     })

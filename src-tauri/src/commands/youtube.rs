@@ -1,6 +1,7 @@
 //! YouTube URL validation and download commands.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, State};
 use tracing::{debug, error, info};
@@ -321,7 +322,6 @@ pub async fn download_youtube_playlist(
             .map_err(|e| format!("Failed to create output directory: {e}"))?;
     }
 
-    let config = RustyYtdlConfig::default();
     let _ = audio_quality;
     let _ = embed_thumbnail;
 
@@ -331,12 +331,17 @@ pub async fn download_youtube_playlist(
         async {},
     );
 
+    // Create the downloader and register its cancel flag before spawning
+    let config = RustyYtdlConfig::default();
+    let downloader = RustyYtdlDownloader::with_config(config);
+    let cancel_flag = downloader.cancel_flag();
+    state.register_download_task(task_id, cancel_flag).await;
+
     let url_clone = url;
     let app_handle = app;
+    let download_tasks = Arc::clone(&state.download_tasks);
 
     std::thread::spawn(move || {
-        let downloader = RustyYtdlDownloader::with_config(config);
-
         if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_STARTED, &task_id) {
             error!("Failed to emit download-started event: {}", e);
         }
@@ -469,6 +474,17 @@ pub async fn download_youtube_playlist(
 
         if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_COMPLETED, &payload) {
             error!("Failed to emit download completed event: {}", e);
+        }
+
+        // Unregister the download task when done
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build();
+        if let Ok(rt) = rt {
+            rt.block_on(async {
+                let mut tasks = download_tasks.write().await;
+                tasks.remove(&task_id);
+            });
         }
     });
 
@@ -756,10 +772,17 @@ pub async fn download_youtube_to_playlist(
 
     let task_id = state.runtime().generate_task_id();
 
+    // Create the downloader and register its cancel flag before spawning
+    let config = RustyYtdlConfig::default();
+    let downloader = RustyYtdlDownloader::with_config(config);
+    let cancel_flag = downloader.cancel_flag();
+    state.register_download_task(task_id, cancel_flag).await;
+
     let url_clone = url.clone();
     let playlist_name_clone = playlist_name.clone();
     let app_handle = app.clone();
     let output_path = playlist_path;
+    let download_tasks = Arc::clone(&state.download_tasks);
 
     std::thread::spawn(move || {
         run_playlist_download(
@@ -768,7 +791,18 @@ pub async fn download_youtube_to_playlist(
             &url_clone,
             &playlist_name_clone,
             &output_path,
+            &downloader,
         );
+        // Unregister the download task when done
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build();
+        if let Ok(rt) = rt {
+            rt.block_on(async {
+                let mut tasks = download_tasks.write().await;
+                tasks.remove(&task_id);
+            });
+        }
     });
 
     info!(
@@ -785,10 +819,8 @@ fn run_playlist_download(
     url: &str,
     playlist_name: &str,
     output_path: &std::path::Path,
+    downloader: &RustyYtdlDownloader,
 ) {
-    let config = RustyYtdlConfig::default();
-    let downloader = RustyYtdlDownloader::with_config(config);
-
     if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_STARTED, &task_id) {
         error!("Failed to emit download-started event: {}", e);
     }

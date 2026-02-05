@@ -83,8 +83,8 @@ pub fn Layout(
 
     view! {
         <div class="layout">
-            // Header with mobile menu toggle
-            <header class="layout-header">
+            // Header with mobile menu toggle and window drag region
+            <header class="layout-header" data-tauri-drag-region="true">
                 <button
                     class="layout-menu-toggle btn btn-ghost btn-icon"
                     on:click=toggle_menu
