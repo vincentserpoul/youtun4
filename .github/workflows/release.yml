@@ -22,9 +22,38 @@ env:
 
 jobs:
   # ============================================================================
+  # SECURITY SCAN
+  # ============================================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Trivy vulnerability scanner (filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+
+      - name: Run Trivy vulnerability scanner (config)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+          format: 'table'
+
+  # ============================================================================
   # CREATE RELEASE
   # ============================================================================
   create-release:
+    needs: security-scan
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
