@@ -22,6 +22,14 @@ rusty_ytdl.workspace = true
 regex.workspace = true
 # TODO: Remove reqwest - use rusty_ytdl's HTTP client instead
 reqwest = { version = "0.13", features = ["blocking"] }
+# MP4 container manipulation for extracting audio
+mp4 = "0.14"
+# AAC decoding (for HE-AAC to MP3 conversion)
+# - aac: AAC decoder
+# - isomp4: MP4/M4A container support
+symphonia = { version = "0.5", features = ["aac", "isomp4"] }
+# MP3 encoding (LAME bindings - compiles from source, no system deps)
+mp3lame-encoder = "0.2"
 
 [dev-dependencies]
 mockall.workspace = true

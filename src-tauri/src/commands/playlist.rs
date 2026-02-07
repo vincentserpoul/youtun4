@@ -146,6 +146,36 @@ pub async fn get_playlist_statistics(
     Ok(stats)
 }
 
+/// Get the folder path for a playlist.
+#[tauri::command]
+pub async fn get_playlist_folder_path(
+    state: State<'_, AppState>,
+    name: String,
+) -> std::result::Result<String, String> {
+    debug!("Getting folder path for playlist: {}", name);
+    let manager = state.playlist_manager.read().await;
+    let path = manager.get_playlist_path(&name).map_err(map_err)?;
+    Ok(path.display().to_string())
+}
+
+/// Open the playlist folder in the system file manager.
+#[tauri::command]
+pub async fn open_playlist_folder(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    name: String,
+) -> std::result::Result<(), String> {
+    info!("Opening folder for playlist: {}", name);
+    let manager = state.playlist_manager.read().await;
+    let path = manager.get_playlist_path(&name).map_err(map_err)?;
+
+    // Use the opener plugin to open the folder
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_path(path.to_string_lossy(), None::<&str>)
+        .map_err(|e| format!("Failed to open folder: {e}"))
+}
+
 /// Repair a playlist folder by fixing common issues.
 #[tauri::command]
 pub async fn repair_playlist_folder(

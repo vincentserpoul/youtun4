@@ -45,6 +45,7 @@ pub fn PlaylistCard(
     let playlist_name_delete = playlist.name.clone();
     let playlist_name_sync = playlist.name.clone();
     let playlist_name_view = playlist.name.clone();
+    let playlist_name_folder = playlist.name.clone();
 
     // Check if device is connected
     let has_device = move || selected_device.is_some_and(|sig| sig.get().is_some());
@@ -109,6 +110,30 @@ pub fn PlaylistCard(
                     <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
                 </svg>
                 "Details"
+            </button>
+        }
+    };
+
+    // Open folder button
+    let open_folder_button = {
+        let name = playlist_name_folder;
+        view! {
+            <button
+                class="btn btn-icon btn-ghost"
+                title="Open folder"
+                on:click=move |e| {
+                    e.stop_propagation();
+                    let name = name.clone();
+                    leptos::task::spawn_local(async move {
+                        if let Err(err) = crate::tauri_api::open_playlist_folder(&name).await {
+                            web_sys::console::error_1(&format!("Failed to open folder: {err}").into());
+                        }
+                    });
+                }
+            >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                </svg>
             </button>
         }
     };
@@ -209,6 +234,7 @@ pub fn PlaylistCard(
                 {sync_button}
                 <div class="playlist-card-secondary-actions">
                     {view_button}
+                    {open_folder_button}
                     {delete_button}
                 </div>
             </div>

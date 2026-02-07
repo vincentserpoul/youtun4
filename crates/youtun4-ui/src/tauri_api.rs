@@ -505,6 +505,30 @@ pub async fn get_playlist_statistics(name: &str) -> Result<FolderStatistics, Str
     invoke("get_playlist_statistics", Args { name }).await
 }
 
+/// Get the folder path for a playlist.
+///
+/// Returns the absolute path to the playlist folder on the filesystem.
+pub async fn get_playlist_folder_path(name: &str) -> Result<String, String> {
+    #[derive(serde::Serialize)]
+    struct Args<'a> {
+        name: &'a str,
+    }
+
+    invoke("get_playlist_folder_path", Args { name }).await
+}
+
+/// Open the playlist folder in the system file manager.
+///
+/// This invokes the Tauri command that uses the opener plugin to open the folder.
+pub async fn open_playlist_folder(name: &str) -> Result<(), String> {
+    #[derive(serde::Serialize)]
+    struct Args<'a> {
+        name: &'a str,
+    }
+
+    invoke("open_playlist_folder", Args { name }).await
+}
+
 /// Repair a playlist folder by fixing common issues.
 ///
 /// Currently this creates missing metadata files and fixes corrupted metadata.
@@ -874,7 +898,10 @@ where
     F: Fn(TransferProgress) + 'static,
 {
     listen_to_event(TRANSFER_PROGRESS_EVENT, move |value| {
-        if let Ok(progress) = serde_wasm_bindgen::from_value::<TransferProgress>(value) {
+        if let Ok(payload) =
+            js_sys::Reflect::get(&value, &wasm_bindgen::JsValue::from_str("payload"))
+            && let Ok(progress) = serde_wasm_bindgen::from_value::<TransferProgress>(payload)
+        {
             handler(progress);
         }
     })
@@ -992,7 +1019,10 @@ where
     F: Fn(SyncTaskInfo) + 'static,
 {
     listen_to_event(sync_events::SYNC_STARTED, move |value| {
-        if let Ok(info) = serde_wasm_bindgen::from_value::<SyncTaskInfo>(value) {
+        if let Ok(payload) =
+            js_sys::Reflect::get(&value, &wasm_bindgen::JsValue::from_str("payload"))
+            && let Ok(info) = serde_wasm_bindgen::from_value::<SyncTaskInfo>(payload)
+        {
             handler(info);
         }
     })
@@ -1048,7 +1078,10 @@ where
     F: Fn(SyncProgressPayload) + 'static,
 {
     listen_to_event(sync_events::SYNC_PROGRESS, move |value| {
-        if let Ok(progress) = serde_wasm_bindgen::from_value::<SyncProgressPayload>(value) {
+        if let Ok(payload) =
+            js_sys::Reflect::get(&value, &wasm_bindgen::JsValue::from_str("payload"))
+            && let Ok(progress) = serde_wasm_bindgen::from_value::<SyncProgressPayload>(payload)
+        {
             handler(progress);
         }
     })
@@ -1092,7 +1125,10 @@ where
     F: Fn(SyncResultPayload) + 'static,
 {
     listen_to_event(sync_events::SYNC_COMPLETED, move |value| {
-        if let Ok(result) = serde_wasm_bindgen::from_value::<SyncResultPayload>(value) {
+        if let Ok(payload) =
+            js_sys::Reflect::get(&value, &wasm_bindgen::JsValue::from_str("payload"))
+            && let Ok(result) = serde_wasm_bindgen::from_value::<SyncResultPayload>(payload)
+        {
             handler(result);
         }
     })
@@ -1107,7 +1143,10 @@ where
     F: Fn(SyncResultPayload) + 'static,
 {
     listen_to_event(sync_events::SYNC_FAILED, move |value| {
-        if let Ok(result) = serde_wasm_bindgen::from_value::<SyncResultPayload>(value) {
+        if let Ok(payload) =
+            js_sys::Reflect::get(&value, &wasm_bindgen::JsValue::from_str("payload"))
+            && let Ok(result) = serde_wasm_bindgen::from_value::<SyncResultPayload>(payload)
+        {
             handler(result);
         }
     })
@@ -1122,7 +1161,10 @@ where
     F: Fn(SyncResultPayload) + 'static,
 {
     listen_to_event(sync_events::SYNC_CANCELLED, move |value| {
-        if let Ok(result) = serde_wasm_bindgen::from_value::<SyncResultPayload>(value) {
+        if let Ok(payload) =
+            js_sys::Reflect::get(&value, &wasm_bindgen::JsValue::from_str("payload"))
+            && let Ok(result) = serde_wasm_bindgen::from_value::<SyncResultPayload>(payload)
+        {
             handler(result);
         }
     })

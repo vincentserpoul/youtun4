@@ -43,6 +43,7 @@ fn main() {
     };
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Device API commands
@@ -81,6 +82,8 @@ fn main() {
             commands::rename_playlist,
             commands::playlist_exists,
             commands::ensure_playlist_structure,
+            commands::get_playlist_folder_path,
+            commands::open_playlist_folder,
             // Playlist metadata management commands
             commands::get_playlist_saved_metadata,
             commands::update_playlist_metadata,

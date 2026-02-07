@@ -64,6 +64,7 @@ fn PlaylistDetailHeader(
     let playlist_name = playlist.name.clone();
     let playlist_name_for_sync = playlist.name.clone();
     let playlist_name_for_delete = playlist.name.clone();
+    let playlist_name_for_folder = playlist.name.clone();
     let has_source_url = playlist.source_url.is_some();
     let source_url = playlist.source_url.clone();
     let created_at = format_date(playlist.created_at);
@@ -94,6 +95,26 @@ fn PlaylistDetailHeader(
                             <path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>
                         </svg>
                         "Sync"
+                    </button>
+                    <button
+                        class="btn btn-ghost"
+                        on:click={
+                            let name = playlist_name_for_folder;
+                            move |_| {
+                                let name = name.clone();
+                                spawn_local(async move {
+                                    if let Err(err) = tauri_api::open_playlist_folder(&name).await {
+                                        web_sys::console::error_1(&format!("Failed to open folder: {err}").into());
+                                    }
+                                });
+                            }
+                        }
+                        title="Open folder"
+                    >
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                        </svg>
+                        "Open Folder"
                     </button>
                     <button
                         class="btn btn-danger"
