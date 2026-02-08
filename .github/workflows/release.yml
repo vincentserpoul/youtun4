@@ -6,7 +6,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - '*'
   workflow_dispatch:
     inputs:
       tag:
@@ -25,7 +25,6 @@ jobs:
   # CREATE RELEASE
   # ============================================================================
   create-release:
-    needs: security-scan
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
