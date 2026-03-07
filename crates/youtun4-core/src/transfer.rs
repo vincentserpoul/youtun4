@@ -62,6 +62,10 @@ pub const DEFAULT_PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 // =============================================================================
 
 /// Configuration options for file transfers.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each bool represents an independent transfer option"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransferOptions {
     /// Size of chunks for reading/writing files (in bytes).
@@ -264,6 +268,11 @@ impl TransferProgress {
 
     /// Calculate the overall progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for progress percentage calculation"
+    )]
     pub fn overall_progress_percent(&self) -> f64 {
         if self.total_bytes == 0 {
             if self.total_files == 0 {
@@ -277,6 +286,11 @@ impl TransferProgress {
 
     /// Calculate the current file progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for progress percentage calculation"
+    )]
     pub fn current_file_progress_percent(&self) -> f64 {
         if self.current_file_total == 0 {
             return 100.0;
@@ -399,6 +413,7 @@ pub struct TransferItem {
 // =============================================================================
 
 /// Engine for performing file transfers with progress tracking and verification.
+#[derive(Debug)]
 pub struct TransferEngine {
     /// Cancellation flag.
     cancelled: Arc<AtomicBool>,
@@ -450,7 +465,13 @@ impl TransferEngine {
     /// Returns an error if the transfer fails completely. Partial failures
     /// are recorded in the result's `failed_transfers` field if `continue_on_error`
     /// is enabled.
-    #[allow(clippy::too_many_lines)]
+    #[allow(
+        clippy::too_many_lines,
+        clippy::cognitive_complexity,
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "complex transfer orchestration with progress tracking requires these"
+    )]
     pub fn transfer_files<F>(
         &mut self,
         source_files: &[PathBuf],
@@ -672,6 +693,10 @@ impl TransferEngine {
     }
 
     /// Build transfer items from source paths.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for API consistency with other TransferEngine methods"
+    )]
     fn build_transfer_items(
         &self,
         source_files: &[PathBuf],
@@ -714,7 +739,14 @@ impl TransferEngine {
     }
 
     /// Transfer a single file with chunked writing and progress updates.
-    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::too_many_lines,
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        clippy::indexing_slicing,
+        reason = "complex file transfer with progress tracking requires float math and buffer slicing"
+    )]
     fn transfer_single_file<F>(
         &self,
         item: &TransferItem,
@@ -754,11 +786,7 @@ impl TransferEngine {
         let mut writer = BufWriter::with_capacity(options.chunk_size, dest_file);
 
         // Initialize hasher for checksum calculation
-        let mut hasher = if options.verify_integrity {
-            Some(Sha256::new())
-        } else {
-            None
-        };
+        let mut hasher = options.verify_integrity.then(Sha256::new);
 
         // Transfer in chunks
         let mut buffer = vec![0u8; options.chunk_size];
@@ -895,6 +923,10 @@ impl TransferEngine {
     }
 
     /// Compute SHA-256 checksum of a file.
+    #[allow(
+        clippy::indexing_slicing,
+        reason = "buffer slice bounded by bytes_read which is at most buffer.len()"
+    )]
     pub fn compute_file_checksum(&self, path: &Path) -> Result<String> {
         let file = File::open(path).map_err(|e| {
             Error::FileSystem(FileSystemError::ReadFailed {
@@ -1148,10 +1180,13 @@ impl Default for TransferEngine {
 // =============================================================================
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in test code for brevity"
+)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use tempfile::TempDir;
 
     fn create_test_file(dir: &Path, name: &str, content: &[u8]) -> PathBuf {
@@ -1192,7 +1227,7 @@ mod tests {
     #[test]
     fn test_transfer_options_validate() {
         let mut opts = TransferOptions::default();
-        assert!(opts.validate().is_ok());
+        opts.validate().unwrap();
 
         opts.chunk_size = MIN_CHUNK_SIZE - 1;
         assert!(opts.validate().is_err());
@@ -1499,7 +1534,7 @@ mod tests {
             None::<fn(&TransferProgress)>,
         );
 
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1574,7 +1609,7 @@ mod tests {
             None::<fn(&TransferProgress)>,
         );
 
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1879,7 +1914,7 @@ mod tests {
             None::<fn(&TransferProgress)>,
         );
 
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1899,7 +1934,7 @@ mod tests {
             None::<fn(&TransferProgress)>,
         );
 
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -2029,7 +2064,7 @@ mod tests {
         let engine = TransferEngine::new();
         let result = engine.compute_file_checksum(Path::new("/nonexistent/file.mp3"));
 
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]

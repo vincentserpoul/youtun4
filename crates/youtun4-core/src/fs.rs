@@ -30,6 +30,10 @@ use std::time::SystemTime;
 use crate::error::{Error, FileSystemError, Result};
 
 /// Converts an I/O error for read operations.
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "consumed from map_err closures"
+)]
 fn read_error(path: &Path, e: io::Error) -> Error {
     Error::FileSystem(FileSystemError::ReadFailed {
         path: path.to_path_buf(),
@@ -38,6 +42,10 @@ fn read_error(path: &Path, e: io::Error) -> Error {
 }
 
 /// Converts an I/O error for write operations.
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "consumed from map_err closures"
+)]
 fn write_error(path: &Path, e: io::Error) -> Error {
     Error::FileSystem(FileSystemError::WriteFailed {
         path: path.to_path_buf(),
@@ -46,6 +54,10 @@ fn write_error(path: &Path, e: io::Error) -> Error {
 }
 
 /// Converts an I/O error for directory creation.
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "consumed from map_err closures"
+)]
 fn create_dir_error(path: &Path, e: io::Error) -> Error {
     Error::FileSystem(FileSystemError::CreateDirFailed {
         path: path.to_path_buf(),
@@ -54,6 +66,10 @@ fn create_dir_error(path: &Path, e: io::Error) -> Error {
 }
 
 /// Converts an I/O error for delete operations.
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "consumed from map_err closures"
+)]
 fn delete_error(path: &Path, e: io::Error) -> Error {
     Error::FileSystem(FileSystemError::DeleteFailed {
         path: path.to_path_buf(),
@@ -62,6 +78,10 @@ fn delete_error(path: &Path, e: io::Error) -> Error {
 }
 
 /// Converts an I/O error for copy operations.
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "consumed from map_err closures"
+)]
 fn copy_error(src: &Path, dst: &Path, e: io::Error) -> Error {
     Error::FileSystem(FileSystemError::CopyFailed {
         source_path: src.to_path_buf(),
@@ -143,7 +163,11 @@ pub struct FileMetadata {
 }
 
 impl FileMetadata {
-    /// Create metadata from std::fs::Metadata.
+    /// Create metadata from `std::fs::Metadata`.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "takes ownership for convenience at call sites"
+    )]
     pub fn from_std(meta: Metadata) -> Self {
         Self {
             len: meta.len(),
@@ -154,7 +178,7 @@ impl FileMetadata {
     }
 }
 
-/// Real file system implementation using std::fs.
+/// Real file system implementation using `std::fs`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct RealFileSystem;
 
@@ -281,7 +305,12 @@ impl FileSystem for RealFileSystem {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::missing_panics_doc)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::missing_panics_doc,
+    reason = "mock module for tests"
+)]
 pub mod mock {
     //! Mock file system for testing.
 
@@ -531,7 +560,11 @@ pub mod mock {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::mock::MockFileSystem;
     use super::*;

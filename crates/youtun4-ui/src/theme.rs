@@ -1,51 +1,51 @@
 //! Theme configuration for `Youtun4`.
 //!
-//! Modern dark mode with vibrant accent colors and glassmorphic elements.
-//! Designed for performance: system fonts, subtle depth, GPU-accelerated animations.
+//! 80s neon aesthetic rooted in the logo's violet-to-pink gradient.
+//! Bold, energetic, and fun - inspired by sport, music, and retro arcades.
 
 /// Color palette for the application.
 pub mod colors {
-    /// Background colors (dark mode with refined depth).
+    /// Background colors (deep violet-black with neon depth).
     pub mod background {
-        /// Primary background - rich dark with slight warmth.
-        pub const PRIMARY: &str = "#09090b";
-        /// Secondary/elevated background - subtle lift.
-        pub const SECONDARY: &str = "#131316";
+        /// Primary background - deep violet-black.
+        pub const PRIMARY: &str = "#0c0a14";
+        /// Secondary/elevated background - subtle purple lift.
+        pub const SECONDARY: &str = "#141020";
         /// Tertiary/card background - interactive surfaces.
-        pub const TERTIARY: &str = "#1c1c21";
+        pub const TERTIARY: &str = "#1c1630";
         /// Hover state background.
-        pub const HOVER: &str = "#2a2a32";
+        pub const HOVER: &str = "#261e40";
         /// Glass effect background.
-        pub const GLASS: &str = "rgba(25, 25, 30, 0.8)";
+        pub const GLASS: &str = "rgba(16, 12, 28, 0.85)";
         /// Elevated surface with subtle glow.
-        pub const ELEVATED: &str = "#1f1f24";
+        pub const ELEVATED: &str = "#181230";
     }
 
     /// Text colors.
     pub mod text {
-        /// Primary text color.
-        pub const PRIMARY: &str = "#fafafa";
+        /// Primary text color - clean white.
+        pub const PRIMARY: &str = "#f5f0ff";
         /// Secondary/muted text.
-        pub const SECONDARY: &str = "#a1a1aa";
+        pub const SECONDARY: &str = "#9b8ec0";
         /// Disabled text.
-        pub const DISABLED: &str = "#52525b";
+        pub const DISABLED: &str = "#504470";
     }
 
-    /// Accent colors (vibrant and modern).
+    /// Accent colors (logo-matched neon).
     pub mod accent {
-        /// Primary accent - vibrant violet matching logo.
+        /// Primary accent - vibrant violet (logo start).
         pub const PRIMARY: &str = "#8B5CF6";
         /// Primary accent lighter variant for hover states.
         pub const PRIMARY_DIM: &str = "#7C3AED";
-        /// Secondary accent - hot pink matching logo gradient end.
+        /// Secondary accent - hot pink (logo end).
         pub const SECONDARY: &str = "#EC4899";
-        /// Tertiary accent - electric cyan.
+        /// Tertiary accent - electric cyan for contrast pop.
         pub const TERTIARY: &str = "#22d3ee";
-        /// Success - vibrant emerald.
+        /// Success - vivid emerald.
         pub const SUCCESS: &str = "#34d399";
         /// Warning - warm amber.
         pub const WARNING: &str = "#fbbf24";
-        /// Error - soft coral red.
+        /// Error - coral red.
         pub const ERROR: &str = "#f87171";
         /// Info - sky blue.
         pub const INFO: &str = "#60a5fa";
@@ -53,65 +53,65 @@ pub mod colors {
 
     /// Border colors.
     pub mod border {
-        /// Default border - subtle and refined.
-        pub const DEFAULT: &str = "rgba(255, 255, 255, 0.08)";
+        /// Default border - subtle violet tint.
+        pub const DEFAULT: &str = "rgba(139, 92, 246, 0.15)";
         /// Focused border.
         pub const FOCUSED: &str = "#a78bfa";
         /// Subtle border for cards.
-        pub const SUBTLE: &str = "rgba(255, 255, 255, 0.04)";
+        pub const SUBTLE: &str = "rgba(139, 92, 246, 0.08)";
         /// Strong border for emphasis.
-        pub const STRONG: &str = "rgba(255, 255, 255, 0.12)";
+        pub const STRONG: &str = "rgba(139, 92, 246, 0.25)";
     }
 
-    /// Shadow/overlay colors (refined for depth).
+    /// Shadow/overlay colors (neon glow effects).
     pub mod shadow {
-        /// Primary shadow (violet) - matches logo.
-        pub const PRIMARY_GLOW: &str = "rgba(139, 92, 246, 0.3)";
-        /// Secondary shadow (pink) - matches logo.
-        pub const SECONDARY_GLOW: &str = "rgba(236, 72, 153, 0.25)";
-        /// Tertiary shadow (cyan).
+        /// Primary shadow (violet glow) - matches logo.
+        pub const PRIMARY_GLOW: &str = "rgba(139, 92, 246, 0.4)";
+        /// Secondary shadow (pink glow) - matches logo.
+        pub const SECONDARY_GLOW: &str = "rgba(236, 72, 153, 0.35)";
+        /// Tertiary shadow (cyan glow).
         pub const TERTIARY_GLOW: &str = "rgba(34, 211, 238, 0.25)";
         /// Success shadow.
         pub const SUCCESS_GLOW: &str = "rgba(52, 211, 153, 0.25)";
         /// Warning shadow.
         pub const WARNING_GLOW: &str = "rgba(251, 191, 36, 0.25)";
         /// Error shadow.
-        pub const ERROR_GLOW: &str = "rgba(248, 113, 113, 0.25)";
-        /// Overlay background - deeper for better contrast.
-        pub const OVERLAY: &str = "rgba(0, 0, 0, 0.85)";
+        pub const ERROR_GLOW: &str = "rgba(248, 113, 113, 0.3)";
+        /// Overlay background - deep for contrast.
+        pub const OVERLAY: &str = "rgba(6, 4, 12, 0.9)";
         /// Ambient shadow for floating elements.
-        pub const AMBIENT: &str = "0 8px 32px rgba(0, 0, 0, 0.4)";
+        pub const AMBIENT: &str = "0 8px 32px rgba(0, 0, 0, 0.5)";
         /// Soft shadow for cards.
-        pub const SOFT: &str = "0 4px 16px rgba(0, 0, 0, 0.2)";
+        pub const SOFT: &str = "0 4px 16px rgba(0, 0, 0, 0.35)";
     }
 
     /// Gradient definitions.
     pub mod gradient {
-        /// Brand gradient (primary to secondary) - matches logo.
+        /// Brand gradient (violet to pink) - matches logo exactly.
         pub const BRAND: &str = "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)";
         /// Brand gradient subtle for backgrounds.
         pub const BRAND_SUBTLE: &str =
-            "linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)";
-        /// Success gradient - fresh and vibrant.
+            "linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(236, 72, 153, 0.12) 100%)";
+        /// Success gradient.
         pub const SUCCESS: &str = "linear-gradient(135deg, #34d399 0%, #22d3ee 100%)";
         /// Warm gradient - energetic.
         pub const WARM: &str = "linear-gradient(135deg, #fbbf24 0%, #f87171 100%)";
         /// Glass gradient for surfaces.
         pub const GLASS: &str =
-            "linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)";
+            "linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(236, 72, 153, 0.03) 100%)";
         /// Shimmer effect.
-        pub const SHIMMER: &str = "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)";
+        pub const SHIMMER: &str = "linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.08) 50%, transparent 100%)";
     }
 }
 
 /// Typography configuration.
 pub mod typography {
-    /// Font family - Inter for body, Space Grotesk for headings.
+    /// Font family - Rajdhani for body text (sporty, semi-condensed).
     pub const FONT_FAMILY: &str =
-        "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    /// Heading font family - geometric and modern.
+        "'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    /// Heading font family - Orbitron for bold futuristic headings.
     pub const FONT_FAMILY_HEADING: &str =
-        "'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
+        "'Orbitron', 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif";
 
     /// Font sizes.
     pub mod sizes {
@@ -153,13 +153,13 @@ pub mod radius {
     /// Small radius.
     pub const SM: &str = "0.375rem";
     /// Medium radius.
-    pub const MD: &str = "0.625rem";
+    pub const MD: &str = "0.5rem";
     /// Large radius.
-    pub const LG: &str = "1rem";
+    pub const LG: &str = "0.75rem";
     /// Extra large radius.
-    pub const XL: &str = "1.25rem";
+    pub const XL: &str = "1rem";
     /// 2XL radius for panels.
-    pub const XXL: &str = "1.5rem";
+    pub const XXL: &str = "1.25rem";
     /// Full/pill radius.
     pub const FULL: &str = "9999px";
 }

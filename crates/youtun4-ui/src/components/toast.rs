@@ -9,7 +9,7 @@ use leptos::task::spawn_local;
 use crate::types::{Notification, NotificationType};
 
 /// Context for managing notifications across the application.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct NotificationContext {
     /// Current list of notifications.
     pub notifications: ReadSignal<Vec<Notification>>,
@@ -42,6 +42,10 @@ impl NotificationContext {
         // Set up auto-dismiss if duration is specified
         if let Some(duration) = duration_ms {
             spawn_local(async move {
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "duration_ms values are within u32 range for UI timeouts"
+                )]
                 gloo_timers::future::TimeoutFuture::new(duration as u32).await;
                 set_notifications.update(|notifications| {
                     notifications.retain(|n| n.id != id);

@@ -1,4 +1,9 @@
 [toolchain]
-channel = "stable"
-components = ["rustfmt", "clippy"]
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "aarch64-linux-android", "aarch64-apple-ios"]
+channel = "1.94.0"
+components = ["clippy", "rustfmt", "rust-src"]
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "aarch64-linux-android",
+  "aarch64-apple-ios",
+]

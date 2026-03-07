@@ -16,6 +16,14 @@ pub enum ConnectionStatus {
 }
 
 /// Format bytes to human-readable string.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss is acceptable for display formatting"
+)]
+#[allow(
+    clippy::float_arithmetic,
+    reason = "float arithmetic needed for byte unit conversion"
+)]
 fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;

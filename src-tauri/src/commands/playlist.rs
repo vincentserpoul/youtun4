@@ -1,6 +1,10 @@
 //! Playlist management commands.
 
-#![allow(clippy::similar_names, clippy::option_option)]
+#![allow(
+    clippy::similar_names,
+    clippy::option_option,
+    reason = "playlist variables have similar names; Option<Option<T>> used for optional updates"
+)]
 
 use std::path::PathBuf;
 
@@ -165,12 +169,13 @@ pub async fn open_playlist_folder(
     state: State<'_, AppState>,
     name: String,
 ) -> std::result::Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+
     info!("Opening folder for playlist: {}", name);
     let manager = state.playlist_manager.read().await;
     let path = manager.get_playlist_path(&name).map_err(map_err)?;
 
     // Use the opener plugin to open the folder
-    use tauri_plugin_opener::OpenerExt;
     app.opener()
         .open_path(path.to_string_lossy(), None::<&str>)
         .map_err(|e| format!("Failed to open folder: {e}"))

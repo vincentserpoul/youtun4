@@ -17,7 +17,7 @@ use crate::error::{Error, FileSystemError, Result};
 pub struct PlaylistMetadata {
     /// Playlist name (also the folder name).
     pub name: String,
-    /// Original YouTube playlist URL (if created from YouTube).
+    /// Original `YouTube` playlist URL (if created from `YouTube`).
     pub source_url: Option<String>,
     /// Creation timestamp (Unix epoch seconds).
     pub created_at: u64,
@@ -83,6 +83,7 @@ impl FolderValidationResult {
 }
 
 /// Manager for local playlist operations.
+#[derive(Debug)]
 pub struct PlaylistManager {
     /// Base directory where playlists are stored.
     base_path: PathBuf,
@@ -261,6 +262,10 @@ impl PlaylistManager {
     }
 
     /// Count tracks and total size in a playlist folder.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for consistency with other PlaylistManager methods"
+    )]
     fn count_tracks(&self, playlist_path: &Path) -> (usize, u64) {
         let mut count = 0;
         let mut total_bytes = 0;
@@ -1072,16 +1077,16 @@ impl PlaylistManager {
 pub struct SavedTrackMetadata {
     /// Track file name (e.g., "song.mp3").
     pub file_name: String,
-    /// Original YouTube video ID.
+    /// Original `YouTube` video ID.
     #[serde(default)]
     pub video_id: Option<String>,
-    /// Original YouTube video URL.
+    /// Original `YouTube` video URL.
     #[serde(default)]
     pub source_url: Option<String>,
-    /// Video/track title from YouTube.
+    /// Video/track title from `YouTube`.
     #[serde(default)]
     pub title: Option<String>,
-    /// Channel/artist name from YouTube.
+    /// Channel/artist name from `YouTube`.
     #[serde(default)]
     pub channel: Option<String>,
     /// Duration in seconds.
@@ -1096,7 +1101,7 @@ pub struct SavedTrackMetadata {
 }
 
 impl SavedTrackMetadata {
-    /// Create a new track metadata from YouTube video info.
+    /// Create a new track metadata from `YouTube` video info.
     #[must_use]
     pub fn from_youtube_video(
         file_name: String,
@@ -1133,7 +1138,7 @@ pub struct SavedPlaylistMetadata {
     /// Optional description.
     #[serde(default)]
     pub description: Option<String>,
-    /// Source YouTube URL if applicable.
+    /// Source `YouTube` URL if applicable.
     #[serde(default)]
     pub source_url: Option<String>,
     /// Thumbnail URL.
@@ -1151,7 +1156,7 @@ pub struct SavedPlaylistMetadata {
     /// Total size in bytes.
     #[serde(default)]
     pub total_size_bytes: u64,
-    /// Metadata for individual tracks (includes YouTube source URLs).
+    /// Metadata for individual tracks (includes `YouTube` source URLs).
     #[serde(default)]
     pub tracks: Vec<SavedTrackMetadata>,
 }
@@ -1307,7 +1312,11 @@ fn copy_directory_contents(src: &Path, dst: &Path) -> Result<()> {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
@@ -1375,7 +1384,7 @@ mod tests {
         assert!(path.exists());
 
         let result = manager.delete_playlist("ToDelete");
-        assert!(result.is_ok());
+        result.unwrap();
         assert!(!path.exists());
     }
 
@@ -1486,7 +1495,7 @@ mod tests {
 
         // Sync
         let result = manager.sync_to_device("SyncTest", device_dir.path());
-        assert!(result.is_ok());
+        result.unwrap();
 
         // Verify old content is gone
         assert!(!device_dir.path().join("old_file.txt").exists());
@@ -1531,7 +1540,7 @@ mod tests {
     fn test_get_folder_statistics_nonexistent() {
         let (manager, _temp) = setup_test_manager();
         let result = manager.get_folder_statistics("NonExistent");
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1656,7 +1665,7 @@ mod tests {
     fn test_repair_folder_nonexistent() {
         let (manager, _temp) = setup_test_manager();
         let result = manager.repair_folder("NonExistent");
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1687,7 +1696,7 @@ mod tests {
         let (manager, temp) = setup_test_manager();
         let fake_path = temp.path().join("DoesNotExist");
         let result = manager.import_folder(&fake_path, None);
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1707,7 +1716,7 @@ mod tests {
     fn test_get_playlist_path_nonexistent() {
         let (manager, _temp) = setup_test_manager();
         let result = manager.get_playlist_path("NonExistent");
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1746,7 +1755,7 @@ mod tests {
     fn test_list_tracks_nonexistent() {
         let (manager, _temp) = setup_test_manager();
         let result = manager.list_tracks("NonExistent");
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1839,9 +1848,9 @@ mod tests {
 
     #[test]
     fn test_validate_playlist_name_valid() {
-        assert!(validate_playlist_name("My Playlist").is_ok());
-        assert!(validate_playlist_name("playlist-2024").is_ok());
-        assert!(validate_playlist_name("Rock & Roll").is_ok());
+        validate_playlist_name("My Playlist").unwrap();
+        validate_playlist_name("playlist-2024").unwrap();
+        validate_playlist_name("Rock & Roll").unwrap();
     }
 
     #[test]

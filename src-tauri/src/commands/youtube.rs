@@ -1,4 +1,4 @@
-//! YouTube URL validation and download commands.
+//! `YouTube` URL validation and download commands.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -16,7 +16,7 @@ use crate::runtime::{TaskCategory, TaskId};
 use super::error::map_err;
 use super::state::AppState;
 
-/// Event names for YouTube download events emitted to the frontend.
+/// Event names for `YouTube` download events emitted to the frontend.
 pub mod youtube_events {
     pub const DOWNLOAD_STARTED: &str = "youtube-download-started";
     pub const DOWNLOAD_PROGRESS: &str = "youtube-download-progress";
@@ -148,6 +148,10 @@ impl YouTubeErrorCategory {
 }
 
 /// Classify an error into a category for user display.
+#[allow(
+    clippy::wildcard_enum_match_arm,
+    reason = "catch-all for non-download/filesystem errors"
+)]
 pub fn classify_error(error: &Error) -> YouTubeErrorCategory {
     match error {
         Error::Download(download_err) => {
@@ -225,8 +229,12 @@ pub struct VideoDownloadResult {
     pub error: Option<String>,
 }
 
-/// Validate a YouTube URL and extract playlist information.
+/// Validate a `YouTube` URL and extract playlist information.
 #[tauri::command]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "tauri::command requires owned values from IPC"
+)]
 pub fn validate_youtube_playlist_url(url: String) -> YouTubeUrlValidation {
     debug!("Validating YouTube URL: {}", url);
     let result = validate_youtube_url(&url);
@@ -243,21 +251,29 @@ pub fn validate_youtube_playlist_url(url: String) -> YouTubeUrlValidation {
     result
 }
 
-/// Check if a URL is a valid YouTube playlist URL.
+/// Check if a URL is a valid `YouTube` playlist URL.
 #[tauri::command]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "tauri::command requires owned values from IPC"
+)]
 pub fn is_valid_youtube_playlist_url(url: String) -> bool {
     let result = validate_youtube_url(&url);
     result.is_valid
 }
 
-/// Extract the playlist ID from a YouTube URL.
+/// Extract the playlist ID from a `YouTube` URL.
 #[tauri::command]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "tauri::command requires owned values from IPC"
+)]
 pub fn extract_youtube_playlist_id(url: String) -> std::result::Result<String, String> {
     debug!("Extracting playlist ID from URL: {}", url);
     let result = validate_youtube_url(&url);
 
     if result.is_valid {
-        #[allow(clippy::unwrap_used)]
+        #[allow(clippy::unwrap_used, reason = "guarded by is_valid check above")]
         let playlist_id = result.playlist_id.unwrap();
         info!("Extracted playlist ID: {}", playlist_id);
         Ok(playlist_id)
@@ -272,13 +288,16 @@ pub fn extract_youtube_playlist_id(url: String) -> std::result::Result<String, S
 
 /// Check if the downloader is available.
 #[tauri::command]
-#[allow(clippy::unnecessary_wraps)]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "tauri::command requires Result return type for IPC compatibility"
+)]
 pub fn check_yt_dlp_available() -> std::result::Result<String, String> {
     info!("Checking downloader availability (pure Rust - always available)");
     Ok("rusty_ytdl (pure Rust)".to_string())
 }
 
-/// Fetch playlist information from a YouTube URL.
+/// Fetch playlist information from a `YouTube` URL.
 #[tauri::command]
 pub async fn fetch_youtube_playlist_info(url: String) -> std::result::Result<PlaylistInfo, String> {
     info!("Fetching playlist info for URL: {}", url);
@@ -293,7 +312,7 @@ pub async fn fetch_youtube_playlist_info(url: String) -> std::result::Result<Pla
     result.map_err(map_err)
 }
 
-/// Download a YouTube playlist as MP3 files.
+/// Download a `YouTube` playlist as MP3 files.
 #[tauri::command]
 pub async fn download_youtube_playlist(
     app: AppHandle,
@@ -741,7 +760,7 @@ fn log_download_completion(playlist_name: &str, payload: &DownloadResultPayload)
 // Download command
 // =============================================================================
 
-/// Download a YouTube playlist directly to a local playlist folder.
+/// Download a `YouTube` playlist directly to a local playlist folder.
 #[tauri::command]
 pub async fn download_youtube_to_playlist(
     app: AppHandle,

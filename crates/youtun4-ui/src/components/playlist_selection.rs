@@ -8,6 +8,14 @@ use leptos::prelude::*;
 use crate::types::PlaylistMetadata;
 
 /// Format bytes to human-readable string.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss is acceptable for display formatting"
+)]
+#[allow(
+    clippy::float_arithmetic,
+    reason = "float arithmetic needed for byte unit conversion"
+)]
 fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -32,13 +40,9 @@ fn RadioIndicator(
 ) -> impl IntoView {
     view! {
         <div class=move || if selected { "radio-indicator selected" } else { "radio-indicator" }>
-            {if selected {
-                Some(view! {
+            {selected.then(|| view! {
                     <div class="radio-indicator-inner"></div>
-                })
-            } else {
-                None
-            }}
+                })}
         </div>
     }
 }
@@ -193,7 +197,10 @@ pub enum PlaylistSelectionState {
 /// - Empty state for when no playlists exist
 /// - Keyboard navigation support
 #[component]
-
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Leptos component prop requires owned value"
+)]
 pub fn PlaylistSelectionList(
     /// List of playlists to display.
     playlists: ReadSignal<Vec<PlaylistMetadata>>,

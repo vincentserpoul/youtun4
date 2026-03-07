@@ -76,6 +76,14 @@ pub fn ConfirmDialog(
 }
 
 /// Format bytes as a human-readable string.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss is acceptable for display formatting"
+)]
+#[allow(
+    clippy::float_arithmetic,
+    reason = "float arithmetic needed for byte unit conversion"
+)]
 fn format_bytes(bytes: u64) -> String {
     if bytes >= 1_000_000_000 {
         format!("{:.2} GB", bytes as f64 / 1_000_000_000.0)

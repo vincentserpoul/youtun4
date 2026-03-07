@@ -1,0 +1,148 @@
+# Default recipe: list all available recipes
+default:
+    @just --list
+
+# Format all code with cargo fmt
+fmt:
+    cargo +nightly fmt --all
+
+# Check formatting without applying changes
+fmt-check:
+    cargo +nightly fmt --all -- --check
+
+# Run clippy on the entire workspace
+clippy:
+    cargo clippy --workspace --all-targets -- -D warnings
+
+# Run clippy and auto-fix where possible
+clippy-fix:
+    cargo clippy --workspace --all-targets --fix --allow-dirty --allow-staged -- -D warnings
+
+# Build the workspace in debug mode
+build:
+    cargo build --workspace --all-targets
+
+# Build the workspace in release mode
+build-release:
+    cargo build --workspace --release
+
+# Run all tests with nextest
+test:
+    cargo nextest run --workspace
+
+# Run all tests with standard cargo test (includes doctests)
+test-doc:
+    cargo test --workspace --doc
+
+# Run a specific test by name
+test-one NAME:
+    cargo nextest run --workspace -E 'test({{ NAME }})'
+
+# Check the workspace compiles without producing binaries
+check:
+    cargo check --workspace --all-targets
+
+# Generate and open documentation
+doc:
+    cargo doc --workspace --no-deps --open
+
+# Check docs build without warnings
+doc-check:
+    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
+
+# Run cargo audit for known vulnerabilities
+audit:
+    cargo audit
+
+# Run cargo deny for license and advisory checks
+deny:
+    cargo deny check
+
+# Detect unused dependencies
+machete:
+    cargo machete
+
+# Run code coverage with llvm-cov
+coverage:
+    cargo llvm-cov --workspace nextest
+
+# Run code coverage and generate an HTML report
+coverage-html:
+    cargo llvm-cov --workspace nextest --html
+    @echo "Report at target/llvm-cov/html/index.html"
+
+# Clean build artifacts
+clean:
+    cargo clean
+
+# Run the full CI-style check suite
+ci: fmt-check clippy test doc-check deny audit machete
+
+# Check, lint, and test (quick local iteration)
+dev: check clippy test
+
+# Update dependencies
+update:
+    cargo update
+
+# Show the dependency tree
+tree:
+    cargo tree --workspace
+
+# Run typos checker
+typos:
+    typos
+
+# Format TOML files with taplo
+taplo:
+    taplo format
+
+infra-local-up:
+    docker compose -f infra/dev/docker-compose.yml up -d --remove-orphans
+
+infra-local-down:
+    docker compose -f infra/dev/docker-compose.yml down --remove-orphans
+
+# Download Tailwind CSS v4 standalone CLI to .bin/
+tailwind-install:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    VERSION="v4.1.8"
+    OS=$(uname -s)
+    ARCH=$(uname -m)
+    case "${OS}-${ARCH}" in
+        Darwin-arm64)  PLATFORM="macos-arm64" ;;
+        Darwin-x86_64) PLATFORM="macos-x64" ;;
+        Linux-x86_64)  PLATFORM="linux-x64" ;;
+        Linux-aarch64) PLATFORM="linux-arm64" ;;
+        *) echo "Unsupported platform: ${OS}-${ARCH}" && exit 1 ;;
+    esac
+    mkdir -p .bin
+    URL="https://github.com/tailwindlabs/tailwindcss/releases/download/${VERSION}/tailwindcss-${PLATFORM}"
+    echo "Downloading Tailwind CSS ${VERSION} for ${PLATFORM}..."
+    curl -sL "${URL}" -o .bin/tailwindcss
+    chmod +x .bin/tailwindcss
+    echo "Installed .bin/tailwindcss (${VERSION})"
+
+# Validate OpenAPI spec with libopenapi-validator (requires Go)
+openapi-validate:
+    cargo nextest run --workspace -E 'test(export_openapi_spec)' --success-output immediate 2>/dev/null
+    go run github.com/pb33f/libopenapi-validator/cmd/validate@latest target/openapi.json
+
+# Run hurl E2E smoke tests against a running dev instance
+hurl-test:
+    hurl --test --variable base_url=http://localhost:8085 --error-format long tests/e2e/
+
+# Compile Tailwind CSS from wallet-ui source
+tailwind:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -x .bin/tailwindcss ]; then
+        echo "Tailwind CLI not found at .bin/tailwindcss"
+        echo "Run 'just tailwind-install' first."
+        exit 1
+    fi
+    .bin/tailwindcss \
+        -i crates/wallet-ui/style/input.css \
+        -o crates/wallet-ui/static/css/style.css
+    echo "Compiled crates/wallet-ui/static/css/style.css"

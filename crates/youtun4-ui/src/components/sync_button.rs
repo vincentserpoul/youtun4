@@ -140,7 +140,9 @@ pub fn SyncButton(
         match button_state() {
             SyncButtonState::InsufficientSpace { .. } => format!("{base} btn-danger"),
             SyncButtonState::LimitedSpace { .. } => format!("{base} btn-warning"),
-            _ => format!("{base} btn-primary"),
+            SyncButtonState::Enabled | SyncButtonState::Disabled { .. } => {
+                format!("{base} btn-primary")
+            }
         }
     };
 
@@ -211,7 +213,7 @@ pub fn SyncButton(
                             </div>
                         }.into_any())
                     }
-                    _ => None
+                    SyncButtonState::Enabled | SyncButtonState::Disabled { .. } => None
                 }
             }}
         </div>

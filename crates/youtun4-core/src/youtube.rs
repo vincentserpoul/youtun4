@@ -148,12 +148,14 @@ impl DownloadProgress {
 
     /// Calculate overall progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(clippy::float_arithmetic, reason = "acceptable for display formatting")]
     pub fn overall_progress_percent(&self) -> f64 {
         self.overall_progress * 100.0
     }
 
     /// Calculate current video progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(clippy::float_arithmetic, reason = "acceptable for display formatting")]
     pub fn current_progress_percent(&self) -> f64 {
         self.current_progress * 100.0
     }
@@ -178,6 +180,11 @@ impl DownloadProgress {
 }
 
 /// Format bytes per second as a human-readable string.
+#[allow(
+    clippy::float_arithmetic,
+    clippy::cast_precision_loss,
+    reason = "acceptable for display formatting"
+)]
 fn format_bytes_per_second(bps: f64) -> String {
     if bps < 1024.0 {
         format!("{bps:.0} B/s")
@@ -189,6 +196,11 @@ fn format_bytes_per_second(bps: f64) -> String {
 }
 
 /// Format duration in seconds as a human-readable string.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "acceptable for display formatting"
+)]
 fn format_duration(secs: f64) -> String {
     let total_secs = secs as u64;
     let hours = total_secs / 3600;
@@ -397,7 +409,7 @@ pub fn validate_youtube_url(url: &str) -> YouTubeUrlValidation {
             YouTubeUrlType::ShortUrl => {
                 "Short URL does not contain a playlist. Use a playlist URL instead.".to_string()
             }
-            _ => "URL does not contain a valid playlist ID".to_string(),
+            YouTubeUrlType::Playlist | YouTubeUrlType::WatchWithPlaylist | YouTubeUrlType::Invalid => "URL does not contain a valid playlist ID".to_string(),
         };
         YouTubeUrlValidation::invalid(error_msg, url_type)
     }
@@ -510,7 +522,10 @@ fn validate_playlist_id_format(playlist_id: &str) -> std::result::Result<(), Str
 /// # Panics
 ///
 /// Panics if the URL validation reports valid but has no playlist ID (should never happen).
-#[allow(clippy::expect_used)]
+#[allow(
+    clippy::expect_used,
+    reason = "valid URL is guaranteed to have playlist ID"
+)]
 pub fn extract_playlist_id(url: &str) -> Result<String> {
     let validation = validate_youtube_url(url);
 
@@ -534,9 +549,11 @@ pub fn extract_playlist_id(url: &str) -> Result<String> {
                     url: url.to_string(),
                 }))
             }
-            _ => Err(Error::Download(DownloadError::NotAPlaylist {
-                url: url.to_string(),
-            })),
+            YouTubeUrlType::Playlist | YouTubeUrlType::WatchWithPlaylist => {
+                Err(Error::Download(DownloadError::NotAPlaylist {
+                    url: url.to_string(),
+                }))
+            }
         }
     }
 }
@@ -645,6 +662,11 @@ impl DownloadProgressTracker {
     ///
     /// Uses a sliding window average for smoother speed estimates.
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for speed calculation"
+    )]
     pub fn download_speed_bps(&self) -> f64 {
         if self.speed_samples.len() < 2 {
             // Not enough samples, calculate from total
@@ -656,8 +678,9 @@ impl DownloadProgressTracker {
         }
 
         // Calculate speed from the sliding window
-        let first = &self.speed_samples[0];
-        // SAFETY: We checked len() >= 2 above, so last() is guaranteed to return Some
+        let Some(first) = self.speed_samples.first() else {
+            return 0.0;
+        };
         let Some(last) = self.speed_samples.last() else {
             return 0.0;
         };
@@ -676,6 +699,7 @@ impl DownloadProgressTracker {
     ///
     /// Returns `None` if there's not enough data to estimate.
     #[must_use]
+    #[allow(clippy::float_arithmetic, reason = "acceptable for time estimation")]
     pub fn estimated_remaining_secs(&self, current_progress: f64) -> Option<f64> {
         if current_progress <= 0.0 || current_progress >= 1.0 {
             return None;
@@ -690,15 +714,16 @@ impl DownloadProgressTracker {
         let total_estimated = elapsed / current_progress;
         let remaining = total_estimated - elapsed;
 
-        if remaining > 0.0 {
-            Some(remaining)
-        } else {
-            None
-        }
+        (remaining > 0.0).then_some(remaining)
     }
 
     /// Create a `DownloadProgress` snapshot with current statistics.
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for progress calculation"
+    )]
     pub fn create_progress(
         &self,
         current_index: usize,
@@ -736,6 +761,7 @@ impl DownloadProgressTracker {
 
 /// Default `YouTube` downloader implementation.
 /// Note: This is a placeholder that will need a proper `YouTube` downloading library.
+#[derive(Debug)]
 pub struct DefaultYouTubeDownloader;
 
 impl DefaultYouTubeDownloader {
@@ -834,7 +860,10 @@ impl YouTubeDownloader for DefaultYouTubeDownloader {
 /// # Errors
 ///
 /// Returns an error if the file cannot be read, has no audio track, or writing fails.
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "audio extraction requires sequential steps"
+)]
 fn extract_audio_to_m4a(input_path: &Path, output_path: &Path, title: &str) -> Result<()> {
     use std::io::{BufReader, BufWriter, Seek, SeekFrom, Write};
 
@@ -946,7 +975,44 @@ fn extract_audio_to_m4a(input_path: &Path, output_path: &Path, title: &str) -> R
         mp4::AudioObjectType::AacLowComplexity => 1,
         mp4::AudioObjectType::AacScalableSampleRate => 2,
         mp4::AudioObjectType::AacLongTermPrediction => 3,
-        _ => {
+        mp4::AudioObjectType::SpectralBandReplication
+        | mp4::AudioObjectType::AACScalable
+        | mp4::AudioObjectType::TwinVQ
+        | mp4::AudioObjectType::CodeExcitedLinearPrediction
+        | mp4::AudioObjectType::HarmonicVectorExcitationCoding
+        | mp4::AudioObjectType::TextToSpeechtInterface
+        | mp4::AudioObjectType::MainSynthetic
+        | mp4::AudioObjectType::WavetableSynthesis
+        | mp4::AudioObjectType::GeneralMIDI
+        | mp4::AudioObjectType::AlgorithmicSynthesis
+        | mp4::AudioObjectType::ErrorResilientAacLowComplexity
+        | mp4::AudioObjectType::ErrorResilientAacLongTermPrediction
+        | mp4::AudioObjectType::ErrorResilientAacScalable
+        | mp4::AudioObjectType::ErrorResilientAacTwinVQ
+        | mp4::AudioObjectType::ErrorResilientAacBitSlicedArithmeticCoding
+        | mp4::AudioObjectType::ErrorResilientAacLowDelay
+        | mp4::AudioObjectType::ErrorResilientCodeExcitedLinearPrediction
+        | mp4::AudioObjectType::ErrorResilientHarmonicVectorExcitationCoding
+        | mp4::AudioObjectType::ErrorResilientHarmonicIndividualLinesNoise
+        | mp4::AudioObjectType::ErrorResilientParametric
+        | mp4::AudioObjectType::SinuSoidalCoding
+        | mp4::AudioObjectType::ParametricStereo
+        | mp4::AudioObjectType::MpegSurround
+        | mp4::AudioObjectType::MpegLayer1
+        | mp4::AudioObjectType::MpegLayer2
+        | mp4::AudioObjectType::MpegLayer3
+        | mp4::AudioObjectType::DirectStreamTransfer
+        | mp4::AudioObjectType::AudioLosslessCoding
+        | mp4::AudioObjectType::ScalableLosslessCoding
+        | mp4::AudioObjectType::ScalableLosslessCodingNoneCore
+        | mp4::AudioObjectType::ErrorResilientAacEnhancedLowDelay
+        | mp4::AudioObjectType::SymbolicMusicRepresentationSimple
+        | mp4::AudioObjectType::SymbolicMusicRepresentationMain
+        | mp4::AudioObjectType::UnifiedSpeechAudioCoding
+        | mp4::AudioObjectType::SpatialAudioObjectCoding
+        | mp4::AudioObjectType::LowDelayMpegSurround
+        | mp4::AudioObjectType::SpatialAudioObjectCodingDialogueEnhancement
+        | mp4::AudioObjectType::AudioSync => {
             warn!(
                 "Unsupported AAC profile {:?}, defaulting to AAC-LC",
                 profile
@@ -1024,12 +1090,14 @@ fn extract_audio_to_m4a(input_path: &Path, output_path: &Path, title: &str) -> R
         if let Some(sample) = sample {
             // Create ADTS header (7 bytes) for this frame
             let frame_len = sample.bytes.len() + 7; // Include header length
-            let adts_header = create_adts_header(
-                adts_profile,
-                adts_freq_index,
-                adts_chan_conf,
-                frame_len as u16,
-            );
+            let frame_len_u16: u16 = frame_len.try_into().map_err(|_err| {
+                Error::Download(DownloadError::AudioExtractionFailed {
+                    title: title.to_string(),
+                    reason: format!("Frame length {frame_len} exceeds u16 max"),
+                })
+            })?;
+            let adts_header =
+                create_adts_header(adts_profile, adts_freq_index, adts_chan_conf, frame_len_u16);
 
             // Write ADTS header + raw AAC frame
             writer.write_all(&adts_header).map_err(|e| {
@@ -1080,7 +1148,10 @@ fn extract_audio_to_m4a(input_path: &Path, output_path: &Path, title: &str) -> R
 /// - Frame length: 13 bits (including header)
 /// - Buffer fullness: 11 bits (0x7FF = VBR)
 /// - Number of AAC frames - 1: 2 bits (0 = 1 frame)
-#[allow(clippy::cast_possible_truncation)]
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "ADTS header fields are intentionally truncated to fit bit widths"
+)]
 const fn create_adts_header(profile: u8, freq_index: u8, chan_conf: u8, frame_len: u16) -> [u8; 7] {
     let mut header = [0u8; 7];
 
@@ -1113,7 +1184,10 @@ const fn create_adts_header(profile: u8, freq_index: u8, chan_conf: u8, frame_le
 /// This function uses symphonia to decode AAC audio and LAME to encode to MP3.
 /// It's used when the source audio is HE-AAC (SBR/PS) which many portable
 /// MP3 players don't support.
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "audio re-encoding requires sequential steps"
+)]
 fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Result<()> {
     use std::fs::File;
     use std::io::Write;
@@ -1227,7 +1301,13 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
         })
     })?;
 
-    builder.set_num_channels(channels as u8).map_err(|e| {
+    let channels_u8: u8 = channels.try_into().map_err(|_err| {
+        Error::Download(DownloadError::AudioExtractionFailed {
+            title: title.to_string(),
+            reason: format!("Channel count {channels} exceeds u8 max"),
+        })
+    })?;
+    builder.set_num_channels(channels_u8).map_err(|e| {
         Error::Download(DownloadError::AudioExtractionFailed {
             title: title.to_string(),
             reason: format!("Invalid channel count for MP3: {e}"),
@@ -1411,6 +1491,7 @@ impl Default for RustyYtdlConfig {
 /// ).unwrap();
 /// println!("Playlist: {} ({} videos)", playlist.title, playlist.video_count);
 /// ```
+#[derive(Debug)]
 pub struct RustyYtdlDownloader {
     config: RustyYtdlConfig,
     cancel_flag: Arc<AtomicBool>,
@@ -1452,6 +1533,7 @@ impl RustyYtdlDownloader {
     }
 
     /// Fetch playlist info by scraping the `YouTube` playlist page.
+    #[allow(clippy::unused_self, reason = "consistent API")]
     fn fetch_playlist_info(&self, playlist_id: &str) -> Result<(String, Vec<VideoInfo>)> {
         let url = format!("https://www.youtube.com/playlist?list={playlist_id}");
 
@@ -1564,8 +1646,8 @@ impl RustyYtdlDownloader {
         };
 
         // Find the JSON object by counting braces
-        let json_bytes = &html.as_bytes()[start_pos..];
-        if json_bytes.is_empty() || json_bytes[0] != b'{' {
+        let json_bytes = html.as_bytes().get(start_pos..).unwrap_or_default();
+        if json_bytes.first() != Some(&b'{') {
             return Err(Error::Download(DownloadError::PlaylistParseFailed {
                 playlist_id: String::new(),
                 reason: "ytInitialData does not start with '{'".to_string(),
@@ -1751,6 +1833,7 @@ impl RustyYtdlDownloader {
     }
 
     /// Download a single video's audio stream.
+    #[allow(clippy::unused_self, reason = "consistent API")]
     fn download_single_video(
         &self,
         video_id: &str,
@@ -1804,6 +1887,8 @@ impl RustyYtdlDownloader {
         video_title: &str,
         output_dir: &Path,
     ) -> Result<PathBuf> {
+        use std::io::Write;
+
         let video_url = format!("https://www.youtube.com/watch?v={video_id}");
 
         debug!(
@@ -1863,7 +1948,6 @@ impl RustyYtdlDownloader {
             })
         })?;
 
-        use std::io::Write;
         let mut total_bytes = 0u64;
         while let Some(chunk) = stream.chunk().await.map_err(|e| {
             Error::Download(DownloadError::AudioExtractionFailed {
@@ -1994,7 +2078,10 @@ impl YouTubeDownloader for RustyYtdlDownloader {
         })
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "playlist download requires sequential steps with progress tracking"
+    )]
     fn download_playlist(
         &self,
         playlist_info: &PlaylistInfo,
@@ -2183,15 +2270,15 @@ fn parse_duration_text(text: &str) -> Option<u64> {
     match parts.len() {
         2 => {
             // MM:SS
-            let mins: u64 = parts[0].parse().ok()?;
-            let secs: u64 = parts[1].parse().ok()?;
+            let mins: u64 = parts.first()?.parse().ok()?;
+            let secs: u64 = parts.get(1)?.parse().ok()?;
             Some(mins * 60 + secs)
         }
         3 => {
             // HH:MM:SS
-            let hours: u64 = parts[0].parse().ok()?;
-            let mins: u64 = parts[1].parse().ok()?;
-            let secs: u64 = parts[2].parse().ok()?;
+            let hours: u64 = parts.first()?.parse().ok()?;
+            let mins: u64 = parts.get(1)?.parse().ok()?;
+            let secs: u64 = parts.get(2)?.parse().ok()?;
             Some(hours * 3600 + mins * 60 + secs)
         }
         _ => None,
@@ -2233,7 +2320,7 @@ pub struct YtDlpConfig {
     pub retries: u32,
 }
 
-#[allow(deprecated)]
+#[allow(deprecated, reason = "implementing Default for deprecated type")]
 impl Default for YtDlpConfig {
     fn default() -> Self {
         Self {
@@ -2252,11 +2339,12 @@ impl Default for YtDlpConfig {
     since = "0.2.0",
     note = "Use RustyYtdlDownloader instead - it requires no external dependencies"
 )]
+#[derive(Debug)]
 pub struct YtDlpDownloader {
     inner: RustyYtdlDownloader,
 }
 
-#[allow(deprecated)]
+#[allow(deprecated, reason = "implementing methods for deprecated type")]
 impl YtDlpDownloader {
     /// Create a new downloader with default configuration.
     #[must_use]
@@ -2268,7 +2356,7 @@ impl YtDlpDownloader {
 
     /// Create a new downloader with custom configuration.
     #[must_use]
-    pub fn with_config(config: YtDlpConfig) -> Self {
+    pub fn with_config(config: &YtDlpConfig) -> Self {
         let rusty_config = RustyYtdlConfig {
             timeout_secs: config.timeout_secs,
             retries: config.retries,
@@ -2295,14 +2383,14 @@ impl YtDlpDownloader {
     }
 }
 
-#[allow(deprecated)]
+#[allow(deprecated, reason = "implementing Default for deprecated type")]
 impl Default for YtDlpDownloader {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[allow(deprecated)]
+#[allow(deprecated, reason = "implementing trait for deprecated type")]
 impl YouTubeDownloader for YtDlpDownloader {
     fn parse_playlist_url(&self, url: &str) -> Result<PlaylistInfo> {
         self.inner.parse_playlist_url(url)
@@ -2320,7 +2408,11 @@ impl YouTubeDownloader for YtDlpDownloader {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
 
@@ -2543,22 +2635,22 @@ mod tests {
 
         #[test]
         fn test_valid_pl_prefix() {
-            assert!(validate_playlist_id_format("PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf").is_ok());
+            validate_playlist_id_format("PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf").unwrap();
         }
 
         #[test]
         fn test_valid_uu_prefix() {
-            assert!(validate_playlist_id_format("UUxxxxxxxxxxxxxxxxxxxxxxxx").is_ok());
+            validate_playlist_id_format("UUxxxxxxxxxxxxxxxxxxxxxxxx").unwrap();
         }
 
         #[test]
         fn test_valid_rd_prefix() {
-            assert!(validate_playlist_id_format("RDxxxxxxxx").is_ok());
+            validate_playlist_id_format("RDxxxxxxxx").unwrap();
         }
 
         #[test]
         fn test_valid_olak_prefix() {
-            assert!(validate_playlist_id_format("OLAK5uy_xxxxxxxxxxxxxxxxx").is_ok());
+            validate_playlist_id_format("OLAK5uy_xxxxxxxxxxxxxxxxx").unwrap();
         }
 
         #[test]
@@ -2581,7 +2673,7 @@ mod tests {
 
         #[test]
         fn test_valid_with_underscore_and_hyphen() {
-            assert!(validate_playlist_id_format("PLtest_123-abc").is_ok());
+            validate_playlist_id_format("PLtest_123-abc").unwrap();
         }
     }
 
@@ -2738,7 +2830,7 @@ mod tests {
         let downloader = DefaultYouTubeDownloader::new();
         let result =
             downloader.parse_playlist_url("https://www.youtube.com/playlist?list=PLtest123");
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     // =========================================================================
@@ -2782,7 +2874,10 @@ mod tests {
     // YtDlpDownloader Tests (deprecated wrapper)
     // =========================================================================
 
-    #[allow(deprecated)]
+    #[allow(
+        deprecated,
+        reason = "testing deprecated API for backwards compatibility"
+    )]
     mod yt_dlp_downloader_tests {
         use super::*;
 
@@ -2802,7 +2897,7 @@ mod tests {
                 timeout_secs: 600,
                 retries: 5,
             };
-            let _downloader = YtDlpDownloader::with_config(config);
+            let _downloader = YtDlpDownloader::with_config(&config);
         }
 
         #[test]
@@ -2865,7 +2960,7 @@ mod tests {
 
             // Invalid URL should fail
             let result = downloader.parse_playlist_url("https://example.com");
-            assert!(result.is_err());
+            result.unwrap_err();
         }
 
         #[test]
@@ -2875,7 +2970,7 @@ mod tests {
             // Single video URL (no playlist) should fail
             let result =
                 downloader.parse_playlist_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-            assert!(result.is_err());
+            result.unwrap_err();
         }
     }
 
@@ -2962,7 +3057,7 @@ mod tests {
             assert_eq!(progress.status, DownloadStatus::Starting);
             assert_eq!(progress.current_bytes, 0);
             assert_eq!(progress.current_total_bytes, None);
-            assert_eq!(progress.download_speed_bps, 0.0);
+            assert!(progress.download_speed_bps.abs() < f64::EPSILON);
         }
 
         #[test]

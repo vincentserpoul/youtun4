@@ -220,7 +220,14 @@ impl QueueItem {
     fn new(id: QueueItemId, request: DownloadRequest) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
+            .map(|d| {
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "duration in ms won't exceed u64"
+                )]
+                let ms = d.as_millis() as u64;
+                ms
+            })
             .unwrap_or(0);
 
         Self {
@@ -517,10 +524,10 @@ impl DownloadQueueManager {
         let mut state = self.state.write().await;
 
         if let Some(pos) = state.items.iter().position(|item| item.id == id) {
-            let item = &state.items[pos];
-
             // Don't allow removing items that are currently downloading
-            if matches!(item.status, QueueItemStatus::Downloading) {
+            if let Some(item) = state.items.get(pos)
+                && matches!(item.status, QueueItemStatus::Downloading)
+            {
                 warn!("Cannot remove item {} - currently downloading", id);
                 return false;
             }
@@ -549,7 +556,14 @@ impl DownloadQueueManager {
 
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_millis() as u64)
+                .map(|d| {
+                    #[allow(
+                        clippy::cast_possible_truncation,
+                        reason = "duration in ms won't exceed u64"
+                    )]
+                    let ms = d.as_millis() as u64;
+                    ms
+                })
                 .unwrap_or(0);
 
             item.status = QueueItemStatus::Cancelled;
@@ -673,7 +687,14 @@ impl DownloadQueueManager {
         if let Some(item) = state.find_item_mut(next_id) {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_millis() as u64)
+                .map(|d| {
+                    #[allow(
+                        clippy::cast_possible_truncation,
+                        reason = "duration in ms won't exceed u64"
+                    )]
+                    let ms = d.as_millis() as u64;
+                    ms
+                })
                 .unwrap_or(0);
 
             item.status = QueueItemStatus::Downloading;
@@ -742,7 +763,14 @@ impl DownloadQueueManager {
         if let Some(item) = state.find_item_mut(id) {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_millis() as u64)
+                .map(|d| {
+                    #[allow(
+                        clippy::cast_possible_truncation,
+                        reason = "duration in ms won't exceed u64"
+                    )]
+                    let ms = d.as_millis() as u64;
+                    ms
+                })
                 .unwrap_or(0);
 
             item.status = QueueItemStatus::Completed;
@@ -763,7 +791,14 @@ impl DownloadQueueManager {
         if let Some(item) = state.find_item_mut(id) {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_millis() as u64)
+                .map(|d| {
+                    #[allow(
+                        clippy::cast_possible_truncation,
+                        reason = "duration in ms won't exceed u64"
+                    )]
+                    let ms = d.as_millis() as u64;
+                    ms
+                })
                 .unwrap_or(0);
 
             item.status = QueueItemStatus::Failed(error.clone());
@@ -918,7 +953,11 @@ impl std::fmt::Debug for DownloadQueueManager {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
 
@@ -1522,7 +1561,7 @@ mod tests {
         assert!(item.task_id.is_none());
         assert!(item.started_at.is_none());
         assert!(item.finished_at.is_none());
-        assert_eq!(item.progress, 0.0);
+        assert!((item.progress - 0.0).abs() < f64::EPSILON);
     }
 
     #[tokio::test]
@@ -1595,7 +1634,7 @@ mod tests {
             .await;
 
         let item = queue.get_item(id).await.unwrap();
-        assert_eq!(item.progress, 0.5);
+        assert!((item.progress - 0.5).abs() < f64::EPSILON);
         assert_eq!(item.current_video, Some("video_1.mp3".to_string()));
         assert_eq!(item.total_videos, Some(10));
         assert_eq!(item.videos_completed, Some(5));
@@ -1611,7 +1650,7 @@ mod tests {
 
         let item = queue.get_item(id).await.unwrap();
         assert!(matches!(item.status, QueueItemStatus::Completed));
-        assert_eq!(item.progress, 1.0);
+        assert!((item.progress - 1.0).abs() < f64::EPSILON);
         assert!(item.finished_at.is_some());
     }
 

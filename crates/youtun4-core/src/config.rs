@@ -60,6 +60,10 @@ impl std::fmt::Display for Theme {
 }
 
 /// Notification preferences for the application.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "configuration struct with independent boolean flags"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NotificationPreferences {
     /// Show notifications for download completion.
@@ -280,6 +284,7 @@ fn validate_storage_directory(path: &Path) -> Result<()> {
 }
 
 /// Configuration manager that handles loading and caching config.
+#[derive(Debug)]
 pub struct ConfigManager {
     config: AppConfig,
 }
@@ -345,7 +350,11 @@ impl ConfigManager {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
@@ -373,7 +382,7 @@ mod tests {
     fn test_validate_storage_directory_success() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
         let result = validate_storage_directory(temp_dir.path());
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
@@ -382,7 +391,7 @@ mod tests {
         let new_path = temp_dir.path().join("new_subdir");
 
         let result = validate_storage_directory(&new_path);
-        assert!(result.is_ok());
+        result.unwrap();
         assert!(new_path.exists());
     }
 
@@ -405,7 +414,7 @@ mod tests {
 
         // Just test that validation works
         let result = validate_storage_directory(&playlists_dir);
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     // =============================================================================
@@ -467,7 +476,7 @@ mod tests {
         let nested_path = temp_dir.path().join("level1/level2/level3");
 
         let result = validate_storage_directory(&nested_path);
-        assert!(result.is_ok());
+        result.unwrap();
         assert!(nested_path.exists());
         assert!(nested_path.is_dir());
     }
@@ -490,7 +499,7 @@ mod tests {
         let mut config = AppConfig::default();
 
         let result = config.set_playlists_directory(temp_dir.path().to_path_buf());
-        assert!(result.is_ok());
+        result.unwrap();
         assert_eq!(config.playlists_directory, temp_dir.path().to_path_buf());
     }
 
@@ -538,19 +547,12 @@ mod tests {
         // Call twice - second time it already exists
         let result1 = validate_storage_directory(temp_dir.path());
         let result2 = validate_storage_directory(temp_dir.path());
-        assert!(result1.is_ok());
-        assert!(result2.is_ok());
+        result1.unwrap();
+        result2.unwrap();
     }
 
     #[test]
     fn test_config_manager_playlists_directory() {
-        // Create a temp config manager environment
-        let temp_dir = TempDir::new().expect("Should create temp dir");
-        let config = AppConfig {
-            playlists_directory: temp_dir.path().to_path_buf(),
-            ..Default::default()
-        };
-
         // Test ConfigManager methods with a manual instance
         struct TestConfigManager {
             config: AppConfig,
@@ -565,6 +567,13 @@ mod tests {
                 &self.config.playlists_directory
             }
         }
+
+        // Create a temp config manager environment
+        let temp_dir = TempDir::new().expect("Should create temp dir");
+        let config = AppConfig {
+            playlists_directory: temp_dir.path().to_path_buf(),
+            ..Default::default()
+        };
 
         let manager = TestConfigManager { config };
         assert_eq!(manager.playlists_directory(), temp_dir.path());

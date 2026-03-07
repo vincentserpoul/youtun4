@@ -1,0 +1,13 @@
+# typos configuration — https://github.com/crate-ci/typos
+
+[files]
+extend-exclude = []
+
+[default.extend-identifiers]
+# Solana USDT devnet contract address contains flagged substrings
+TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+
+[default.extend-words]
+# Git commit hashes containing common false positives
+dbe = "dbe"
+ba = "ba"

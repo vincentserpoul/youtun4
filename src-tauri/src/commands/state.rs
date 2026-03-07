@@ -35,7 +35,7 @@ pub struct SyncTaskInfo {
 /// Type alias for sync task storage to reduce complexity.
 type SyncTaskMap = HashMap<TaskId, (SyncTaskInfo, Arc<AtomicBool>)>;
 
-/// Type alias for download task storage (task_id -> cancel flag).
+/// Type alias for download task storage (`task_id` -> cancel flag).
 type DownloadTaskMap = HashMap<TaskId, Arc<AtomicBool>>;
 
 /// Application state managed by Tauri.
@@ -113,13 +113,13 @@ impl AppState {
     }
 
     /// Get a progress sender for reporting task progress.
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "public API reserved for future use")]
     pub fn progress_sender(&self) -> ProgressSender {
         self.runtime.progress_sender()
     }
 
     /// Spawn an async task on the runtime.
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "public API reserved for future use")]
     pub fn spawn_task<F, T>(
         &self,
         category: TaskCategory,
@@ -160,7 +160,7 @@ impl AppState {
     }
 
     /// Unregister a sync task.
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "public API reserved for future use")]
     pub async fn unregister_sync_task(&self, task_id: TaskId) {
         let mut tasks = self.sync_tasks.write().await;
         tasks.remove(&task_id);
@@ -208,7 +208,7 @@ impl AppState {
     }
 
     /// Unregister a download task (called when download completes or fails).
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "public API reserved for future use")]
     pub async fn unregister_download_task(&self, task_id: TaskId) {
         let mut tasks = self.download_tasks.write().await;
         tasks.remove(&task_id);

@@ -345,7 +345,10 @@ pub fn ErrorEmptyState(
 
 /// Empty state for when a folder or directory is empty.
 #[component]
-
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Leptos component prop requires owned value"
+)]
 pub fn EmptyFolderState(
     /// The folder name or path.
     #[prop(optional)]

@@ -4,7 +4,6 @@
 //! including task spawning, thread pool configuration, and task lifecycle management.
 
 use std::collections::HashMap;
-use std::future::Future;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -179,6 +178,10 @@ impl AsyncRuntime {
     /// Spawn a new async task.
     ///
     /// Returns a task ID that can be used to track or cancel the task.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "description is stored in the task, ownership is appropriate"
+    )]
     pub fn spawn<F, T>(
         &self,
         category: TaskCategory,
@@ -211,7 +214,7 @@ impl AsyncRuntime {
                     },
                 );
             });
-        }
+        };
 
         // Spawn the actual task
         let _handle: JoinHandle<()> = self.runtime.spawn(async move {
@@ -233,6 +236,10 @@ impl AsyncRuntime {
     /// Spawn a cancellable async task.
     ///
     /// Returns a task ID that can be used to cancel the task via `cancel_task`.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "description is stored in the task, ownership is appropriate"
+    )]
     pub fn spawn_cancellable<F, T>(
         &self,
         category: TaskCategory,
@@ -272,7 +279,7 @@ impl AsyncRuntime {
                 let mut cancel_guard = cancel_senders_clone.write().await;
                 cancel_guard.insert(task_id, cancel_tx);
             });
-        }
+        };
 
         // Spawn the actual task
         let _handle: JoinHandle<()> = self.runtime.spawn(async move {
@@ -437,7 +444,7 @@ impl std::fmt::Debug for AsyncRuntime {
 }
 
 /// A cloneable handle for sending progress updates.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProgressSender {
     tx: mpsc::UnboundedSender<ProgressUpdate>,
 }
@@ -457,7 +464,11 @@ impl ProgressSender {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test code uses unwrap/expect for brevity"
+)]
 mod tests {
     use super::*;
     use std::time::Duration;
@@ -465,7 +476,7 @@ mod tests {
     #[test]
     fn test_runtime_creation() {
         let runtime = AsyncRuntime::new();
-        assert!(runtime.is_ok());
+        runtime.unwrap();
     }
 
     #[test]
@@ -477,7 +488,7 @@ mod tests {
             thread_name_prefix: "test-worker".to_string(),
         };
         let runtime = AsyncRuntime::with_config(config);
-        assert!(runtime.is_ok());
+        runtime.unwrap();
     }
 
     #[test]

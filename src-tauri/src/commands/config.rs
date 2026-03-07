@@ -34,7 +34,7 @@ pub async fn update_config(
     {
         let mut config_manager = state.config_manager.write().await;
         config_manager.update(config).map_err(map_err)?;
-    }
+    };
 
     state
         .reinitialize_playlist_manager(new_playlists_dir)
@@ -69,7 +69,7 @@ pub async fn set_storage_directory(
         config_manager
             .set_playlists_directory(new_path.clone())
             .map_err(map_err)?;
-    }
+    };
 
     state
         .reinitialize_playlist_manager(new_path)

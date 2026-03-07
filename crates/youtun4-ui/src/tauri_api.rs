@@ -148,6 +148,10 @@ async fn invoke<T: serde::de::DeserializeOwned>(
 /// List all detected USB devices.
 pub async fn list_devices() -> Result<Vec<DeviceInfo>, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("list_devices", Args {}).await
@@ -248,6 +252,10 @@ pub async fn check_sync_capacity(
 /// Returns `true` if the watcher was started, `false` if it was already running.
 pub async fn start_device_watcher() -> Result<bool, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("start_device_watcher", Args {}).await
@@ -258,6 +266,10 @@ pub async fn start_device_watcher() -> Result<bool, String> {
 /// Returns `true` if the watcher was stopped, `false` if it wasn't running.
 pub async fn stop_device_watcher() -> Result<bool, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("stop_device_watcher", Args {}).await
@@ -266,6 +278,10 @@ pub async fn stop_device_watcher() -> Result<bool, String> {
 /// Check if the device watcher is currently running.
 pub async fn is_device_watcher_running() -> Result<bool, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("is_device_watcher_running", Args {}).await
@@ -379,6 +395,10 @@ where
 /// List all playlists.
 pub async fn list_playlists() -> Result<Vec<PlaylistMetadata>, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("list_playlists", Args {}).await
@@ -691,6 +711,10 @@ pub async fn get_task_status(task_id: TaskId) -> Result<Option<String>, String> 
 /// Get all running tasks count by category.
 pub async fn get_running_tasks() -> Result<Vec<TaskCount>, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     let result: Vec<(String, usize)> = invoke("get_running_tasks", Args {}).await?;
@@ -720,6 +744,10 @@ pub async fn cancel_task(task_id: TaskId) -> Result<bool, String> {
 /// Get the current application configuration.
 pub async fn get_config() -> Result<AppConfig, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("get_config", Args {}).await
@@ -738,6 +766,10 @@ pub async fn update_config(config: &AppConfig) -> Result<(), String> {
 /// Get the current playlists storage directory.
 pub async fn get_storage_directory() -> Result<String, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("get_storage_directory", Args {}).await
@@ -756,6 +788,10 @@ pub async fn set_storage_directory(path: &str) -> Result<(), String> {
 /// Get the default storage directory.
 pub async fn get_default_storage_directory() -> Result<String, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("get_default_storage_directory", Args {}).await
@@ -807,6 +843,10 @@ pub async fn sync_playlist_with_progress(
 /// Get default transfer options.
 pub async fn get_default_transfer_options() -> Result<TransferOptions, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("get_default_transfer_options", Args {}).await
@@ -815,6 +855,10 @@ pub async fn get_default_transfer_options() -> Result<TransferOptions, String> {
 /// Get fast transfer options (optimized for speed, no verification).
 pub async fn get_fast_transfer_options() -> Result<TransferOptions, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("get_fast_transfer_options", Args {}).await
@@ -823,6 +867,10 @@ pub async fn get_fast_transfer_options() -> Result<TransferOptions, String> {
 /// Get reliable transfer options (full integrity verification).
 pub async fn get_reliable_transfer_options() -> Result<TransferOptions, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("get_reliable_transfer_options", Args {}).await
@@ -1006,6 +1054,10 @@ pub async fn get_sync_status(task_id: TaskId) -> Result<Option<SyncTaskInfo>, St
 /// Returns a list of all sync tasks that are currently running.
 pub async fn list_active_syncs() -> Result<Vec<SyncTaskInfo>, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("list_active_syncs", Args {}).await
@@ -1251,6 +1303,10 @@ pub struct SyncOrchestratorProgress {
 impl SyncOrchestratorProgress {
     /// Format transfer speed as a human-readable string.
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        reason = "float arithmetic needed for speed unit conversion"
+    )]
     pub fn formatted_speed(&self) -> String {
         let speed = self.transfer_speed_bps;
         if speed >= 1_000_000_000.0 {
@@ -1266,6 +1322,18 @@ impl SyncOrchestratorProgress {
 
     /// Format estimated remaining time as a human-readable string.
     #[must_use]
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "truncation is acceptable for time display"
+    )]
+    #[allow(
+        clippy::cast_sign_loss,
+        reason = "elapsed time values are always non-negative"
+    )]
+    #[allow(
+        clippy::float_arithmetic,
+        reason = "float arithmetic needed for time conversion"
+    )]
     pub fn formatted_eta(&self) -> Option<String> {
         self.estimated_remaining_secs.map(|secs| {
             if secs >= 3600.0 {
@@ -1508,6 +1576,10 @@ pub mod youtube_events {
 /// Returns the version string if yt-dlp is found, or an error if not.
 pub async fn check_yt_dlp_available() -> Result<String, String> {
     #[derive(serde::Serialize)]
+    #[allow(
+        clippy::empty_structs_with_brackets,
+        reason = "Serde requires braces for empty struct to serialize as {}"
+    )]
     struct Args {}
 
     invoke("check_yt_dlp_available", Args {}).await

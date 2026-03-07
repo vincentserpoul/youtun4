@@ -44,7 +44,7 @@ pub async fn start_device_watcher(
         let handle_arc = state.device_watcher_handle_arc();
         let mut handle = handle_arc.write().await;
         *handle = Some(watcher_handle);
-    }
+    };
 
     // Spawn a task to forward events to the frontend
     let app_handle = app.clone();

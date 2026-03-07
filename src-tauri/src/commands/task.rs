@@ -20,7 +20,7 @@ pub async fn get_task_status(
 /// Cancel a running task.
 ///
 /// This checks both the async runtime's cancellable tasks and registered
-/// download tasks (which use an AtomicBool cancel flag pattern).
+/// download tasks (which use an `AtomicBool` cancel flag pattern).
 #[tauri::command]
 pub async fn cancel_task(
     state: State<'_, AppState>,

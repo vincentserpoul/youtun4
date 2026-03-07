@@ -8,6 +8,14 @@ use crate::tauri_api;
 use crate::types::{PlaylistMetadata, TrackInfo};
 
 /// Format bytes to human-readable string.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss is acceptable for display formatting"
+)]
+#[allow(
+    clippy::float_arithmetic,
+    reason = "float arithmetic needed for byte unit conversion"
+)]
 fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -25,6 +33,14 @@ fn format_bytes(bytes: u64) -> String {
 }
 
 /// Format Unix timestamp to human-readable date string.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss is acceptable for timestamp conversion"
+)]
+#[allow(
+    clippy::float_arithmetic,
+    reason = "float arithmetic needed for timestamp conversion"
+)]
 fn format_date(timestamp: u64) -> String {
     // Simple date formatting (YYYY-MM-DD)
     // Using JavaScript Date for proper formatting in WASM
@@ -170,14 +186,14 @@ fn PlaylistDetailHeader(
             </div>
 
             <div class="playlist-detail-metadata">
-                {if has_source_url {
+                {has_source_url.then(|| {
                     let url_display = source_url.unwrap_or_default();
                     let url_short = if url_display.len() > 50 {
                         format!("{}...", &url_display[..47])
                     } else {
                         url_display.clone()
                     };
-                    Some(view! {
+                    view! {
                         <div class="metadata-row source-url">
                             <span class="metadata-label">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" class="youtube-icon">
@@ -198,10 +214,8 @@ fn PlaylistDetailHeader(
                                 </svg>
                             </a>
                         </div>
-                    })
-                } else {
-                    None
-                }}
+                    }
+                })}
                 <div class="metadata-row">
                     <span class="metadata-label">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">

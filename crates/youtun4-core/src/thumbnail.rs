@@ -18,6 +18,7 @@ use crate::error::{Error, Result};
 pub const DEFAULT_FETCH_TIMEOUT_SECS: u64 = 30;
 
 /// Thumbnail manager for fetching and caching playlist/video thumbnails.
+#[derive(Debug)]
 pub struct ThumbnailManager<'a> {
     cache: &'a mut CacheManager,
     timeout: Duration,
@@ -88,12 +89,10 @@ impl<'a> ThumbnailManager<'a> {
     /// Returns the path to the thumbnail file if it exists in cache.
     #[must_use]
     pub fn get_thumbnail_path(&self, id: &str) -> Option<std::path::PathBuf> {
-        if self.cache.has_thumbnail(id) {
+        self.cache.has_thumbnail(id).then(|| {
             let cache_dir = self.cache.cache_dir();
-            Some(cache_dir.join("thumbnails").join(format!("thumb_{id}.jpg")))
-        } else {
-            None
-        }
+            cache_dir.join("thumbnails").join(format!("thumb_{id}.jpg"))
+        })
     }
 }
 
@@ -169,7 +168,11 @@ pub fn get_playlist_thumbnail_url(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
 

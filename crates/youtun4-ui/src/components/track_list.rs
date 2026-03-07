@@ -6,6 +6,14 @@ use crate::components::empty_state::{EmptyStateSize, ErrorEmptyState, NoTracksEm
 use crate::types::TrackInfo;
 
 /// Format bytes to human-readable string.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss is acceptable for display formatting"
+)]
+#[allow(
+    clippy::float_arithmetic,
+    reason = "float arithmetic needed for byte unit conversion"
+)]
 fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -224,11 +232,7 @@ pub fn TrackList(
                     } else {
                         view! {
                             <div class="track-list-content">
-                                {if show_header {
-                                    Some(view! { <TrackListHeader /> })
-                                } else {
-                                    None
-                                }}
+                                {show_header.then(|| view! { <TrackListHeader /> })}
                                 <div class="track-list-rows">
                                     {track_list.into_iter().enumerate().map(|(i, track)| {
                                         let callback = on_track_click;
@@ -261,6 +265,10 @@ pub fn TrackList(
 
 /// Compact track item for smaller displays.
 #[component]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Leptos component prop requires owned value"
+)]
 pub fn TrackItemCompact(
     /// The track information to display.
     track: TrackInfo,

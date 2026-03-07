@@ -561,6 +561,11 @@ pub struct VerificationProgress {
 impl VerificationProgress {
     /// Calculate progress percentage.
     #[must_use]
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::float_arithmetic,
+        reason = "percentage calculation for display"
+    )]
     pub fn percentage(&self) -> f64 {
         if self.total_files == 0 {
             return 100.0;
@@ -633,6 +638,7 @@ impl VerificationOptions {
 /// File integrity verifier.
 ///
 /// Provides methods for verifying files against checksum manifests.
+#[derive(Debug)]
 pub struct IntegrityVerifier {
     options: VerificationOptions,
 }
@@ -687,7 +693,7 @@ impl IntegrityVerifier {
                 break;
             }
 
-            hasher.update(&buffer[..bytes_read]);
+            hasher.update(buffer.get(..bytes_read).unwrap_or(&buffer));
         }
 
         Ok(format!("{:x}", hasher.finalize()))
@@ -738,6 +744,10 @@ impl IntegrityVerifier {
 
         // Compute checksum
         let actual_checksum = self.compute_checksum(path)?;
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "duration in ms won't exceed u64"
+        )]
         let duration_ms = start.elapsed().as_millis() as u64;
 
         if actual_checksum == expected.checksum {
@@ -1100,7 +1110,11 @@ pub fn create_and_save_manifest(directory: &Path) -> Result<ChecksumManifest> {
 // =============================================================================
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
     use std::io::Write;

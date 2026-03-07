@@ -138,7 +138,10 @@ pub fn Skeleton(
 ///
 /// A text-line shaped skeleton with customizable width.
 #[component]
-
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Leptos component prop requires owned value"
+)]
 pub fn SkeletonText(
     /// Width of the text line (CSS value, e.g., "70%", "200px").
     #[prop(default = "100%".to_string())]
@@ -159,7 +162,10 @@ pub fn SkeletonText(
 ///
 /// A rectangular block skeleton for images, cards, etc.
 #[component]
-
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Leptos component prop requires owned value"
+)]
 pub fn SkeletonBlock(
     /// Width of the block (CSS value).
     #[prop(default = "100%".to_string())]
@@ -194,17 +200,13 @@ pub fn SkeletonListItem(
 ) -> impl IntoView {
     view! {
         <div class="skeleton-list-item">
-            {if show_icon {
-                Some(view! {
+            {show_icon.then(|| view! {
                     <Skeleton
                         width="40px".to_string()
                         height="40px".to_string()
                         radius="var(--radius-md)".to_string()
                     />
-                })
-            } else {
-                None
-            }}
+                })}
             <div class="skeleton-list-item-content">
                 {(0..lines).map(|i| {
                     let width = if i == 0 { "70%" } else { "50%" };
@@ -221,6 +223,10 @@ pub fn SkeletonListItem(
 ///
 /// Provides smooth fade transitions between loading and loaded states.
 #[component]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Leptos component prop requires owned value"
+)]
 pub fn ContentLoader<F, IV>(
     /// The loading state.
     state: LoadingState,
@@ -343,15 +349,11 @@ where
             <span class="button-loader-content" class:loading=loading>
                 {children()}
             </span>
-            {if loading {
-                Some(view! {
+            {loading.then(|| view! {
                     <span class="button-loader-spinner">
                         <Spinner size=16 />
                     </span>
-                })
-            } else {
-                None
-            }}
+                })}
         </span>
     }
 }

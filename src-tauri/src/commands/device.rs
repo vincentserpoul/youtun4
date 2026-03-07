@@ -1,6 +1,9 @@
 //! Device API commands for detecting and managing USB devices.
 
-#![allow(clippy::similar_names)]
+#![allow(
+    clippy::similar_names,
+    reason = "device-related variables have intentionally similar names"
+)]
 
 use std::path::PathBuf;
 
@@ -192,6 +195,11 @@ pub async fn check_sync_capacity(
     // Calculate capacity metrics
     let can_fit = device.available_bytes >= total_required;
     let used_after_sync = device.used_bytes() + total_required;
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::float_arithmetic,
+        reason = "percentage calculation for display"
+    )]
     let usage_after_sync_percent = if device.total_bytes > 0 {
         (used_after_sync as f64 / device.total_bytes as f64) * 100.0
     } else {
@@ -249,6 +257,11 @@ pub async fn check_sync_capacity(
 }
 
 /// Format bytes as a human-readable string.
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::float_arithmetic,
+    reason = "display formatting for human-readable byte sizes"
+)]
 pub fn format_bytes(bytes: u64) -> String {
     if bytes >= 1_000_000_000 {
         format!("{:.2} GB", bytes as f64 / 1_000_000_000.0)

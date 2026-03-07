@@ -743,23 +743,27 @@ impl Error {
             Self::Internal(_) => ErrorKind::Internal,
             Self::WithContext { source, .. } => source.kind(),
             // Legacy variants
-            #[allow(deprecated)]
+            #[allow(deprecated, reason = "legacy variant support")]
             Self::DeviceNotFound(_) | Self::DeviceNotMounted(_) => ErrorKind::Device,
-            #[allow(deprecated)]
+            #[allow(deprecated, reason = "legacy variant support")]
             Self::PlaylistAlreadyExists(_)
             | Self::PlaylistNotFound(_)
             | Self::InvalidPlaylistName(_) => ErrorKind::Playlist,
-            #[allow(deprecated)]
+            #[allow(deprecated, reason = "legacy variant support")]
             Self::InvalidYouTubeUrl(_) | Self::NotAPlaylist(_) | Self::DownloadFailed(_) => {
                 ErrorKind::Download
             }
-            #[allow(deprecated)]
+            #[allow(deprecated, reason = "legacy variant support")]
             Self::SyncFailed(_) => ErrorKind::Transfer,
         }
     }
 
     /// Check if this error is retryable.
     #[must_use]
+    #[allow(
+        deprecated,
+        reason = "matching deprecated variants for exhaustiveness until they are removed"
+    )]
     pub fn is_retryable(&self) -> bool {
         match self {
             Self::Download(DownloadError::Network { .. }) => true,
@@ -774,7 +778,25 @@ impl Error {
                     | std::io::ErrorKind::ConnectionReset
             ),
             Self::WithContext { source, .. } => source.is_retryable(),
-            _ => false,
+            Self::Device(_)
+            | Self::Download(_)
+            | Self::Transfer(_)
+            | Self::Playlist(_)
+            | Self::FileSystem(_)
+            | Self::Cache(_)
+            | Self::DeviceNotFound(_)
+            | Self::DeviceNotMounted(_)
+            | Self::PlaylistAlreadyExists(_)
+            | Self::PlaylistNotFound(_)
+            | Self::InvalidPlaylistName(_)
+            | Self::InvalidYouTubeUrl(_)
+            | Self::NotAPlaylist(_)
+            | Self::DownloadFailed(_)
+            | Self::SyncFailed(_)
+            | Self::Configuration(_)
+            | Self::Serialization(_)
+            | Self::Cancelled
+            | Self::Internal(_) => false,
         }
     }
 
@@ -786,6 +808,10 @@ impl Error {
 
     /// Get the retry delay in seconds, if applicable.
     #[must_use]
+    #[allow(
+        deprecated,
+        reason = "matching deprecated variants for exhaustiveness until they are removed"
+    )]
     pub fn retry_delay_secs(&self) -> Option<u64> {
         match self {
             Self::Download(DownloadError::RateLimited { retry_after_secs }) => {
@@ -794,7 +820,26 @@ impl Error {
             Self::Download(DownloadError::Timeout { .. }) => Some(5),
             Self::Download(DownloadError::Network { .. }) => Some(3),
             Self::WithContext { source, .. } => source.retry_delay_secs(),
-            _ => None,
+            Self::Device(_)
+            | Self::Download(_)
+            | Self::Transfer(_)
+            | Self::Playlist(_)
+            | Self::FileSystem(_)
+            | Self::Cache(_)
+            | Self::DeviceNotFound(_)
+            | Self::DeviceNotMounted(_)
+            | Self::PlaylistAlreadyExists(_)
+            | Self::PlaylistNotFound(_)
+            | Self::InvalidPlaylistName(_)
+            | Self::InvalidYouTubeUrl(_)
+            | Self::NotAPlaylist(_)
+            | Self::DownloadFailed(_)
+            | Self::SyncFailed(_)
+            | Self::Configuration(_)
+            | Self::Io(_)
+            | Self::Serialization(_)
+            | Self::Cancelled
+            | Self::Internal(_) => None,
         }
     }
 }
@@ -974,6 +1019,7 @@ impl Error {
 // ============================================================================
 
 /// Helper struct for creating file system errors from path operations.
+#[derive(Debug)]
 pub struct PathError {
     /// The path where the error occurred.
     pub path: PathBuf,
@@ -1006,7 +1052,11 @@ impl From<PathError> for Error {
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
 
@@ -1321,7 +1371,7 @@ mod tests {
     // -------------------------------------------------------------------------
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "testing legacy variants")]
     fn test_legacy_device_not_found() {
         let err = Error::DeviceNotFound("test".to_string());
         assert_eq!(err.to_string(), "Device not found: test");
@@ -1329,7 +1379,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "testing legacy variants")]
     fn test_legacy_playlist_not_found() {
         let err = Error::PlaylistNotFound("my-playlist".to_string());
         assert_eq!(err.to_string(), "Playlist not found: my-playlist");
@@ -1779,7 +1829,7 @@ mod tests {
     // -------------------------------------------------------------------------
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "testing legacy variants")]
     fn test_legacy_device_not_mounted() {
         let err = Error::DeviceNotMounted("USB".to_string());
         assert!(err.to_string().contains("Device not mounted"));
@@ -1787,7 +1837,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "testing legacy variants")]
     fn test_legacy_playlist_already_exists() {
         let err = Error::PlaylistAlreadyExists("My Playlist".to_string());
         assert!(err.to_string().contains("already exists"));
@@ -1795,7 +1845,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "testing legacy variants")]
     fn test_legacy_invalid_playlist_name() {
         let err = Error::InvalidPlaylistName("bad/name".to_string());
         assert!(err.to_string().contains("Invalid playlist name"));
@@ -1803,7 +1853,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "testing legacy variants")]
     fn test_legacy_invalid_youtube_url() {
         let err = Error::InvalidYouTubeUrl("not-a-url".to_string());
         assert!(err.to_string().contains("Invalid YouTube URL"));
@@ -1811,7 +1861,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "testing legacy variants")]
     fn test_legacy_not_a_playlist() {
         let err = Error::NotAPlaylist("single-video-url".to_string());
         assert!(err.to_string().contains("not a YouTube playlist"));
@@ -1819,7 +1869,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "testing legacy variants")]
     fn test_legacy_download_failed() {
         let err = Error::DownloadFailed("network error".to_string());
         assert!(err.to_string().contains("download failed"));
@@ -1827,7 +1877,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "testing legacy variants")]
     fn test_legacy_sync_failed() {
         let err = Error::SyncFailed("device disconnected".to_string());
         assert!(err.to_string().contains("Sync failed"));

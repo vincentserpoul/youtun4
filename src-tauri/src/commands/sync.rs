@@ -184,8 +184,8 @@ pub async fn start_sync(
 
         {
             let mut tasks = sync_tasks.write().await;
-            tasks.remove(&task_id);
-        }
+            tasks.remove(&task_id)
+        };
 
         match result {
             Ok(transfer_result) => {

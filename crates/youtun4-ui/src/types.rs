@@ -30,6 +30,11 @@ impl DeviceInfo {
 
     /// Returns the usage percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for display formatting"
+    )]
     pub fn usage_percentage(&self) -> f64 {
         if self.total_bytes == 0 {
             return 0.0;
@@ -97,6 +102,11 @@ impl SavedPlaylistMetadata {
 
     /// Format total size as a human-readable string.
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for display formatting"
+    )]
     pub fn formatted_size(&self) -> String {
         let bytes = self.total_size_bytes;
         if bytes >= 1_000_000_000 {
@@ -259,6 +269,11 @@ pub struct FolderStatistics {
 impl FolderStatistics {
     /// Format total size as a human-readable string.
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for display formatting"
+    )]
     pub fn formatted_total_size(&self) -> String {
         let bytes = self.total_size_bytes;
         if bytes >= 1_000_000_000 {
@@ -321,6 +336,10 @@ impl std::fmt::Display for Theme {
 
 /// Notification preferences for the application.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each bool represents an independent notification toggle"
+)]
 pub struct NotificationPreferences {
     /// Show notifications for download completion.
     #[serde(default = "default_true")]
@@ -462,6 +481,11 @@ pub struct TransferProgress {
 impl TransferProgress {
     /// Calculate the overall progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for display formatting"
+    )]
     pub fn overall_progress_percent(&self) -> f64 {
         if self.total_bytes == 0 {
             if self.total_files == 0 {
@@ -475,6 +499,11 @@ impl TransferProgress {
 
     /// Calculate the current file progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for display formatting"
+    )]
     pub fn current_file_progress_percent(&self) -> f64 {
         if self.current_file_total == 0 {
             return 100.0;
@@ -484,6 +513,7 @@ impl TransferProgress {
 
     /// Format transfer speed as a human-readable string.
     #[must_use]
+    #[allow(clippy::float_arithmetic, reason = "acceptable for display formatting")]
     pub fn formatted_speed(&self) -> String {
         let speed = self.transfer_speed_bps;
         if speed >= 1_000_000_000.0 {
@@ -499,6 +529,7 @@ impl TransferProgress {
 
     /// Format estimated remaining time as a human-readable string.
     #[must_use]
+    #[allow(clippy::float_arithmetic, reason = "acceptable for display formatting")]
     pub fn formatted_remaining_time(&self) -> String {
         match self.estimated_remaining_secs {
             Some(secs) if secs >= 3600.0 => {
@@ -590,6 +621,7 @@ pub struct TransferResult {
 impl TransferResult {
     /// Format average speed as a human-readable string.
     #[must_use]
+    #[allow(clippy::float_arithmetic, reason = "acceptable for display formatting")]
     pub fn formatted_average_speed(&self) -> String {
         let speed = self.average_speed_bps;
         if speed >= 1_000_000_000.0 {
@@ -605,6 +637,11 @@ impl TransferResult {
 
     /// Format bytes transferred as a human-readable string.
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for display formatting"
+    )]
     pub fn formatted_bytes_transferred(&self) -> String {
         let bytes = self.bytes_transferred;
         if bytes >= 1_000_000_000 {
@@ -621,6 +658,10 @@ impl TransferResult {
 
 /// Configuration options for file transfers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each bool represents an independent transfer configuration option"
+)]
 pub struct TransferOptions {
     /// Size of chunks for reading/writing files (in bytes).
     pub chunk_size: usize,
@@ -720,6 +761,11 @@ pub struct SyncProgress {
 impl SyncProgress {
     /// Calculate the overall progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for display formatting"
+    )]
     pub fn overall_progress_percent(&self) -> f64 {
         if self.total_bytes == 0 {
             if self.total_files == 0 {
@@ -733,6 +779,11 @@ impl SyncProgress {
 
     /// Calculate the current file progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::cast_precision_loss,
+        reason = "acceptable for display formatting"
+    )]
     pub fn current_file_progress_percent(&self) -> f64 {
         if self.current_file_total == 0 {
             return 100.0;
@@ -917,12 +968,14 @@ pub struct DownloadProgress {
 impl DownloadProgress {
     /// Calculate the overall progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(clippy::float_arithmetic, reason = "acceptable for display formatting")]
     pub fn overall_progress_percent(&self) -> f64 {
         self.overall_progress * 100.0
     }
 
     /// Calculate the current video progress as a percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(clippy::float_arithmetic, reason = "acceptable for display formatting")]
     pub fn current_progress_percent(&self) -> f64 {
         self.current_progress * 100.0
     }
@@ -1173,6 +1226,7 @@ impl CapacityCheckResult {
 
     /// Format remaining bytes after sync as a human-readable string.
     #[must_use]
+    #[allow(clippy::cast_sign_loss, reason = "sign is checked before cast")]
     pub fn formatted_remaining(&self) -> String {
         let remaining = self.remaining_after_sync();
         if remaining >= 0 {
@@ -1184,6 +1238,11 @@ impl CapacityCheckResult {
 }
 
 /// Format bytes as a human-readable string.
+#[allow(
+    clippy::float_arithmetic,
+    clippy::cast_precision_loss,
+    reason = "acceptable for display formatting"
+)]
 fn format_bytes(bytes: u64) -> String {
     if bytes >= 1_000_000_000 {
         format!("{:.2} GB", bytes as f64 / 1_000_000_000.0)

@@ -5,7 +5,7 @@
 use leptos::prelude::*;
 
 /// Provides access to the mobile menu state for child components.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct MobileMenuContext {
     /// Whether the mobile menu is currently open.
     pub is_open: ReadSignal<bool>,
@@ -26,7 +26,7 @@ impl MobileMenuContext {
 }
 
 /// Context for settings panel open state.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct SettingsContext {
     /// Whether settings panel is open.
     pub is_open: ReadSignal<bool>,
@@ -235,7 +235,10 @@ pub fn LayoutHeaderActions(
 
 /// A responsive grid for displaying cards or items.
 #[component]
-
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Leptos component prop requires owned value"
+)]
 pub fn ResponsiveGrid(
     /// Minimum width of each item in the grid.
     #[prop(default = "300px".to_string(), into)]

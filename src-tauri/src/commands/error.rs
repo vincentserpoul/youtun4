@@ -33,6 +33,10 @@ impl From<&Error> for ErrorResponse {
 ///
 /// The returned string is JSON-encoded `ErrorResponse` for structured error handling
 /// in the frontend. Falls back to plain error message if serialization fails.
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "consumed from .map_err(map_err) closures"
+)]
 pub fn map_err(e: Error) -> String {
     let kind = e.kind();
     let is_retryable = e.is_retryable();
@@ -48,7 +52,7 @@ pub fn map_err(e: Error) -> String {
 }
 
 /// Get the error kind from an error, useful for testing.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "utility function for testing")]
 pub fn error_kind(e: &Error) -> ErrorKind {
     e.kind()
 }

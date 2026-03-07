@@ -290,6 +290,7 @@ pub struct CacheStats {
 }
 
 /// Cache manager for handling all caching operations.
+#[derive(Debug)]
 pub struct CacheManager {
     /// Cache configuration.
     config: CacheConfig,
@@ -437,6 +438,11 @@ impl CacheManager {
             }
         }
 
+        #[allow(
+            clippy::cast_precision_loss,
+            clippy::float_arithmetic,
+            reason = "percentage calculation for display"
+        )]
         let usage_percentage = if self.config.max_size_bytes > 0 {
             self.manifest.total_size_bytes as f64 / self.config.max_size_bytes as f64
         } else {
@@ -777,7 +783,13 @@ impl CacheManager {
         }
 
         self.save_manifest()?;
-        stats.duration_ms = start.elapsed().as_millis() as u64;
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "duration in ms won't exceed u64"
+        )]
+        {
+            stats.duration_ms = start.elapsed().as_millis() as u64;
+        };
 
         info!(
             "Cleaned up temp files: {} entries, {} bytes freed",
@@ -811,6 +823,13 @@ impl CacheManager {
         }
 
         // Need to free up space
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss,
+            clippy::float_arithmetic,
+            reason = "percentage-based size calculation"
+        )]
         let target_size = (self.config.max_size_bytes as f64 * self.config.cleanup_target) as u64;
         self.cleanup_to_target(target_size)?;
 
@@ -886,7 +905,13 @@ impl CacheManager {
             .unwrap_or(0);
 
         self.save_manifest()?;
-        stats.duration_ms = start.elapsed().as_millis() as u64;
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "duration in ms won't exceed u64"
+        )]
+        {
+            stats.duration_ms = start.elapsed().as_millis() as u64;
+        };
 
         Ok(stats)
     }
@@ -903,10 +928,24 @@ impl CacheManager {
         }
 
         let start = std::time::Instant::now();
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss,
+            clippy::float_arithmetic,
+            reason = "percentage-based size calculation"
+        )]
         let threshold_size =
             (self.config.max_size_bytes as f64 * self.config.cleanup_threshold) as u64;
 
         let mut stats = if self.manifest.total_size_bytes > threshold_size {
+            #[allow(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                clippy::cast_precision_loss,
+                clippy::float_arithmetic,
+                reason = "percentage-based size calculation"
+            )]
             let target_size =
                 (self.config.max_size_bytes as f64 * self.config.cleanup_target) as u64;
             self.cleanup_to_target(target_size)?
@@ -920,7 +959,13 @@ impl CacheManager {
         stats.entries_removed += orphan_stats.entries_removed;
         stats.bytes_freed += orphan_stats.bytes_freed;
 
-        stats.duration_ms = start.elapsed().as_millis() as u64;
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "duration in ms won't exceed u64"
+        )]
+        {
+            stats.duration_ms = start.elapsed().as_millis() as u64;
+        };
 
         info!(
             "Cache cleanup complete: {} entries removed, {} bytes freed in {}ms",
@@ -1043,6 +1088,10 @@ impl CacheManager {
     /// Update the cache configuration.
     ///
     /// Note: Changes to `custom_cache_dir` require creating a new `CacheManager`.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "takes ownership to replace internal config"
+    )]
     pub fn update_config(&mut self, config: CacheConfig) -> Result<()> {
         // Don't allow changing the cache directory through update
         let config = CacheConfig {
@@ -1064,7 +1113,11 @@ pub fn default_cache_directory() -> PathBuf {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

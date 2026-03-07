@@ -32,6 +32,10 @@ use crate::device::{DeviceDetector, DeviceInfo};
 use crate::error::{DeviceError, Error, FileSystemError, Result};
 
 /// Configuration options for device cleanup operations.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "configuration struct with independent boolean flags"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CleanupOptions {
     /// Whether to skip hidden files (files starting with '.').
@@ -228,6 +232,10 @@ impl DeviceCleanupHandler {
     }
 
     /// Verify that the device is accessible and writable.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for consistency with other DeviceCleanupHandler methods"
+    )]
     fn verify_device_writable(&self, mount_point: &Path) -> Result<()> {
         if !mount_point.exists() {
             return Err(Error::Device(DeviceError::NotMounted {
@@ -260,7 +268,11 @@ impl DeviceCleanupHandler {
     }
 
     /// Scan the device to collect files that will be deleted.
-    #[allow(clippy::type_complexity, clippy::unnecessary_wraps)]
+    #[allow(
+        clippy::type_complexity,
+        clippy::unnecessary_wraps,
+        reason = "complex return type is intentional; wraps Result for API consistency"
+    )]
     fn scan_for_cleanup(
         &self,
         mount_point: &Path,
@@ -284,7 +296,7 @@ impl DeviceCleanupHandler {
         } else {
             WalkDir::new(mount_point)
                 .min_depth(1)
-                .max_depth(options.max_depth as usize)
+                .max_depth(options.max_depth.unsigned_abs() as usize)
                 .follow_links(false)
         };
 
@@ -346,6 +358,10 @@ impl DeviceCleanupHandler {
     }
 
     /// Delete a single file or directory.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for consistency with other DeviceCleanupHandler methods"
+    )]
     fn delete_entry(&self, entry: &mut CleanupEntry) -> bool {
         let result = if entry.is_directory {
             // For directories, only try to remove if empty
@@ -370,6 +386,10 @@ impl DeviceCleanupHandler {
     }
 
     /// Verify that all marked-deleted files are actually gone.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for consistency with other DeviceCleanupHandler methods"
+    )]
     fn verify_cleanup(&self, entries: &[CleanupEntry]) -> bool {
         for entry in entries {
             if entry.deleted == Some(true) && entry.path.exists() {
@@ -433,7 +453,14 @@ impl DeviceCleanupHandler {
             // Dry run - just report what would be deleted
             let duration_ms = start_time
                 .elapsed()
-                .map(|d| d.as_millis() as u64)
+                .map(|d| {
+                    #[allow(
+                        clippy::cast_possible_truncation,
+                        reason = "duration in ms won't exceed u64"
+                    )]
+                    let ms = d.as_millis() as u64;
+                    ms
+                })
                 .unwrap_or(0);
 
             return Ok(CleanupResult {
@@ -471,15 +498,20 @@ impl DeviceCleanupHandler {
         }
 
         // Verify deletions if enabled
-        let verification_passed = if options.verify_deletions {
-            Some(self.verify_cleanup(&entries))
-        } else {
-            None
-        };
+        let verification_passed = options
+            .verify_deletions
+            .then(|| self.verify_cleanup(&entries));
 
         let duration_ms = start_time
             .elapsed()
-            .map(|d| d.as_millis() as u64)
+            .map(|d| {
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "duration in ms won't exceed u64"
+                )]
+                let ms = d.as_millis() as u64;
+                ms
+            })
             .unwrap_or(0);
 
         let result = CleanupResult {
@@ -544,7 +576,10 @@ impl DeviceCleanupHandler {
     /// Delete only audio files from the device.
     ///
     /// This is useful for refreshing audio content while keeping other files intact.
-    #[allow(clippy::too_many_lines)]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "complex cleanup logic requires many steps"
+    )]
     pub fn cleanup_audio_files_only(
         &self,
         mount_point: &Path,
@@ -579,7 +614,7 @@ impl DeviceCleanupHandler {
         } else {
             WalkDir::new(mount_point)
                 .min_depth(1)
-                .max_depth(options.max_depth as usize)
+                .max_depth(options.max_depth.unsigned_abs() as usize)
                 .follow_links(false)
         };
 
@@ -647,7 +682,14 @@ impl DeviceCleanupHandler {
         if options.dry_run {
             let duration_ms = start_time
                 .elapsed()
-                .map(|d| d.as_millis() as u64)
+                .map(|d| {
+                    #[allow(
+                        clippy::cast_possible_truncation,
+                        reason = "duration in ms won't exceed u64"
+                    )]
+                    let ms = d.as_millis() as u64;
+                    ms
+                })
                 .unwrap_or(0);
 
             return Ok(CleanupResult {
@@ -678,15 +720,20 @@ impl DeviceCleanupHandler {
             }
         }
 
-        let verification_passed = if options.verify_deletions {
-            Some(self.verify_cleanup(&entries))
-        } else {
-            None
-        };
+        let verification_passed = options
+            .verify_deletions
+            .then(|| self.verify_cleanup(&entries));
 
         let duration_ms = start_time
             .elapsed()
-            .map(|d| d.as_millis() as u64)
+            .map(|d| {
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "duration in ms won't exceed u64"
+                )]
+                let ms = d.as_millis() as u64;
+                ms
+            })
             .unwrap_or(0);
 
         Ok(CleanupResult {
@@ -706,7 +753,12 @@ impl DeviceCleanupHandler {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
     use crate::device::MockDeviceDetector;
@@ -1094,7 +1146,7 @@ mod tests {
         let options = CleanupOptions::default();
 
         let result = handler.cleanup_device(Path::new("/nonexistent/path"), &options);
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1103,7 +1155,7 @@ mod tests {
         let options = CleanupOptions::default();
 
         let result = handler.cleanup_audio_files_only(Path::new("/nonexistent/path"), &options);
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]

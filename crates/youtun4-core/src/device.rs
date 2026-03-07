@@ -45,6 +45,11 @@ impl DeviceInfo {
 
     /// Returns the usage percentage (0.0 - 100.0).
     #[must_use]
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::float_arithmetic,
+        reason = "percentage calculation for display"
+    )]
     pub fn usage_percentage(&self) -> f64 {
         if self.total_bytes == 0 {
             return 0.0;
@@ -68,6 +73,7 @@ pub trait DeviceDetector: Send + Sync {
 }
 
 /// Default device manager using `sysinfo`.
+#[derive(Debug)]
 pub struct DeviceManager {
     disks: Disks,
 }
@@ -246,6 +252,7 @@ impl DeviceWatcherHandle {
 ///
 /// Uses a polling approach with configurable interval to detect device changes.
 /// Events are sent through a channel when devices are connected or disconnected.
+#[derive(Debug)]
 pub struct DeviceWatcher {
     /// The device manager used for detection.
     device_manager: Arc<RwLock<DeviceManager>>,
@@ -444,6 +451,7 @@ pub trait DeviceMountHandler: Send + Sync {
 ///
 /// This implementation provides mount/unmount functionality for
 /// macOS, Linux, and Windows platforms.
+#[derive(Debug)]
 pub struct PlatformMountHandler {
     platform: &'static str,
 }
@@ -465,6 +473,10 @@ impl PlatformMountHandler {
         Self { platform }
     }
 
+    #[allow(
+        clippy::unused_self,
+        reason = "method for consistency with other PlatformDeviceOps methods"
+    )]
     fn execute_command(&self, program: &str, args: &[&str]) -> Result<std::process::Output> {
         debug!("Executing command: {} {:?}", program, args);
         Command::new(program)
@@ -474,10 +486,18 @@ impl PlatformMountHandler {
     }
 
     #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[allow(
+        clippy::unused_self,
+        reason = "method for consistency with other PlatformDeviceOps methods"
+    )]
     fn path_is_mount_point(&self, path: &Path) -> bool {
         path.exists() && path.is_dir()
     }
 
+    #[allow(
+        clippy::unused_self,
+        reason = "method for consistency with other PlatformDeviceOps methods"
+    )]
     fn check_write_access(&self, mount_point: &Path) -> bool {
         let test_file = mount_point.join(".youtun4_access_check");
         match std::fs::write(&test_file, "test") {
@@ -500,11 +520,7 @@ impl PlatformMountHandler {
 
             return Ok(MountStatus {
                 is_mounted,
-                mount_point: if is_mounted {
-                    Some(device_path.to_path_buf())
-                } else {
-                    None
-                },
+                mount_point: is_mounted.then(|| device_path.to_path_buf()),
                 is_accessible,
                 is_read_only,
             });
@@ -999,7 +1015,12 @@ impl DeviceMountHandler for PlatformMountHandler {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
@@ -1233,7 +1254,7 @@ mod tests {
             is_removable: true,
         };
         let result = check_device_space(&device, 100_000);
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
@@ -1266,7 +1287,7 @@ mod tests {
         };
         // Exactly enough space should be OK
         let result = check_device_space(&device, 100_000);
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
@@ -1281,7 +1302,7 @@ mod tests {
         };
         // Zero required should always succeed
         let result = check_device_space(&device, 0);
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
@@ -1335,7 +1356,7 @@ mod tests {
         };
 
         let result = verify_device_accessible(&mock, &device);
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
@@ -1393,14 +1414,14 @@ mod tests {
         let manager = DeviceManager::new();
         // Just verify it can be created without panicking
         let result = manager.list_devices();
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
     fn test_device_manager_default() {
         let manager = DeviceManager::default();
         let result = manager.list_devices();
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
@@ -1409,7 +1430,7 @@ mod tests {
         // refresh() should not panic
         manager.refresh();
         let result = manager.list_devices();
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
@@ -1521,7 +1542,7 @@ mod tests {
             });
 
         let result = mock.unmount_device(&PathBuf::from("/Volumes/USB"), true);
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
@@ -1537,7 +1558,7 @@ mod tests {
         });
 
         let result = mock.eject_device(&PathBuf::from("/Volumes/USB"));
-        assert!(result.is_ok());
+        result.unwrap();
     }
 
     #[test]
@@ -1722,7 +1743,9 @@ mod tests {
 
         match deserialized {
             DeviceEvent::Connected(d) => assert_eq!(d.name, device.name),
-            _ => panic!("Expected Connected event"),
+            DeviceEvent::Disconnected(_) | DeviceEvent::Refreshed(_) => {
+                panic!("Expected Connected event")
+            }
         }
     }
 
@@ -1771,7 +1794,9 @@ mod tests {
 
         match deserialized {
             DeviceEvent::Refreshed(d) => assert_eq!(d.len(), 2),
-            _ => panic!("Expected Refreshed event"),
+            DeviceEvent::Connected(_) | DeviceEvent::Disconnected(_) => {
+                panic!("Expected Refreshed event")
+            }
         }
     }
 

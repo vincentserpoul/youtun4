@@ -16,7 +16,7 @@
 //! - `integrity`: File integrity verification
 //! - `sync`: Playlist sync operations
 //! - `sync_orchestrator`: Multi-playlist orchestrated sync
-//! - `youtube`: YouTube URL validation and downloads
+//! - `youtube`: `YouTube` URL validation and downloads
 //! - `cache`: Cache management
 //! - `queue`: Download queue management
 

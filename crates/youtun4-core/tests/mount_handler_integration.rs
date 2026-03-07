@@ -3,7 +3,11 @@
 //! These tests verify that the mount handler correctly detects and manages
 //! USB device mount status on the current platform.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test code uses unwrap/expect for brevity"
+)]
 
 use std::path::PathBuf;
 use youtun4_core::device::{DeviceMountHandler, PlatformMountHandler};

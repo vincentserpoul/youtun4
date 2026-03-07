@@ -136,8 +136,8 @@ pub async fn start_orchestrated_sync(
 
         {
             let mut tasks = sync_tasks.write().await;
-            tasks.remove(&task_id);
-        }
+            tasks.remove(&task_id)
+        };
 
         match result {
             Ok(sync_result) => {

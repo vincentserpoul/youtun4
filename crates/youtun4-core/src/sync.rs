@@ -86,6 +86,10 @@ impl std::fmt::Display for SyncPhase {
 // =============================================================================
 
 /// Configuration options for the sync operation.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "these are independent configuration flags, not a state machine"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncOptions {
     /// Whether to perform device cleanup before transfer.
@@ -325,14 +329,21 @@ impl SyncProgress {
         let cleanup_weight = 0.1;
         let transfer_weight = 0.9;
 
-        let playlist_progress = self.phase_progress_percent / 100.0;
-        let playlists_done = (self.current_playlist_index - 1) as f64;
-        let total = self.total_playlists as f64;
+        #[allow(
+            clippy::float_arithmetic,
+            clippy::cast_precision_loss,
+            reason = "progress calculation requires floating-point math; precision loss is acceptable for progress percentages"
+        )]
+        {
+            let playlist_progress = self.phase_progress_percent / 100.0;
+            let playlists_done = (self.current_playlist_index - 1) as f64;
+            let total = self.total_playlists as f64;
 
-        self.overall_progress_percent = cleanup_weight * 100.0
-            + transfer_weight
-                * ((playlists_done + playlist_progress * playlist_weight) / total)
-                * 100.0;
+            self.overall_progress_percent = cleanup_weight * 100.0
+                + transfer_weight
+                    * ((playlists_done + playlist_progress * playlist_weight) / total)
+                    * 100.0;
+        }
     }
 
     /// Mark as completed.
@@ -447,11 +458,17 @@ impl SyncResult {
     /// Finalize the result.
     fn finalize(&mut self, duration_secs: f64) {
         self.duration_secs = duration_secs;
-        self.average_speed_bps = if duration_secs > 0.0 {
+        #[allow(
+            clippy::cast_precision_loss,
+            clippy::float_arithmetic,
+            reason = "precision loss acceptable for speed calculation"
+        )]
+        let speed = if duration_secs > 0.0 {
             self.total_bytes_transferred as f64 / duration_secs
         } else {
             0.0
         };
+        self.average_speed_bps = speed;
 
         self.success =
             self.total_files_failed == 0 && !self.was_cancelled && self.error_message.is_none();
@@ -463,6 +480,10 @@ impl SyncResult {
 
     /// Get a summary of the sync result.
     #[must_use]
+    #[allow(
+        clippy::float_arithmetic,
+        reason = "unit conversion for display formatting"
+    )]
     pub fn summary(&self) -> String {
         if self.was_cancelled {
             format!(
@@ -472,13 +493,14 @@ impl SyncResult {
         } else if let Some(ref error) = self.error_message {
             format!("Sync failed: {error}")
         } else {
+            let speed_mbps = self.average_speed_bps / (1024.0 * 1024.0);
             format!(
                 "Sync completed: {} files transferred, {} skipped, {} failed in {:.2}s ({:.2} MB/s)",
                 self.total_files_transferred,
                 self.total_files_skipped,
                 self.total_files_failed,
                 self.duration_secs,
-                self.average_speed_bps / (1024.0 * 1024.0)
+                speed_mbps
             )
         }
     }
@@ -496,6 +518,7 @@ impl SyncResult {
 /// 3. Transfer selected playlists to the device
 ///
 /// It provides progress tracking, cancellation support, and error handling.
+#[derive(Debug)]
 pub struct SyncOrchestrator {
     /// Cancellation flag.
     cancelled: Arc<AtomicBool>,
@@ -558,7 +581,14 @@ impl SyncOrchestrator {
     /// # Errors
     ///
     /// Returns an error if the sync fails due to device issues, permission errors, etc.
-    #[allow(clippy::too_many_lines)]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "sync orchestration is inherently sequential and splitting would reduce readability"
+    )]
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "SyncRequest and Option<F> are consumed by the sync operation"
+    )]
     pub fn sync<D, F>(
         &self,
         playlist_manager: &PlaylistManager,
@@ -790,7 +820,10 @@ impl SyncOrchestrator {
     }
 
     /// Run Phase 3: Transfer playlists.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "transfer phase needs access to all orchestration state"
+    )]
     fn run_transfer_phase<D, F>(
         &self,
         playlist_manager: &PlaylistManager,
@@ -849,7 +882,10 @@ impl SyncOrchestrator {
     }
 
     /// Transfer a single playlist to the device.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "single playlist transfer needs access to all orchestration state"
+    )]
     fn transfer_single_playlist<F>(
         &self,
         transfer_engine: &mut TransferEngine,
@@ -876,6 +912,11 @@ impl SyncOrchestrator {
         Self::emit_progress(callback, progress);
 
         let playlist_path = playlist_manager.get_playlist_path(playlist_name)?;
+        #[allow(
+            clippy::float_arithmetic,
+            clippy::cast_precision_loss,
+            reason = "progress weight calculation; precision loss acceptable"
+        )]
         let playlist_weight = if total_playlists > 0 {
             1.0 / total_playlists as f64
         } else {
@@ -906,6 +947,10 @@ impl SyncOrchestrator {
     }
 
     /// Handle successful playlist transfer.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for API consistency with other handler methods"
+    )]
     fn handle_transfer_success<F>(
         &self,
         playlist_name: &str,
@@ -958,6 +1003,10 @@ impl SyncOrchestrator {
     }
 
     /// Handle transfer error for a playlist.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for API consistency with other handler methods"
+    )]
     fn handle_transfer_error<F>(
         &self,
         playlist_name: &str,
@@ -989,6 +1038,10 @@ impl SyncOrchestrator {
     }
 
     /// Verify that the device is connected and accessible.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for API consistency with other orchestrator methods"
+    )]
     fn verify_device<D: DeviceDetector>(&self, detector: &D, mount_point: &Path) -> Result<()> {
         if !detector.is_device_connected(mount_point) {
             return Err(Error::Device(DeviceError::Disconnected {
@@ -1013,6 +1066,10 @@ impl SyncOrchestrator {
     }
 
     /// Verify the device has enough space.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for API consistency with other orchestrator methods"
+    )]
     fn verify_device_space(&self, mount_point: &Path, required_bytes: u64) -> Result<()> {
         // Use sysinfo to check available space
         use sysinfo::Disks;
@@ -1043,6 +1100,10 @@ impl SyncOrchestrator {
     }
 
     /// Calculate total bytes to transfer for all playlists.
+    #[allow(
+        clippy::unused_self,
+        reason = "method for API consistency with other orchestrator methods"
+    )]
     fn calculate_total_bytes(
         &self,
         playlist_manager: &PlaylistManager,
@@ -1087,7 +1148,12 @@ impl SyncOrchestrator {
 // =============================================================================
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::float_cmp,
+    reason = "test code uses unwrap/expect for brevity and exact float comparisons for known values"
+)]
 mod tests {
     use super::*;
     use crate::device::DeviceInfo;
@@ -1263,7 +1329,7 @@ mod tests {
             None::<fn(&SyncProgress)>,
         );
 
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]
@@ -1771,7 +1837,7 @@ mod tests {
         );
 
         // Should fail because playlist doesn't exist
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     // -------------------------------------------------------------------------

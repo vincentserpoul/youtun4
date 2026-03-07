@@ -221,7 +221,12 @@ where
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::default_trait_access)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::default_trait_access,
+    reason = "acceptable in tests"
+)]
 mod tests {
     use super::*;
     use std::fs;
@@ -305,7 +310,7 @@ mod tests {
     #[test]
     fn test_extract_metadata_file_not_found() {
         let result = extract_metadata(Path::new("/nonexistent/file.mp3"));
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[test]

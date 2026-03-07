@@ -95,7 +95,9 @@ pub fn TransferProgressPanel(
             TransferPanelState::Failed(_) => classes.push("failed"),
             TransferPanelState::Cancelled => classes.push("cancelled"),
             TransferPanelState::Verifying => classes.push("verifying"),
-            _ => {}
+            TransferPanelState::Idle
+            | TransferPanelState::Preparing
+            | TransferPanelState::Transferring => {}
         }
         classes.join(" ")
     };
@@ -169,17 +171,13 @@ pub fn TransferProgressPanel(
                     </div>
                     {move || {
                         if let Some(p) = progress.get() {
-                            if is_active() {
-                                Some(view! {
+                            is_active().then(|| view! {
                                     <div class="transfer-status-subtitle" data-testid="transfer-status-subtitle">
                                         <span class="file-counter">
                                             {format!("{} of {} files", p.current_file_index, p.total_files)}
                                         </span>
                                     </div>
                                 })
-                            } else {
-                                None
-                            }
                         } else {
                             None
                         }
@@ -241,8 +239,7 @@ pub fn TransferProgressPanel(
                             // Current file progress bar
                             {move || {
                                 let p = progress.get()?;
-                                if p.current_file_total > 0 {
-                                    Some(view! {
+                                (p.current_file_total > 0).then(|| view! {
                                         <div class="transfer-file-progress-container">
                                             <div class="transfer-file-progress-bar" data-testid="transfer-file-progress-bar">
                                                 <div
@@ -258,9 +255,6 @@ pub fn TransferProgressPanel(
                                             </div>
                                         </div>
                                     })
-                                } else {
-                                    None
-                                }
                             }}
 
                             // Overall progress bar
@@ -298,8 +292,7 @@ pub fn TransferProgressPanel(
                                 // ETA
                                 {move || {
                                     progress.get().and_then(|p| {
-                                        if p.estimated_remaining_secs.is_some() {
-                                            Some(view! {
+                                        p.estimated_remaining_secs.is_some().then(|| view! {
                                                 <div class="transfer-stat">
                                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                                                         <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
@@ -307,9 +300,6 @@ pub fn TransferProgressPanel(
                                                     <span class="stat-value" data-testid="transfer-eta">{p.formatted_remaining_time()}</span>
                                                 </div>
                                             })
-                                        } else {
-                                            None
-                                        }
                                     })
                                 }}
 
@@ -424,6 +414,14 @@ pub fn TransferProgressIndicator(
 }
 
 /// Format bytes as a human-readable string.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss is acceptable for display formatting"
+)]
+#[allow(
+    clippy::float_arithmetic,
+    reason = "float arithmetic needed for byte unit conversion"
+)]
 fn format_bytes(bytes: u64) -> String {
     if bytes >= 1_000_000_000 {
         format!("{:.2} GB", bytes as f64 / 1_000_000_000.0)
@@ -437,6 +435,22 @@ fn format_bytes(bytes: u64) -> String {
 }
 
 /// Format elapsed time as a human-readable string.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss is acceptable for display formatting"
+)]
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "truncation is acceptable for time display"
+)]
+#[allow(
+    clippy::cast_sign_loss,
+    reason = "elapsed time values are always non-negative"
+)]
+#[allow(
+    clippy::float_arithmetic,
+    reason = "float arithmetic needed for time conversion"
+)]
 fn format_elapsed(secs: f64) -> String {
     if secs >= 3600.0 {
         let hours = (secs / 3600.0).floor();

@@ -1,6 +1,11 @@
 //! Tests for `YouTube` playlist parsing.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "test code uses unwrap/expect/panic for brevity"
+)]
 
 use youtun4_core::{RustyYtdlDownloader, YouTubeDownloader};
 

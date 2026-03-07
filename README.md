@@ -57,7 +57,7 @@ youtun4/
 
 ### Prerequisites
 
-- Rust stable (1.93+)
+- Rust stable (1.94+)
 - Tauri CLI: `cargo install tauri-cli`
 - Trunk (for WASM builds): `cargo install trunk`
 - WASM target: `rustup target add wasm32-unknown-unknown`

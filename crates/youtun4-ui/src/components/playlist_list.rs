@@ -77,6 +77,14 @@ fn PlaylistSummary(
 }
 
 /// Format bytes to human-readable string.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss is acceptable for display formatting"
+)]
+#[allow(
+    clippy::float_arithmetic,
+    reason = "float arithmetic needed for byte unit conversion"
+)]
 fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -191,11 +199,7 @@ pub fn PlaylistList(
 
                         view! {
                             <div class="playlist-list-content">
-                                {if show_summary {
-                                    Some(view! { <PlaylistSummary count=count total_bytes=total_bytes /> })
-                                } else {
-                                    None
-                                }}
+                                {show_summary.then(|| view! { <PlaylistSummary count=count total_bytes=total_bytes /> })}
                                 <div class="responsive-grid playlist-grid-container" style=style>
                                     {playlist_list.into_iter().map(|playlist| {
                                         let is_selected = selected_playlist.get()

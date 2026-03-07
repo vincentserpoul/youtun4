@@ -18,6 +18,10 @@ use tracing_subscriber::{
 };
 
 /// Logging configuration options.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "logging configuration has independent boolean flags"
+)]
 #[derive(Debug, Clone)]
 pub struct LoggingConfig {
     /// Directory where log files are stored.
@@ -158,6 +162,7 @@ impl LoggingConfig {
 }
 
 /// Guard that keeps file logging active. Drop this to flush and close log files.
+#[derive(Debug)]
 pub struct LoggingGuard {
     _file_guard: tracing_appender::non_blocking::WorkerGuard,
 }
@@ -198,8 +203,11 @@ pub fn init(config: &LoggingConfig) -> Result<LoggingGuard, LoggingError> {
     // Build environment filter for console
     // Allows overriding via RUST_LOG environment variable
     // Default: INFO for dependencies, DEBUG for our crates only
-    // SAFETY: These are compile-time constant strings that always parse successfully
-    #[allow(clippy::unwrap_used)]
+    // These are compile-time constant strings that always parse successfully
+    #[allow(
+        clippy::unwrap_used,
+        reason = "compile-time constant directive strings always parse successfully"
+    )]
     let console_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         EnvFilter::new("warn")
             .add_directive("youtun4=info".parse().unwrap())
@@ -207,8 +215,11 @@ pub fn init(config: &LoggingConfig) -> Result<LoggingGuard, LoggingError> {
     });
 
     // Build environment filter for file (more verbose)
-    // SAFETY: These are compile-time constant strings that always parse successfully
-    #[allow(clippy::unwrap_used)]
+    // These are compile-time constant strings that always parse successfully
+    #[allow(
+        clippy::unwrap_used,
+        reason = "compile-time constant directive strings always parse successfully"
+    )]
     let file_filter = EnvFilter::new(level_to_directive(config.file_level))
         .add_directive("youtun4=trace".parse().unwrap())
         .add_directive("youtun4_core=trace".parse().unwrap());

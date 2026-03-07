@@ -7,7 +7,12 @@
 //!
 //! All tests use temporary directories as fixtures to simulate device behavior.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "test code uses unwrap/expect/panic for brevity"
+)]
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -310,9 +315,9 @@ fn test_delete_playlist_workflow() {
 #[test]
 fn test_playlist_name_validation() {
     // Valid names
-    assert!(validate_playlist_name("My Playlist").is_ok());
-    assert!(validate_playlist_name("Rock-n-Roll 2024").is_ok());
-    assert!(validate_playlist_name("Album (Deluxe Edition)").is_ok());
+    validate_playlist_name("My Playlist").unwrap();
+    validate_playlist_name("Rock-n-Roll 2024").unwrap();
+    validate_playlist_name("Album (Deluxe Edition)").unwrap();
 
     // Invalid names
     assert!(validate_playlist_name("").is_err()); // Empty
@@ -555,7 +560,7 @@ fn test_sync_with_progress_tracking() {
         .expect("Should create");
 
     let progress_updates = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let progress_clone = progress_updates.clone();
+    let progress_clone = std::sync::Arc::clone(&progress_updates);
 
     let options = TransferOptions::fast();
     let result = fixture.playlist_manager.sync_to_device_with_progress(
@@ -682,13 +687,13 @@ fn test_sync_nonexistent_playlist_fails() {
 fn test_transfer_options_validation() {
     // Valid options
     let valid = TransferOptions::default();
-    assert!(valid.validate().is_ok());
+    valid.validate().unwrap();
 
     let fast = TransferOptions::fast();
-    assert!(fast.validate().is_ok());
+    fast.validate().unwrap();
 
     let reliable = TransferOptions::reliable();
-    assert!(reliable.validate().is_ok());
+    reliable.validate().unwrap();
 }
 
 #[test]
@@ -762,7 +767,7 @@ fn test_device_cleanup_audio_only() {
     let handler = DeviceCleanupHandler::new();
     let result =
         handler.cleanup_audio_files_only(fixture.device_path(), &CleanupOptions::default());
-    assert!(result.is_ok());
+    result.unwrap();
 
     // Audio files should be deleted
     assert!(!fixture.device_path().join("song.mp3").exists());
@@ -1083,7 +1088,7 @@ fn test_metadata_extraction_from_non_mp3() {
 #[test]
 fn test_metadata_extraction_from_nonexistent_file() {
     let result = extract_metadata(Path::new("/nonexistent/path/file.mp3"));
-    assert!(result.is_err());
+    result.unwrap_err();
 }
 
 #[test]

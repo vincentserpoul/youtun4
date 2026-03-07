@@ -135,7 +135,7 @@ pub fn DownloadProgressPanel(
             DownloadPanelState::Completed => classes.push("completed"),
             DownloadPanelState::Failed(_) => classes.push("failed"),
             DownloadPanelState::Cancelled => classes.push("cancelled"),
-            _ => {}
+            DownloadPanelState::Idle | DownloadPanelState::Downloading => {}
         }
         classes.join(" ")
     };
@@ -164,7 +164,7 @@ pub fn DownloadProgressPanel(
                     YouTubeErrorCategory::VideoUnavailable => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z", // blocked
                     YouTubeErrorCategory::AgeRestricted => "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z", // shield
                     YouTubeErrorCategory::GeoRestricted => "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z", // location off
-                    _ => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z", // default error
+                    YouTubeErrorCategory::InvalidUrl | YouTubeErrorCategory::AudioExtraction | YouTubeErrorCategory::FileSystem | YouTubeErrorCategory::Cancelled | YouTubeErrorCategory::Unknown => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z", // default error
                 };
                 view! {
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" class="error-icon">
