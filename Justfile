@@ -104,6 +104,20 @@ tree:
 typos:
     typos
 
+# Install zizmor (GitHub Actions security linter) locally via cargo
+zizmor-install:
+    cargo install zizmor --locked
+
+# Run zizmor against all workflow files
+zizmor:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v zizmor >/dev/null 2>&1; then
+        echo "zizmor is not installed. Run 'just zizmor-install' first."
+        exit 1
+    fi
+    zizmor .github/workflows/*.yml
+
 # Format TOML files with taplo
 taplo:
     taplo format
