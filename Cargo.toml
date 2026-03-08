@@ -14,18 +14,18 @@ repository = "https://github.com/vincentserpoul/youtun4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
-tokio = { version = "1.49", features = ["full"] }
+tokio = { version = "1.50", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
 
 # Tauri framework
-tauri = { version = "2.9.5", features = [] }
-tauri-build = "2.5.3"
-tauri-plugin-opener = "2.2"
+tauri = { version = "2.10.3", features = [] }
+tauri-build = "2.5.6"
+tauri-plugin-opener = "2.5"
 
 # Leptos UI framework
-leptos = { version = "0.8.15", features = ["csr"] }
+leptos = { version = "0.8.17", features = ["csr"] }
 
 # Device detection
 sysinfo = "0.38"
@@ -37,7 +37,7 @@ regex = "1.12"
 
 # File handling
 walkdir = "2.5"
-tempfile = "3.24"
+tempfile = "3.26"
 dirs = "6.0"
 sha2 = "0.10"
 filetime = "0.2"
