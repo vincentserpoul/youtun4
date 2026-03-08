@@ -105,8 +105,8 @@ pub fn Layout(
                         }}
                     </svg>
                 </button>
-                <div class="logo">
-                    <span class="logo-text">"Youtun4"</span>
+                <div class="logo" data-tauri-drag-region="true">
+                    <span class="logo-text" data-tauri-drag-region="true">"Youtun4"</span>
                 </div>
                 // Header actions (settings button)
                 <div class="layout-header-actions">
