@@ -14,6 +14,14 @@ fmt-check:
 clippy:
     cargo clippy --workspace --all-targets -- -D warnings
 
+# Run the same clippy command used in GitHub Actions CI
+clippy-ci:
+    cargo clippy --all-targets --all-features -- -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -W clippy::cognitive_complexity
+
+# Run CI clippy in a Linux container for true Ubuntu parity on macOS
+clippy-ci-linux:
+    docker run --rm -t -v "$PWD":/work -w /work rust:1.94-bookworm bash -lc "apt-get update && apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev && rustup target add wasm32-unknown-unknown && cargo clippy --all-targets --all-features -- -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -W clippy::cognitive_complexity"
+
 # Run clippy and auto-fix where possible
 clippy-fix:
     cargo clippy --workspace --all-targets --fix --allow-dirty --allow-staged -- -D warnings
@@ -77,6 +85,9 @@ clean:
 
 # Run the full CI-style check suite
 ci: fmt-check clippy test doc-check deny audit machete
+
+# Quick pre-push checks with CI-equivalent clippy flags
+ci-local: check clippy-ci test
 
 # Check, lint, and test (quick local iteration)
 dev: check clippy test

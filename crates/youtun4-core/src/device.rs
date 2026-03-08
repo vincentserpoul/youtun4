@@ -674,11 +674,7 @@ impl PlatformMountHandler {
 
             return Ok(MountStatus {
                 is_mounted,
-                mount_point: if is_mounted {
-                    Some(device_path.to_path_buf())
-                } else {
-                    None
-                },
+                mount_point: is_mounted.then(|| device_path.to_path_buf()),
                 is_accessible,
                 is_read_only,
             });
@@ -689,8 +685,10 @@ impl PlatformMountHandler {
 
         for line in mounts.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 2 && parts[0] == path_str {
-                let mount_point = PathBuf::from(parts[1]);
+            if let (Some(device_col), Some(mount_col)) = (parts.get(0), parts.get(1))
+                && *device_col == path_str
+            {
+                let mount_point = PathBuf::from(*mount_col);
                 let is_accessible = mount_point.read_dir().is_ok();
                 let is_read_only = parts.get(3).is_some_and(|opts| opts.contains("ro"));
                 return Ok(MountStatus {
