@@ -685,7 +685,7 @@ impl PlatformMountHandler {
 
         for line in mounts.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if let (Some(device_col), Some(mount_col)) = (parts.get(0), parts.get(1))
+            if let (Some(device_col), Some(mount_col)) = (parts.first(), parts.get(1))
                 && *device_col == path_str
             {
                 let mount_point = PathBuf::from(*mount_col);
