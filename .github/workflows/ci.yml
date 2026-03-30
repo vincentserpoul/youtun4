@@ -31,10 +31,10 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" \
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" \
             --profile minimal \
             --component rustfmt
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -62,16 +62,16 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" \
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" \
             --profile minimal \
             --component clippy
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
       - name: Run Clippy
         run: |
@@ -111,14 +111,14 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
       - name: Build workspace
         run: cargo build --all-targets
@@ -151,14 +151,14 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin --locked
@@ -174,7 +174,7 @@ jobs:
             --timeout 300
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2
         with:
           files: coverage/cobertura.xml
           fail_ci_if_error: false
@@ -194,8 +194,8 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
@@ -204,7 +204,7 @@ jobs:
         run: cargo install trunk --locked
 
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
       - name: Build frontend
         run: trunk build --release
@@ -232,14 +232,14 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
       - name: Build documentation
         run: cargo doc --workspace --no-deps --document-private-items
@@ -276,7 +276,7 @@ jobs:
         run: rustup target add wasm32-unknown-unknown
 
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
       - name: Check MSRV
         run: cargo check --workspace

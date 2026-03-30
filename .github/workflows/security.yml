@@ -36,8 +36,8 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
@@ -58,8 +58,8 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Install cargo-deny
         run: cargo install cargo-deny --locked
@@ -89,8 +89,8 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Install cargo-geiger
         run: cargo install cargo-geiger --locked
@@ -129,8 +129,8 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Install cargo-outdated
         run: cargo install cargo-outdated --locked
@@ -162,10 +162,10 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup toolchain install "${RUST_TOOLCHAIN}" \
+          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" \
             --profile minimal \
             --component clippy
-          rustup default "${RUST_TOOLCHAIN}"
+          rustup default "${{ env.RUST_TOOLCHAIN }}"
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
