@@ -37,7 +37,7 @@ regex = "1.12"
 
 # File handling
 walkdir = "2.5"
-tempfile = "3.26"
+tempfile = "3.27"
 dirs = "6.0"
 sha2 = "0.10"
 filetime = "0.2"
