@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "tauri-docs": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://tauri-docs.mastra.cloud/api/mcp/tauri-docs/mcp"]
+    },
+    "tauri-mcp": {
+      "command": "npx",
+      "args": ["-y", "@hypothesi/tauri-mcp-server"]
+    }
+  }
+}
