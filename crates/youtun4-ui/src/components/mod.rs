@@ -2,6 +2,7 @@
 
 pub mod button;
 pub mod confirm_dialog;
+pub mod connected_devices_bar;
 pub mod create_playlist_dialog;
 pub mod device_list;
 pub mod device_status_indicator;
@@ -15,6 +16,7 @@ pub mod playlist_card;
 pub mod playlist_detail;
 pub mod playlist_list;
 pub mod playlist_selection;
+pub mod playlist_table;
 pub mod settings_panel;
 pub mod sync_button;
 pub mod toast;
@@ -23,6 +25,7 @@ pub mod transfer_progress_panel;
 
 pub use button::Button;
 pub use confirm_dialog::{ConfirmDialog, DeletePlaylistDialog};
+pub use connected_devices_bar::ConnectedDevicesBar;
 pub use create_playlist_dialog::CreatePlaylistDialog;
 pub use device_list::DeviceList;
 pub use device_status_indicator::{
@@ -52,6 +55,7 @@ pub use playlist_list::{PlaylistList, PlaylistListState};
 pub use playlist_selection::{
     PlaylistSelectionCard, PlaylistSelectionList, PlaylistSelectionState, PlaylistSelectionSummary,
 };
+pub use playlist_table::PlaylistTable;
 pub use settings_panel::SettingsPanel;
 pub use sync_button::SyncButton;
 pub use toast::{NotificationContext, NotificationProvider, ToastContainer, use_notifications};

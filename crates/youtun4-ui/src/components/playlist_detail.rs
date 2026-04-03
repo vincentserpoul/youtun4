@@ -559,21 +559,23 @@ pub fn PlaylistDetailView(
                 PlaylistDetailState::Loaded => {
                     if let Some(pl) = playlist.get() {
                         view! {
-                            <PlaylistDetailHeader
-                                playlist=pl
-                                total_duration_secs=total_duration_secs
-                                on_back=on_back
-                                on_sync=on_sync
-                                on_delete=on_delete
-                            />
-                            <div class="playlist-detail-content">
-                                <h3 class="tracks-section-title">"Tracks"</h3>
-                                <p class="tracks-section-hint">"Click on a track to view detailed information"</p>
-                                <TrackList
-                                    tracks=tracks
-                                    state=track_list_state.get()
-                                    on_track_click=on_track_click
+                            <div class="playlist-detail-panel">
+                                <PlaylistDetailHeader
+                                    playlist=pl
+                                    total_duration_secs=total_duration_secs
+                                    on_back=on_back
+                                    on_sync=on_sync
+                                    on_delete=on_delete
                                 />
+                                <div class="playlist-detail-tracks">
+                                    <h3 class="tracks-section-title">"Tracks"</h3>
+                                    <p class="tracks-section-hint">"Click on a track to view detailed information"</p>
+                                    <TrackList
+                                        tracks=tracks
+                                        state=track_list_state.get()
+                                        on_track_click=on_track_click
+                                    />
+                                </div>
                             </div>
                         }.into_any()
                     } else {

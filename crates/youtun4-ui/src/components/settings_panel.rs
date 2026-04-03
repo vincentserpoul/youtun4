@@ -20,7 +20,6 @@ pub fn SettingsPanel(
     let (default_dir, set_default_dir) = signal::<String>(String::new());
     let (download_quality, set_download_quality) =
         signal::<DownloadQuality>(DownloadQuality::Medium);
-    let (theme, set_theme) = signal::<Theme>(Theme::Dark);
     let (notif_download, set_notif_download) = signal(true);
     let (notif_sync, set_notif_sync) = signal(true);
     let (notif_errors, set_notif_errors) = signal(true);
@@ -45,7 +44,6 @@ pub fn SettingsPanel(
                     Ok(config) => {
                         set_storage_dir.set(config.playlists_directory);
                         set_download_quality.set(config.download_quality);
-                        set_theme.set(config.theme);
                         set_notif_download.set(config.notification_preferences.download_complete);
                         set_notif_sync.set(config.notification_preferences.sync_complete);
                         set_notif_errors.set(config.notification_preferences.errors);
@@ -76,7 +74,6 @@ pub fn SettingsPanel(
     let on_save = move |_| {
         let new_dir = storage_dir.get();
         let new_quality = download_quality.get();
-        let new_theme = theme.get();
         let notif_prefs = NotificationPreferences {
             download_complete: notif_download.get(),
             sync_complete: notif_sync.get(),
@@ -92,7 +89,7 @@ pub fn SettingsPanel(
             let config = AppConfig {
                 playlists_directory: new_dir,
                 download_quality: new_quality,
-                theme: new_theme,
+                theme: Theme::Dark,
                 notification_preferences: notif_prefs,
             };
 
@@ -116,7 +113,6 @@ pub fn SettingsPanel(
         let default = default_dir.get();
         set_storage_dir.set(default);
         set_download_quality.set(DownloadQuality::Medium);
-        set_theme.set(Theme::Dark);
         set_notif_download.set(true);
         set_notif_sync.set(true);
         set_notif_errors.set(true);
@@ -166,16 +162,6 @@ pub fn SettingsPanel(
                             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                         </svg>
                         "Downloads"
-                    </button>
-                    <button
-                        class="settings-tab"
-                        class:active=move || active_tab.get() == "appearance"
-                        on:click=move |_| set_active_tab.set("appearance")
-                    >
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                            <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                        </svg>
-                        "Appearance"
                     </button>
                     <button
                         class="settings-tab"
@@ -289,66 +275,6 @@ pub fn SettingsPanel(
                                             <span class="settings-radio-description">"320 kbps - Best quality, larger files"</span>
                                         </span>
                                     </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    // Appearance Tab
-                    <div class="settings-tab-content" class:hidden=move || active_tab.get() != "appearance">
-                        <div class="settings-section">
-                            <h3>"Theme"</h3>
-                            <p class="settings-description">
-                                "Choose the appearance of the application."
-                            </p>
-
-                            <div class="settings-field">
-                                <div class="settings-theme-options">
-                                    <button
-                                        class="settings-theme-option"
-                                        class:selected=move || theme.get() == Theme::Dark
-                                        on:click=move |_| set_theme.set(Theme::Dark)
-                                        disabled=move || is_loading.get()
-                                    >
-                                        <div class="theme-preview theme-preview-dark">
-                                            <div class="theme-preview-header"></div>
-                                            <div class="theme-preview-content">
-                                                <div class="theme-preview-sidebar"></div>
-                                                <div class="theme-preview-main"></div>
-                                            </div>
-                                        </div>
-                                        <span class="theme-label">"Dark"</span>
-                                    </button>
-                                    <button
-                                        class="settings-theme-option"
-                                        class:selected=move || theme.get() == Theme::Light
-                                        on:click=move |_| set_theme.set(Theme::Light)
-                                        disabled=move || is_loading.get()
-                                    >
-                                        <div class="theme-preview theme-preview-light">
-                                            <div class="theme-preview-header"></div>
-                                            <div class="theme-preview-content">
-                                                <div class="theme-preview-sidebar"></div>
-                                                <div class="theme-preview-main"></div>
-                                            </div>
-                                        </div>
-                                        <span class="theme-label">"Light"</span>
-                                    </button>
-                                    <button
-                                        class="settings-theme-option"
-                                        class:selected=move || theme.get() == Theme::System
-                                        on:click=move |_| set_theme.set(Theme::System)
-                                        disabled=move || is_loading.get()
-                                    >
-                                        <div class="theme-preview theme-preview-system">
-                                            <div class="theme-preview-header"></div>
-                                            <div class="theme-preview-content">
-                                                <div class="theme-preview-sidebar"></div>
-                                                <div class="theme-preview-main"></div>
-                                            </div>
-                                        </div>
-                                        <span class="theme-label">"System"</span>
-                                    </button>
                                 </div>
                             </div>
                         </div>

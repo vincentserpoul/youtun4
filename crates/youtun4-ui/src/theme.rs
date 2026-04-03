@@ -106,12 +106,12 @@ pub mod colors {
 
 /// Typography configuration.
 pub mod typography {
-    /// Font family - Rajdhani for body text (sporty, semi-condensed).
+    /// Font family - Bebas Neue for clean condensed body text.
     pub const FONT_FAMILY: &str =
-        "'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    /// Heading font family - Orbitron for bold futuristic headings.
+        "'Bebas Neue', 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    /// Heading font family - Bebas Neue for headings.
     pub const FONT_FAMILY_HEADING: &str =
-        "'Orbitron', 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif";
+        "'Bebas Neue', 'Orbitron', -apple-system, BlinkMacSystemFont, sans-serif";
 
     /// Font sizes.
     pub mod sizes {

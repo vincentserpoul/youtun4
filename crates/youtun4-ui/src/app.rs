@@ -5,10 +5,10 @@ use leptos::task::spawn_local;
 use wasm_bindgen::prelude::*;
 
 use crate::components::{
-    ContentHeader, CreatePlaylistDialog, DeletePlaylistDialog, DeviceList, DeviceStatusIndicator,
+    ContentHeader, CreatePlaylistDialog, DeletePlaylistDialog, DeviceStatusIndicator,
     DownloadErrorInfo, DownloadPanelState, DownloadProgressPanel, Layout, LayoutMain,
-    LayoutSidebar, LoadingState, NotificationProvider, PlaylistDetailView, PlaylistList,
-    PlaylistListState, PlaylistSelectionList, PlaylistSelectionState, PlaylistSelectionSummary,
+    LayoutSidebar, LoadingState, NotificationProvider, PlaylistDetailView, PlaylistListState,
+    PlaylistSelectionList, PlaylistSelectionState, PlaylistSelectionSummary, PlaylistTable,
     SettingsPanel, SyncButton, TransferPanelState, TransferProgressPanel, use_notifications,
 };
 use crate::tauri_api;
@@ -40,7 +40,7 @@ fn AppContent() -> impl IntoView {
     let notifications = use_notifications();
 
     // State signals
-    let (devices, set_devices) = signal::<Vec<DeviceInfo>>(vec![]);
+    let (_devices, set_devices) = signal::<Vec<DeviceInfo>>(vec![]);
     let (playlists, set_playlists) = signal::<Vec<PlaylistMetadata>>(vec![]);
     let (selected_device, set_selected_device) = signal::<Option<DeviceInfo>>(None);
     let (selected_playlist, set_selected_playlist) = signal::<Option<PlaylistMetadata>>(None);
@@ -49,7 +49,7 @@ fn AppContent() -> impl IntoView {
     let (playlist_error, set_playlist_error) = signal::<Option<String>>(None);
 
     // Device list loading state
-    let (device_list_state, set_device_list_state) = signal(LoadingState::Loading);
+    let (_device_list_state, set_device_list_state) = signal(LoadingState::Loading);
 
     // Delete confirmation dialog state
     let (delete_dialog_open, set_delete_dialog_open) = signal(false);
@@ -153,6 +153,8 @@ fn AppContent() -> impl IntoView {
 
             // Listen for device connected events
             let set_devices_connected = set_devices;
+            let read_selected_device_connected = selected_device;
+            let set_selected_device_connected = set_selected_device;
             if let Err(e) = tauri_api::listen_to_event(
                 tauri_api::device_events::DEVICE_CONNECTED,
                 move |event| {
@@ -167,6 +169,7 @@ fn AppContent() -> impl IntoView {
                             device.mount_point
                         );
                         let device_name = device.name.clone();
+                        let device_for_select = device.clone();
                         // Add the new device to the list
                         set_devices_connected.update(|devices| {
                             // Only add if not already present
@@ -174,6 +177,10 @@ fn AppContent() -> impl IntoView {
                                 devices.push(device);
                             }
                         });
+                        // Auto-select if no device is currently selected
+                        if read_selected_device_connected.get_untracked().is_none() {
+                            set_selected_device_connected.set(Some(device_for_select));
+                        }
                         notifications.success(format!("Device \"{device_name}\" connected"));
                     }
                 },
@@ -224,6 +231,8 @@ fn AppContent() -> impl IntoView {
             // Listen for devices refreshed events (initial device list)
             let set_devices_refreshed = set_devices;
             let set_device_list_state_refreshed = set_device_list_state;
+            let read_selected_device_refreshed = selected_device;
+            let set_selected_device_refreshed = set_selected_device;
             if let Err(e) = tauri_api::listen_to_event(
                 tauri_api::device_events::DEVICES_REFRESHED,
                 move |event| {
@@ -238,6 +247,12 @@ fn AppContent() -> impl IntoView {
                                         "Devices refreshed: {} devices",
                                         devices.len()
                                     );
+                                    // Auto-select first device if none selected
+                                    if read_selected_device_refreshed.get_untracked().is_none()
+                                        && let Some(first) = devices.first()
+                                    {
+                                        set_selected_device_refreshed.set(Some(first.clone()));
+                                    }
                                     set_devices_refreshed.set(devices);
                                     set_device_list_state_refreshed.set(LoadingState::Loaded);
                                 }
@@ -502,29 +517,8 @@ fn AppContent() -> impl IntoView {
     });
 
     // Callbacks
-    let on_device_select = Callback::new(move |device: DeviceInfo| {
-        set_selected_device.set(Some(device));
-    });
-
     let on_device_refresh = Callback::new(move |()| {
         load_devices();
-    });
-
-    let on_device_eject = Callback::new(move |mount_point: String| {
-        leptos::logging::log!("Device ejected: {}", mount_point);
-        // Clear selection if ejected device was selected
-        if selected_device
-            .get()
-            .as_ref()
-            .is_some_and(|d| d.mount_point == mount_point)
-        {
-            set_selected_device.set(None);
-        }
-        // Remove from device list
-        set_devices.update(|devs| {
-            devs.retain(|d| d.mount_point != mount_point);
-        });
-        notifications.success("Device safely ejected. You can now remove it.");
     });
 
     let on_playlist_select = Callback::new(move |playlist: PlaylistMetadata| {
@@ -790,13 +784,6 @@ fn AppContent() -> impl IntoView {
         }
     };
 
-    // Enter selection mode
-    let enter_selection_mode = move |_: web_sys::MouseEvent| {
-        // Clear playlist selection when entering selection mode for a fresh start
-        set_selected_playlist.set(None);
-        set_selection_mode.set(true);
-    };
-
     // Cancel selection mode
     let cancel_selection = move |_: web_sys::MouseEvent| {
         set_selection_mode.set(false);
@@ -862,15 +849,7 @@ fn AppContent() -> impl IntoView {
     view! {
         <Layout on_settings_click=Callback::new(move |()| set_settings_open.set(true))>
             <LayoutSidebar>
-                <DeviceStatusIndicator device=selected_device />
-                <DeviceList
-                    devices=devices
-                    selected_device=selected_device
-                    on_select=on_device_select
-                    on_refresh=on_device_refresh
-                    on_eject=on_device_eject
-                    state=device_list_state
-                />
+                <DeviceStatusIndicator device=selected_device on_refresh=on_device_refresh />
                 <SyncButton
                     selected_device=selected_device
                     selected_playlist=selected_playlist
@@ -889,9 +868,7 @@ fn AppContent() -> impl IntoView {
 
                 // Content switches between management mode, selection mode, and detail view
                 {move || {
-                    // Check if we're viewing a playlist detail
                     if let Some(playlist_name) = detail_view_playlist.get() {
-                        // Detail view: show individual playlist
                         view! {
                             <PlaylistDetailView
                                 playlist_name=playlist_name
@@ -902,7 +879,6 @@ fn AppContent() -> impl IntoView {
                             />
                         }.into_any()
                     } else if selection_mode.get() {
-                        // Selection mode: radio button interface for selecting a playlist to sync
                         let selection_state = match playlist_list_state.get() {
                             PlaylistListState::Loading => PlaylistSelectionState::Loading,
                             PlaylistListState::Loaded => PlaylistSelectionState::Loaded,
@@ -940,31 +916,10 @@ fn AppContent() -> impl IntoView {
                             </div>
                         }.into_any()
                     } else {
-                        // Management mode: standard list view with actions
+                        // Dashboard mode: playlist table
                         view! {
-                            <ContentHeader title="Playlists">
-                                <button
-                                    class="btn btn-secondary"
-                                    on:click=enter_selection_mode
-                                >
-                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                                        <path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>
-                                    </svg>
-                                    "Select for Sync"
-                                </button>
-                                <button
-                                    class="btn btn-primary"
-                                    on:click=move |_| set_create_dialog_open.set(true)
-                                >
-                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                                    </svg>
-                                    "New Playlist"
-                                </button>
-                            </ContentHeader>
-                            <PlaylistList
+                            <PlaylistTable
                                 playlists=playlists
-                                selected_playlist=selected_playlist
                                 selected_device=selected_device
                                 state=playlist_list_state.get()
                                 error_message=playlist_error.get().unwrap_or_default()
@@ -973,8 +928,6 @@ fn AppContent() -> impl IntoView {
                                 on_sync=on_playlist_sync
                                 on_retry=on_playlist_retry
                                 on_create=Callback::new(move |()| set_create_dialog_open.set(true))
-                                min_item_width="300px".to_string()
-                                show_summary=true
                             />
                         }.into_any()
                     }

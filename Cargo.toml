@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/youtun4-core", "crates/youtun4-ui", "src-tauri"]
+exclude = ["tools/icon-gen"]
 
 [workspace.package]
 version = "0.1.0"
@@ -23,6 +24,7 @@ tracing-appender = "0.2"
 tauri = { version = "2.10.3", features = [] }
 tauri-build = "2.5.6"
 tauri-plugin-opener = "2.5"
+tauri-plugin-mcp-bridge = "0.2"
 
 # Leptos UI framework
 leptos = { version = "0.8.17", features = ["csr"] }

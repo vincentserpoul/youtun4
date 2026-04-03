@@ -55,8 +55,16 @@ fn main() {
         }
     };
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+    #[allow(unused_mut, reason = "mut needed when mcp-bridge feature is enabled")]
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+
+    #[cfg(feature = "mcp-bridge")]
+    {
+        builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+        info!("MCP Bridge plugin enabled (localhost:9223)");
+    }
+
+    builder
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Device API commands

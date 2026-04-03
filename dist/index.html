@@ -9,11 +9,11 @@
   <title>Youtun4</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Permanent+Marker&family=Orbitron:wght@500;600;700;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <script type="module">
-import init, * as bindings from '/youtun4-ui-b79b3b4f9398e0dc.js';
-const wasm = await init({ module_or_path: '/youtun4-ui-b79b3b4f9398e0dc_bg.wasm' });
+import init, * as bindings from '/youtun4-ui-eedd7c46daa56b4a.js';
+const wasm = await init({ module_or_path: '/youtun4-ui-eedd7c46daa56b4a_bg.wasm' });
 
 
 window.wasmBindings = bindings;
@@ -67,12 +67,20 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
       to { transform: rotate(360deg); }
     }
   </style>
-<link rel="modulepreload" href="/youtun4-ui-b79b3b4f9398e0dc.js" crossorigin="anonymous" integrity="sha384-RuEbpWHuaGzDPKWp3zOQZISzJ1pv3pdyPy9FRCFSvYtivS7E3LxgkRKScmnYUauc"><link rel="preload" href="/youtun4-ui-b79b3b4f9398e0dc_bg.wasm" crossorigin="anonymous" integrity="sha384-VFBOQURCF9tQZD8iq0/ChoP0tRyHLk5q3D4J3mqnhJbLhiFFC9WlT5qfXBZCsZyn" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/youtun4-ui-eedd7c46daa56b4a.js" crossorigin="anonymous" integrity="sha384-36JFGp01LCyM8nVC+BbCHX9+ai89Cblph5mJrHQfPg+OVz6lhprHW1kUXzIj601o"><link rel="preload" href="/youtun4-ui-eedd7c46daa56b4a_bg.wasm" crossorigin="anonymous" integrity="sha384-6T0AkYGT9XpnYd7a9raY2UYoy9sxb5onzwAKAofMTROUJZsU48p4If2PY367xBcY" as="fetch" type="application/wasm"></head>
 <body>
   <div class="loading" id="loading">
     <div class="loading-spinner"></div>
     <p>Loading Youtun4...</p>
   </div>
+  <script>
+    document.addEventListener('mousemove', function(e) {
+      var x = (e.clientX / window.innerWidth - 0.5) * 2;
+      var y = (e.clientY / window.innerHeight - 0.5) * 2;
+      document.documentElement.style.setProperty('--mouse-x', x);
+      document.documentElement.style.setProperty('--mouse-y', y);
+    });
+  </script>
 <script>"use strict";
 
 (function () {

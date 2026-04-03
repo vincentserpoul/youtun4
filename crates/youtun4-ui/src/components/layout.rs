@@ -25,18 +25,6 @@ impl MobileMenuContext {
     }
 }
 
-/// Context for settings panel open state.
-#[derive(Clone, Copy, Debug)]
-pub struct SettingsContext {
-    /// Whether settings panel is open.
-    pub is_open: ReadSignal<bool>,
-    /// Set settings open state.
-    pub set_open: WriteSignal<bool>,
-}
-
-/// Type alias for header actions function.
-pub type HeaderActionsFn = Box<dyn FnOnce() -> AnyView + Send>;
-
 /// The main layout component that provides the application structure.
 ///
 /// This component creates a responsive layout with:
@@ -82,9 +70,17 @@ pub fn Layout(
     };
 
     view! {
-        <div class="layout">
-            // Header with mobile menu toggle and window drag region
-            <header class="layout-header" data-tauri-drag-region="true">
+        <div class="layout dashboard-layout">
+            // Synthwave background: sun + grid floor + horizon glow
+            <div class="grid-bg" aria-hidden="true">
+                <div class="synthwave-sun"></div>
+                <div class="grid-glow"></div>
+                <div class="grid-floor">
+                    <div class="grid-floor-inner"></div>
+                </div>
+            </div>
+            // Header with logo and action icons
+            <header class="layout-header dashboard-header" data-tauri-drag-region="true">
                 <button
                     class="layout-menu-toggle btn btn-ghost btn-icon"
                     on:click=toggle_menu
@@ -93,12 +89,10 @@ pub fn Layout(
                 >
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                         {move || if mobile_menu_open.get() {
-                            // X icon when menu is open
                             view! {
                                 <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                             }.into_any()
                         } else {
-                            // Hamburger icon when menu is closed
                             view! {
                                 <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                             }.into_any()
@@ -106,17 +100,18 @@ pub fn Layout(
                     </svg>
                 </button>
                 <div class="logo" data-tauri-drag-region="true">
-                    <span class="logo-text" data-tauri-drag-region="true">"Youtun4"</span>
+                    <span class="logo-word" data-tauri-drag-region="true">"YOUTUN"</span>
+                    <span class="logo-number" data-tauri-drag-region="true">"4"</span>
                 </div>
-                // Header actions (settings button)
+                // Header action: settings only
                 <div class="layout-header-actions">
                     {on_settings_click.is_some().then(|| view! {
                         <button
-                            class="btn btn-ghost btn-icon"
+                            class="btn btn-ghost btn-icon header-action-icon"
                             title="Settings"
                             on:click=handle_settings_click
                         >
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                                 <path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94 0 .31.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
                             </svg>
                         </button>
