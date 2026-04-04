@@ -61,7 +61,7 @@ fn main() {
     #[cfg(feature = "mcp-bridge")]
     {
         builder = builder.plugin(tauri_plugin_mcp_bridge::init());
-        info!("MCP Bridge plugin enabled (localhost:9223)")
+        info!("MCP Bridge plugin enabled (localhost:9223)");
     };
 
     builder
