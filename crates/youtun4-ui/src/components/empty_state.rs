@@ -110,9 +110,11 @@ pub fn EmptyState(
     #[prop(default = EmptyStateIcon::Music)]
     icon: EmptyStateIcon,
     /// The main title/heading.
-    title: &'static str,
+    #[prop(into)]
+    title: String,
     /// The descriptive message.
-    message: &'static str,
+    #[prop(into)]
+    message: String,
     /// Optional hint text (displayed in italics).
     #[prop(optional)]
     hint: Option<&'static str>,
@@ -250,7 +252,7 @@ pub fn NoSearchResultsEmptyState(
         <EmptyState
             icon=EmptyStateIcon::Search
             title="No results found"
-            message=Box::leak(message.into_boxed_str())
+            message=message
             hint="Try adjusting your search terms or check for typos."
             size=size
             class="no-search-results-empty"
@@ -324,7 +326,7 @@ pub fn ErrorEmptyState(
         <EmptyState
             icon=EmptyStateIcon::Error
             title="Something went wrong"
-            message=Box::leak(message.into_boxed_str())
+            message=message
             size=size
             class="error-empty-state"
         >
@@ -365,7 +367,7 @@ pub fn EmptyFolderState(
     view! {
         <EmptyState
             icon=EmptyStateIcon::Folder
-            title=Box::leak(title.into_boxed_str())
+            title=title
             message="This folder doesn't contain any files."
             size=size
             class="empty-folder-state"

@@ -214,7 +214,13 @@ where
 {
     paths
         .map(|path| {
-            let metadata = extract_metadata(path).unwrap_or_default();
+            let metadata = match extract_metadata(path) {
+                Ok(m) => m,
+                Err(e) => {
+                    debug!("Failed to extract metadata from {}: {e}", path.display());
+                    Mp3Metadata::default()
+                }
+            };
             (path.to_path_buf(), metadata)
         })
         .collect()

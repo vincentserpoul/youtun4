@@ -5,11 +5,11 @@ use leptos::task::spawn_local;
 use wasm_bindgen::prelude::*;
 
 use crate::components::{
-    ContentHeader, CreatePlaylistDialog, DeletePlaylistDialog, DeviceStatusIndicator,
-    DownloadErrorInfo, DownloadPanelState, DownloadProgressPanel, Layout, LayoutMain,
-    LayoutSidebar, LoadingState, NotificationProvider, PlaylistDetailView, PlaylistListState,
-    PlaylistSelectionList, PlaylistSelectionState, PlaylistSelectionSummary, PlaylistTable,
-    SettingsPanel, SyncButton, TransferPanelState, TransferProgressPanel, use_notifications,
+    ContentHeader, CreatePlaylistDialog, DeletePlaylistDialog, DeviceSelectorPanel,
+    DeviceStatusIndicator, DownloadErrorInfo, DownloadPanelState, DownloadProgressPanel, Layout,
+    LayoutMain, LayoutSidebar, LoadingState, NotificationProvider, PlaylistDetailView,
+    PlaylistListState, PlaylistSelectionList, PlaylistSelectionState, PlaylistSelectionSummary,
+    PlaylistTable, SettingsPanel, TransferPanelState, TransferProgressPanel, use_notifications,
 };
 use crate::tauri_api;
 use crate::theme::generate_css_variables;
@@ -40,7 +40,7 @@ fn AppContent() -> impl IntoView {
     let notifications = use_notifications();
 
     // State signals
-    let (_devices, set_devices) = signal::<Vec<DeviceInfo>>(vec![]);
+    let (devices, set_devices) = signal::<Vec<DeviceInfo>>(vec![]);
     let (playlists, set_playlists) = signal::<Vec<PlaylistMetadata>>(vec![]);
     let (selected_device, set_selected_device) = signal::<Option<DeviceInfo>>(None);
     let (selected_playlist, set_selected_playlist) = signal::<Option<PlaylistMetadata>>(None);
@@ -49,7 +49,10 @@ fn AppContent() -> impl IntoView {
     let (playlist_error, set_playlist_error) = signal::<Option<String>>(None);
 
     // Device list loading state
-    let (_device_list_state, set_device_list_state) = signal(LoadingState::Loading);
+    let (device_list_state, set_device_list_state) = signal(LoadingState::Loading);
+
+    // Device selector panel visibility
+    let (selector_open, set_selector_open) = signal(false);
 
     // Delete confirmation dialog state
     let (delete_dialog_open, set_delete_dialog_open) = signal(false);
@@ -71,7 +74,7 @@ fn AppContent() -> impl IntoView {
     let (detail_view_playlist, set_detail_view_playlist) = signal::<Option<String>>(None);
 
     // Syncing state for the sync button
-    let (syncing, set_syncing) = signal(false);
+    let (_syncing, set_syncing) = signal(false);
 
     // Transfer progress state
     let (transfer_progress, set_transfer_progress) = signal::<Option<TransferProgress>>(None);
@@ -85,6 +88,9 @@ fn AppContent() -> impl IntoView {
 
     // Refresh trigger for detail view (incremented when download completes)
     let (detail_refresh_trigger, set_detail_refresh_trigger) = signal(0u32);
+
+    // Track which playlist is currently being downloaded
+    let (downloading_playlist, set_downloading_playlist) = signal::<Option<String>>(None);
 
     // Function to load devices
     let load_devices = move || {
@@ -462,6 +468,7 @@ fn AppContent() -> impl IntoView {
                 );
                 set_download_panel_state_completed.set(DownloadPanelState::Completed);
                 set_current_download_task_id_completed.set(None);
+                set_downloading_playlist.set(None);
                 notifications.success(format!(
                     "Downloaded {} track{}",
                     result.successful_count,
@@ -493,6 +500,7 @@ fn AppContent() -> impl IntoView {
                 );
                 set_download_panel_state_failed.set(DownloadPanelState::Failed(error_info.clone()));
                 set_current_download_task_id_failed.set(None);
+                set_downloading_playlist.set(None);
                 notifications.error(format!("Download failed: {}", error_info.title));
             })
             .await
@@ -507,6 +515,7 @@ fn AppContent() -> impl IntoView {
                 leptos::logging::log!("Download cancelled by user");
                 set_download_panel_state_cancelled.set(DownloadPanelState::Cancelled);
                 set_current_download_task_id_cancelled.set(None);
+                set_downloading_playlist.set(None);
                 notifications.info("Download cancelled");
             })
             .await
@@ -516,8 +525,39 @@ fn AppContent() -> impl IntoView {
         });
     });
 
+    // Auto-open device selector when no device selected but devices are available
+    Effect::new(move |_| {
+        let device = selected_device.get();
+        let device_list = devices.get();
+        let state = device_list_state.get();
+
+        if state == LoadingState::Loaded {
+            if device.is_none() && !device_list.is_empty() {
+                set_selector_open.set(true);
+            } else if let Some(sel) = device {
+                // Open if selected device is no longer in the list
+                if !device_list.iter().any(|d| d.mount_point == sel.mount_point) {
+                    set_selector_open.set(true);
+                }
+            }
+        }
+    });
+
     // Callbacks
     let on_device_refresh = Callback::new(move |()| {
+        load_devices();
+    });
+
+    let on_device_select = Callback::new(move |device: DeviceInfo| {
+        set_selected_device.set(Some(device));
+        set_selector_open.set(false);
+    });
+
+    let on_select_device_click = Callback::new(move |()| {
+        set_selector_open.update(|v| *v = !*v);
+    });
+
+    let on_device_eject = Callback::new(move |_mount_point: String| {
         load_devices();
     });
 
@@ -677,6 +717,32 @@ fn AppContent() -> impl IntoView {
         });
     });
 
+    // Download playlist callback
+    let on_playlist_download = Callback::new(move |name: String| {
+        if let Some(playlist) = playlists.get().iter().find(|p| p.name == name).cloned() {
+            if let Some(url) = playlist.source_url {
+                let name_for_notification = name.clone();
+                set_downloading_playlist.set(Some(name.clone()));
+                spawn_local(async move {
+                    match tauri_api::download_youtube_to_playlist(&url, &name).await {
+                        Ok(_task_id) => {
+                            leptos::logging::log!("Download started for playlist: {}", name);
+                            notifications
+                                .info(format!("Downloading \"{name_for_notification}\"..."));
+                        }
+                        Err(e) => {
+                            leptos::logging::error!("Failed to start download: {}", e);
+                            notifications.error(format!("Failed to start download: {e}"));
+                            set_downloading_playlist.set(None);
+                        }
+                    }
+                });
+            } else {
+                notifications.warning("No source URL available for this playlist");
+            }
+        }
+    });
+
     // Settings callbacks
     let on_settings_close = Callback::new(move |()| {
         set_settings_open.set(false);
@@ -697,46 +763,6 @@ fn AppContent() -> impl IntoView {
 
     let on_create_dialog_close = Callback::new(move |()| {
         set_create_dialog_open.set(false);
-    });
-
-    // Sync button callback (handles sync with loading state and progress tracking)
-    let on_sync_button = Callback::new(move |name: String| {
-        let selected = selected_device.get();
-        let name_for_notification = name.clone();
-        set_syncing.set(true);
-        set_transfer_panel_state.set(TransferPanelState::Preparing);
-        set_transfer_progress.set(None);
-        spawn_local(async move {
-            if let Some(device) = selected {
-                leptos::logging::log!(
-                    "Starting sync for playlist {} to {}",
-                    name,
-                    device.mount_point
-                );
-                notifications.info(format!(
-                    "Starting transfer of \"{}\" to {}...",
-                    name_for_notification, device.name
-                ));
-                // Use start_sync for async progress tracking
-                match tauri_api::start_sync(&name, &device.mount_point, false, true).await {
-                    Ok(task_id) => {
-                        leptos::logging::log!("Sync started with task ID: {:?}", task_id);
-                        set_current_sync_task_id.set(Some(task_id));
-                        // Progress updates will be handled by event listeners
-                    }
-                    Err(e) => {
-                        leptos::logging::error!("Failed to start sync: {}", e);
-                        notifications.error(format!("Failed to start transfer: {e}"));
-                        set_syncing.set(false);
-                        set_transfer_panel_state.set(TransferPanelState::Failed(e));
-                    }
-                }
-            } else {
-                notifications.warning("Please select a device first");
-                set_syncing.set(false);
-                set_transfer_panel_state.set(TransferPanelState::Idle);
-            }
-        });
     });
 
     // Sync selected playlist callback (used in selection mode)
@@ -849,13 +875,32 @@ fn AppContent() -> impl IntoView {
     view! {
         <Layout on_settings_click=Callback::new(move |()| set_settings_open.set(true))>
             <LayoutSidebar>
-                <DeviceStatusIndicator device=selected_device on_refresh=on_device_refresh />
-                <SyncButton
-                    selected_device=selected_device
-                    selected_playlist=selected_playlist
-                    on_sync=on_sync_button
-                    syncing=syncing
-                />
+                <DeviceStatusIndicator device=selected_device />
+                <div class="device-selector-wrapper">
+                    <div class="panel-header">
+                        <h3 class="panel-title">"SELECT DEVICE"</h3>
+                        <button
+                            class="btn btn-ghost btn-icon header-action-icon"
+                            class:active=move || selector_open.get()
+                            on:click=move |_| on_select_device_click.run(())
+                            title="Toggle device list"
+                            data-testid="select-device-button"
+                        >
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" class="chevron-icon">
+                                <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <DeviceSelectorPanel
+                        devices=devices
+                        selected_device=selected_device
+                        on_select=on_device_select
+                        on_eject=on_device_eject
+                        on_refresh=on_device_refresh
+                        state=device_list_state
+                        open=selector_open
+                    />
+                </div>
             </LayoutSidebar>
             <LayoutMain>
                 // Download Progress Panel (inline in content area)
@@ -869,12 +914,15 @@ fn AppContent() -> impl IntoView {
                 // Content switches between management mode, selection mode, and detail view
                 {move || {
                     if let Some(playlist_name) = detail_view_playlist.get() {
+                        let is_dl = downloading_playlist.get().as_ref().is_some_and(|n| *n == playlist_name);
                         view! {
                             <PlaylistDetailView
                                 playlist_name=playlist_name
                                 on_back=on_detail_back
                                 on_sync=on_detail_sync
+                                on_download=on_playlist_download
                                 on_delete=on_detail_delete
+                                is_downloading=is_dl
                                 refresh_trigger=detail_refresh_trigger.into()
                             />
                         }.into_any()
@@ -926,8 +974,10 @@ fn AppContent() -> impl IntoView {
                                 on_select=on_playlist_select
                                 on_delete=on_playlist_delete_request
                                 on_sync=on_playlist_sync
+                                on_download=on_playlist_download
                                 on_retry=on_playlist_retry
                                 on_create=Callback::new(move |()| set_create_dialog_open.set(true))
+                                downloading_playlist=downloading_playlist
                             />
                         }.into_any()
                     }

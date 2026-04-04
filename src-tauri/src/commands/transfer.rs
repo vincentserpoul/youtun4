@@ -2,11 +2,11 @@
 
 use std::path::PathBuf;
 
-use tauri::{AppHandle, Emitter, State};
-use tracing::{debug, error, info};
+use tauri::{AppHandle, State};
+use tracing::{debug, info};
 use youtun4_core::transfer::{TransferOptions, TransferProgress, TransferResult};
 
-use super::error::map_err;
+use super::error::{emit_or_log, map_err};
 use super::state::AppState;
 
 /// Sync a playlist to a device with progress tracking.
@@ -34,9 +34,7 @@ pub async fn sync_playlist_with_progress(
 
     let app_handle = app.clone();
     let progress_callback = move |progress: &TransferProgress| {
-        if let Err(e) = app_handle.emit("transfer-progress", progress) {
-            error!("Failed to emit transfer-progress event: {}", e);
-        }
+        emit_or_log(&app_handle, "transfer-progress", progress);
     };
 
     let manager = state.playlist_manager.read().await;
@@ -90,9 +88,7 @@ pub async fn transfer_files_to_device(
 
     let app_handle = app;
     let progress_callback = move |progress: &TransferProgress| {
-        if let Err(e) = app_handle.emit("transfer-progress", progress) {
-            error!("Failed to emit transfer-progress event: {}", e);
-        }
+        emit_or_log(&app_handle, "transfer-progress", progress);
     };
 
     let mut engine = youtun4_core::TransferEngine::new();

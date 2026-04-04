@@ -1,9 +1,10 @@
 //! Device watching commands for monitoring USB device connections.
 
-use tauri::{AppHandle, Emitter, State};
-use tracing::{debug, error, info};
+use tauri::{AppHandle, State};
+use tracing::{debug, info};
 use youtun4_core::device::{DeviceEvent, DeviceWatcher};
 
+use super::error::emit_or_log;
 use super::state::AppState;
 
 /// Event names for device events emitted to the frontend.
@@ -53,24 +54,18 @@ pub async fn start_device_watcher(
             match &event {
                 DeviceEvent::Connected(device) => {
                     info!("Emitting device-connected event: {}", device.name);
-                    if let Err(e) = app_handle.emit(device_events::DEVICE_CONNECTED, device) {
-                        error!("Failed to emit device-connected event: {}", e);
-                    }
+                    emit_or_log(&app_handle, device_events::DEVICE_CONNECTED, device);
                 }
                 DeviceEvent::Disconnected(device) => {
                     info!("Emitting device-disconnected event: {}", device.name);
-                    if let Err(e) = app_handle.emit(device_events::DEVICE_DISCONNECTED, device) {
-                        error!("Failed to emit device-disconnected event: {}", e);
-                    }
+                    emit_or_log(&app_handle, device_events::DEVICE_DISCONNECTED, device);
                 }
                 DeviceEvent::Refreshed(devices) => {
                     info!(
                         "Emitting devices-refreshed event: {} devices",
                         devices.len()
                     );
-                    if let Err(e) = app_handle.emit(device_events::DEVICES_REFRESHED, devices) {
-                        error!("Failed to emit devices-refreshed event: {}", e);
-                    }
+                    emit_or_log(&app_handle, device_events::DEVICES_REFRESHED, devices);
                 }
             }
         }

@@ -29,53 +29,27 @@ use std::time::SystemTime;
 
 use crate::error::{Error, FileSystemError, Result};
 
-/// Converts an I/O error for read operations.
-#[allow(
-    clippy::needless_pass_by_value,
-    reason = "consumed from map_err closures"
-)]
-fn read_error(path: &Path, e: io::Error) -> Error {
-    Error::FileSystem(FileSystemError::ReadFailed {
-        path: path.to_path_buf(),
-        reason: e.to_string(),
-    })
+/// Generates a single-path I/O error conversion function.
+///
+/// Each variant follows the same pattern: wrap `io::Error` into the matching
+/// `FileSystemError` variant with the path and stringified reason.
+macro_rules! fs_error_fn {
+    ($(#[$meta:meta])* $fn_name:ident, $variant:ident) => {
+        $(#[$meta])*
+        #[allow(clippy::needless_pass_by_value, reason = "consumed from map_err closures")]
+        fn $fn_name(path: &Path, e: io::Error) -> Error {
+            Error::FileSystem(FileSystemError::$variant {
+                path: path.to_path_buf(),
+                reason: e.to_string(),
+            })
+        }
+    };
 }
 
-/// Converts an I/O error for write operations.
-#[allow(
-    clippy::needless_pass_by_value,
-    reason = "consumed from map_err closures"
-)]
-fn write_error(path: &Path, e: io::Error) -> Error {
-    Error::FileSystem(FileSystemError::WriteFailed {
-        path: path.to_path_buf(),
-        reason: e.to_string(),
-    })
-}
-
-/// Converts an I/O error for directory creation.
-#[allow(
-    clippy::needless_pass_by_value,
-    reason = "consumed from map_err closures"
-)]
-fn create_dir_error(path: &Path, e: io::Error) -> Error {
-    Error::FileSystem(FileSystemError::CreateDirFailed {
-        path: path.to_path_buf(),
-        reason: e.to_string(),
-    })
-}
-
-/// Converts an I/O error for delete operations.
-#[allow(
-    clippy::needless_pass_by_value,
-    reason = "consumed from map_err closures"
-)]
-fn delete_error(path: &Path, e: io::Error) -> Error {
-    Error::FileSystem(FileSystemError::DeleteFailed {
-        path: path.to_path_buf(),
-        reason: e.to_string(),
-    })
-}
+fs_error_fn!(read_error, ReadFailed);
+fs_error_fn!(write_error, WriteFailed);
+fs_error_fn!(create_dir_error, CreateDirFailed);
+fs_error_fn!(delete_error, DeleteFailed);
 
 /// Converts an I/O error for copy operations.
 #[allow(

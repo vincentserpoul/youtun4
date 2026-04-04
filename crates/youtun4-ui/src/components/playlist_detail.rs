@@ -6,31 +6,7 @@ use leptos::task::spawn_local;
 use crate::components::{TrackList, TrackListState};
 use crate::tauri_api;
 use crate::types::{PlaylistMetadata, TrackInfo};
-
-/// Format bytes to human-readable string.
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "precision loss is acceptable for display formatting"
-)]
-#[allow(
-    clippy::float_arithmetic,
-    reason = "float arithmetic needed for byte unit conversion"
-)]
-fn format_bytes(bytes: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = KB * 1024;
-    const GB: u64 = MB * 1024;
-
-    if bytes >= GB {
-        format!("{:.1} GB", bytes as f64 / GB as f64)
-    } else if bytes >= MB {
-        format!("{:.1} MB", bytes as f64 / MB as f64)
-    } else if bytes >= KB {
-        format!("{:.1} KB", bytes as f64 / KB as f64)
-    } else {
-        format!("{bytes} B")
-    }
-}
+use crate::utils::format_bytes;
 
 /// Format Unix timestamp to human-readable date string.
 #[allow(
@@ -74,167 +50,168 @@ fn PlaylistDetailHeader(
     on_back: Callback<()>,
     /// Callback when sync button is clicked.
     on_sync: Callback<String>,
+    /// Callback when download button is clicked.
+    on_download: Callback<String>,
     /// Callback when delete button is clicked.
     on_delete: Callback<String>,
+    /// Whether this playlist is currently being downloaded.
+    #[prop(default = false)]
+    is_downloading: bool,
 ) -> impl IntoView {
     let playlist_name = playlist.name.clone();
     let playlist_name_for_sync = playlist.name.clone();
+    let playlist_name_for_download = playlist.name.clone();
     let playlist_name_for_delete = playlist.name.clone();
     let playlist_name_for_folder = playlist.name.clone();
     let has_source_url = playlist.source_url.is_some();
     let source_url = playlist.source_url.clone();
+    let thumbnail_url = playlist.thumbnail_url.clone();
     let created_at = format_date(playlist.created_at);
     let modified_at = format_date(playlist.modified_at);
     let total_bytes = format_bytes(playlist.total_bytes);
     let track_count = playlist.track_count;
 
+    // Derive status
+    let (status_text, status_class) = if is_downloading {
+        ("DOWNLOADING", "status-badge downloading")
+    } else if track_count > 0 {
+        ("DOWNLOADED", "status-badge downloaded")
+    } else {
+        ("CREATED", "status-badge created")
+    };
+
     view! {
         <div class="playlist-detail-header">
-            <div class="playlist-detail-header-top">
-                <button
-                    class="btn btn-ghost playlist-back-btn"
-                    on:click=move |_| on_back.run(())
-                    aria-label="Go back to playlist list"
-                >
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-                    </svg>
-                    "Back"
-                </button>
-                <div class="playlist-detail-actions">
-                    <button
-                        class="btn btn-secondary"
-                        on:click=move |_| on_sync.run(playlist_name_for_sync.clone())
-                        title="Sync to device"
-                    >
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>
-                        </svg>
-                        "Sync"
-                    </button>
-                    <button
-                        class="btn btn-ghost"
-                        on:click={
-                            let name = playlist_name_for_folder;
-                            move |_| {
-                                let name = name.clone();
-                                spawn_local(async move {
-                                    if let Err(err) = tauri_api::open_playlist_folder(&name).await {
-                                        web_sys::console::error_1(&format!("Failed to open folder: {err}").into());
-                                    }
-                                });
-                            }
-                        }
-                        title="Open folder"
-                    >
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-                        </svg>
-                        "Open Folder"
-                    </button>
-                    <button
-                        class="btn btn-danger"
-                        on:click=move |_| on_delete.run(playlist_name_for_delete.clone())
-                        title="Delete playlist"
-                    >
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                        </svg>
-                        "Delete"
-                    </button>
-                </div>
-            </div>
+            // Back button row
+            <button
+                class="btn btn-ghost playlist-back-btn"
+                on:click=move |_| on_back.run(())
+                aria-label="Go back to playlist list"
+            >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+                "Back"
+            </button>
 
+            // Info section: thumbnail + text
             <div class="playlist-detail-info">
-                <div class="playlist-detail-icon">
-                    <svg viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
-                        <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
-                    </svg>
-                </div>
+                {if let Some(url) = thumbnail_url {
+                    view! {
+                        <div class="playlist-detail-icon">
+                            <img src=url alt="Playlist thumbnail" class="playlist-detail-thumbnail" />
+                        </div>
+                    }.into_any()
+                } else {
+                    view! {
+                        <div class="playlist-detail-icon">
+                            <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+                                <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+                            </svg>
+                        </div>
+                    }.into_any()
+                }}
                 <div class="playlist-detail-text">
-                    <h1 class="playlist-detail-name">{playlist_name}</h1>
+                    <div class="playlist-detail-name-row">
+                        <h1 class="playlist-detail-name">{playlist_name}</h1>
+                        <span class=status_class>{status_text}</span>
+                    </div>
                     <div class="playlist-detail-stats">
-                        <span class="stat-item">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                            </svg>
-                            {track_count} " track" {if track_count == 1 { "" } else { "s" }}
-                        </span>
-                        <span class="stat-separator">"•"</span>
-                        <span class="stat-item">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm5-4H5v-2h12v2zm0-4H5V7h12v2z"/>
-                            </svg>
-                            {total_bytes}
-                        </span>
-                        <span class="stat-separator">"•"</span>
-                        <span class="stat-item">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-                            </svg>
-                            {move || {
-                                let secs = total_duration_secs.get();
-                                if secs > 0 {
-                                    format_total_duration(secs)
-                                } else {
-                                    "--".to_string()
-                                }
-                            }}
-                        </span>
+                        {track_count} " track" {if track_count == 1 { "" } else { "s" }}
+                        " · " {total_bytes} " · "
+                        {move || {
+                            let secs = total_duration_secs.get();
+                            if secs > 0 {
+                                format_total_duration(secs)
+                            } else {
+                                "--".to_string()
+                            }
+                        }}
+                    </div>
+                    {has_source_url.then(|| {
+                        let url_display = source_url.unwrap_or_default();
+                        let url_short = if url_display.len() > 60 {
+                            format!("{}...", &url_display[..57])
+                        } else {
+                            url_display.clone()
+                        };
+                        view! {
+                            <div class="playlist-detail-source">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" class="youtube-icon">
+                                    <path d="M21.543 6.498C22 8.28 22 12 22 12s0 3.72-.457 5.502c-.254.985-.997 1.76-1.938 2.022C17.896 20 12 20 12 20s-5.893 0-7.605-.476c-.945-.266-1.687-1.04-1.938-2.022C2 15.72 2 12 2 12s0-3.72.457-5.502c.254-.985.997-1.76 1.938-2.022C6.107 4 12 4 12 4s5.896 0 7.605.476c.945.266 1.687 1.04 1.938 2.022zM10 15.5l6-3.5-6-3.5v7z"/>
+                                </svg>
+                                <a
+                                    href=url_display.clone()
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="source-link"
+                                    title=url_display
+                                >
+                                    {url_short}
+                                </a>
+                            </div>
+                        }
+                    })}
+                    <div class="playlist-detail-dates">
+                        "Created " {created_at} " · Modified " {modified_at}
                     </div>
                 </div>
             </div>
 
-            <div class="playlist-detail-metadata">
-                {has_source_url.then(|| {
-                    let url_display = source_url.unwrap_or_default();
-                    let url_short = if url_display.len() > 50 {
-                        format!("{}...", &url_display[..47])
-                    } else {
-                        url_display.clone()
-                    };
-                    view! {
-                        <div class="metadata-row source-url">
-                            <span class="metadata-label">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" class="youtube-icon">
-                                    <path d="M21.543 6.498C22 8.28 22 12 22 12s0 3.72-.457 5.502c-.254.985-.997 1.76-1.938 2.022C17.896 20 12 20 12 20s-5.893 0-7.605-.476c-.945-.266-1.687-1.04-1.938-2.022C2 15.72 2 12 2 12s0-3.72.457-5.502c.254-.985.997-1.76 1.938-2.022C6.107 4 12 4 12 4s5.896 0 7.605.476c.945.266 1.687 1.04 1.938 2.022zM10 15.5l6-3.5-6-3.5v7z"/>
-                                </svg>
-                                "Source"
-                            </span>
-                            <a
-                                href=url_display.clone()
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="metadata-value source-link"
-                                title=url_display
-                            >
-                                {url_short}
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" class="external-link-icon">
-                                    <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
-                                </svg>
-                            </a>
-                        </div>
+            // Action toolbar
+            <div class="playlist-detail-toolbar">
+                <button
+                    class="btn btn-ghost"
+                    on:click={
+                        let name = playlist_name_for_folder;
+                        move |_| {
+                            let name = name.clone();
+                            spawn_local(async move {
+                                if let Err(err) = tauri_api::open_playlist_folder(&name).await {
+                                    web_sys::console::error_1(&format!("Failed to open folder: {err}").into());
+                                }
+                            });
+                        }
                     }
-                })}
-                <div class="metadata-row">
-                    <span class="metadata-label">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
-                            <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-                        </svg>
-                        "Created"
-                    </span>
-                    <span class="metadata-value">{created_at}</span>
-                </div>
-                <div class="metadata-row">
-                    <span class="metadata-label">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                        </svg>
-                        "Modified"
-                    </span>
-                    <span class="metadata-value">{modified_at}</span>
-                </div>
+                    title="Open folder"
+                >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                    </svg>
+                    "Folder"
+                </button>
+                <div class="action-spacer"></div>
+                <button
+                    class="btn btn-secondary"
+                    disabled=move || !has_source_url || is_downloading
+                    on:click=move |_| on_download.run(playlist_name_for_download.clone())
+                    title={if has_source_url { "Download from YouTube" } else { "No source URL available" }}
+                >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    "Download"
+                </button>
+                <button
+                    class="btn btn-secondary"
+                    on:click=move |_| on_sync.run(playlist_name_for_sync.clone())
+                    title="Sync to device"
+                >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>
+                    </svg>
+                    "Sync"
+                </button>
+                <button
+                    class="btn btn-danger"
+                    on:click=move |_| on_delete.run(playlist_name_for_delete.clone())
+                    title="Delete playlist"
+                >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                    "Delete"
+                </button>
             </div>
         </div>
     }
@@ -442,8 +419,13 @@ pub fn PlaylistDetailView(
     on_back: Callback<()>,
     /// Callback when sync button is clicked.
     on_sync: Callback<String>,
+    /// Callback when download button is clicked.
+    on_download: Callback<String>,
     /// Callback when delete button is clicked.
     on_delete: Callback<String>,
+    /// Whether this playlist is currently being downloaded.
+    #[prop(default = false)]
+    is_downloading: bool,
     /// Refresh trigger - increment to reload tracks.
     #[prop(optional, default = 0u32.into())]
     refresh_trigger: Signal<u32>,
@@ -463,8 +445,8 @@ pub fn PlaylistDetailView(
 
     // Load playlist data on mount and when refresh_trigger changes
     Effect::new(move || {
-        // Subscribe to refresh_trigger to re-run when it changes
-        let _trigger = refresh_trigger.get();
+        // Subscribe to refresh_trigger so this effect re-runs when it changes
+        refresh_trigger.get();
         let name = playlist_name_clone.clone();
         spawn_local(async move {
             leptos::logging::log!("Loading playlist details for: {}", name);
@@ -565,11 +547,12 @@ pub fn PlaylistDetailView(
                                     total_duration_secs=total_duration_secs
                                     on_back=on_back
                                     on_sync=on_sync
+                                    on_download=on_download
                                     on_delete=on_delete
+                                    is_downloading=is_downloading
                                 />
                                 <div class="playlist-detail-tracks">
-                                    <h3 class="tracks-section-title">"Tracks"</h3>
-                                    <p class="tracks-section-hint">"Click on a track to view detailed information"</p>
+                                    <div class="tracks-divider">"TRACKS"</div>
                                     <TrackList
                                         tracks=tracks
                                         state=track_list_state.get()

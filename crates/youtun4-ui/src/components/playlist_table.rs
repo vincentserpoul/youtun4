@@ -41,26 +41,32 @@ fn PlaylistTableRow(
     on_delete: Callback<String>,
     /// Callback when sync is requested.
     on_sync: Callback<String>,
+    /// Callback when download is requested.
+    on_download: Callback<String>,
     /// Whether a device is connected (for enabling sync).
     has_device: Signal<bool>,
-    /// Simulated sync percentage for visual display.
-    #[prop(default = 100)]
-    sync_percent: u8,
+    /// Whether this playlist has a source URL for downloading.
+    #[prop(default = false)]
+    has_source_url: bool,
+    /// Whether this playlist is currently being downloaded.
+    #[prop(default = false)]
+    is_downloading: bool,
 ) -> impl IntoView {
     let playlist_for_click = playlist.clone();
-    let playlist_for_view = playlist.clone();
     let playlist_name = playlist.name.clone();
     let name_for_sync = playlist.name.clone();
+    let name_for_download = playlist.name.clone();
     let name_for_delete = playlist.name.clone();
     let track_count = playlist.track_count;
     let duration = estimate_duration(track_count);
-    let is_synced = sync_percent >= 100;
 
-    let status_text = if is_synced { "SYNCED" } else { "PENDING" };
-    let status_class = if is_synced {
-        "status-badge synced"
+    // Derive status from data
+    let (status_text, status_class) = if is_downloading {
+        ("DOWNLOADING", "status-badge downloading")
+    } else if track_count > 0 {
+        ("DOWNLOADED", "status-badge downloaded")
     } else {
-        "status-badge pending"
+        ("CREATED", "status-badge created")
     };
 
     view! {
@@ -72,29 +78,9 @@ fn PlaylistTableRow(
             <td class="cell-duration">{duration}</td>
             <td class="cell-status">
                 <span class=status_class>{status_text}</span>
-                <div class="row-progress-bar">
-                    <div
-                        class="row-progress-fill"
-                        style=format!("width: {}%", sync_percent)
-                    ></div>
-                    <span class="row-progress-text">{format!("{sync_percent}%")}</span>
-                </div>
             </td>
             <td class="cell-actions">
-                // Play/View button
-                <button
-                    class="btn btn-icon btn-table-action"
-                    title="View details"
-                    on:click=move |e| {
-                        e.stop_propagation();
-                        on_select.run(playlist_for_view.clone());
-                    }
-                >
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M8 5v14l11-7z"/>
-                    </svg>
-                </button>
-                // Sync button
+                // Sync to device button
                 <button
                     class="btn btn-icon btn-table-action"
                     title="Sync to device"
@@ -106,6 +92,20 @@ fn PlaylistTableRow(
                 >
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                         <path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>
+                    </svg>
+                </button>
+                // Download button
+                <button
+                    class="btn btn-icon btn-table-action"
+                    title={if has_source_url { "Download from YouTube" } else { "No source URL available" }}
+                    disabled=move || !has_source_url || is_downloading
+                    on:click=move |e| {
+                        e.stop_propagation();
+                        on_download.run(name_for_download.clone());
+                    }
+                >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                     </svg>
                 </button>
                 // Delete button
@@ -169,12 +169,17 @@ pub fn PlaylistTable(
     on_delete: Callback<String>,
     /// Callback when sync is requested.
     on_sync: Callback<String>,
+    /// Callback when download is requested.
+    on_download: Callback<String>,
     /// Callback to retry loading (used when state is Error).
     #[prop(optional)]
     on_retry: Option<Callback<()>>,
     /// Callback when create playlist is requested (used in empty state).
     #[prop(optional)]
     on_create: Option<Callback<()>>,
+    /// Name of the playlist currently being downloaded, if any.
+    #[prop(optional)]
+    downloading_playlist: Option<ReadSignal<Option<String>>>,
 ) -> impl IntoView {
     let has_device = Signal::derive(move || selected_device.get().is_some());
 
@@ -248,13 +253,14 @@ pub fn PlaylistTable(
                                     </div>
                                 }.into_any()
                             } else {
+                                let downloading = downloading_playlist.and_then(|s| s.get());
                                 view! {
                                     <div class="playlist-table-scroll">
                                         <table class="playlist-table">
                                             <thead>
                                                 <tr>
                                                     <th class="th-title">"TITLE"</th>
-                                                    <th class="th-tracks">"TRACK COUNT"</th>
+                                                    <th class="th-tracks">"TRACKS"</th>
                                                     <th class="th-duration">"DURATION"</th>
                                                     <th class="th-status">"STATUS"</th>
                                                     <th class="th-actions">"ACTIONS"</th>
@@ -262,13 +268,18 @@ pub fn PlaylistTable(
                                             </thead>
                                             <tbody>
                                                 {playlist_list.into_iter().map(|playlist| {
+                                                    let is_downloading = downloading.as_ref().is_some_and(|n| *n == playlist.name);
+                                                    let has_source = playlist.source_url.is_some();
                                                     view! {
                                                         <PlaylistTableRow
                                                             playlist=playlist
                                                             on_select=on_select
                                                             on_delete=on_delete
                                                             on_sync=on_sync
+                                                            on_download=on_download
                                                             has_device=has_device
+                                                            has_source_url=has_source
+                                                            is_downloading=is_downloading
                                                         />
                                                     }
                                                 }).collect_view()}

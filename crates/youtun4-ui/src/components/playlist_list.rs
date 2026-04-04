@@ -5,6 +5,7 @@ use leptos::prelude::*;
 use crate::components::PlaylistCard;
 use crate::components::empty_state::{EmptyStateSize, ErrorEmptyState, NoPlaylistsEmptyState};
 use crate::types::{DeviceInfo, PlaylistMetadata};
+use crate::utils::format_bytes;
 
 /// Loading skeleton for a single playlist card.
 #[component]
@@ -73,31 +74,6 @@ fn PlaylistSummary(
             <span class="separator">"•"</span>
             <span class="total-size">{size_str} " total"</span>
         </div>
-    }
-}
-
-/// Format bytes to human-readable string.
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "precision loss is acceptable for display formatting"
-)]
-#[allow(
-    clippy::float_arithmetic,
-    reason = "float arithmetic needed for byte unit conversion"
-)]
-fn format_bytes(bytes: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = KB * 1024;
-    const GB: u64 = MB * 1024;
-
-    if bytes >= GB {
-        format!("{:.1} GB", bytes as f64 / GB as f64)
-    } else if bytes >= MB {
-        format!("{:.1} MB", bytes as f64 / MB as f64)
-    } else if bytes >= KB {
-        format!("{:.1} KB", bytes as f64 / KB as f64)
-    } else {
-        format!("{bytes} B")
     }
 }
 

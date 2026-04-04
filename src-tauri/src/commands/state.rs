@@ -15,7 +15,7 @@ use youtun4_core::{
     queue::DownloadQueueManager,
 };
 
-use crate::runtime::{AsyncRuntime, ProgressSender, TaskCategory, TaskId, TaskStatus};
+use crate::runtime::{AsyncRuntime, TaskId, TaskStatus};
 
 /// Information about an active sync operation.
 #[derive(Debug, Clone, serde::Serialize)]
@@ -32,11 +32,14 @@ pub struct SyncTaskInfo {
     pub skip_existing: bool,
 }
 
+/// A shared cancellation flag that can be set from any thread.
+type CancelFlag = Arc<AtomicBool>;
+
 /// Type alias for sync task storage to reduce complexity.
-type SyncTaskMap = HashMap<TaskId, (SyncTaskInfo, Arc<AtomicBool>)>;
+type SyncTaskMap = HashMap<TaskId, (SyncTaskInfo, CancelFlag)>;
 
 /// Type alias for download task storage (`task_id` -> cancel flag).
-type DownloadTaskMap = HashMap<TaskId, Arc<AtomicBool>>;
+type DownloadTaskMap = HashMap<TaskId, CancelFlag>;
 
 /// Application state managed by Tauri.
 pub struct AppState {
@@ -112,27 +115,6 @@ impl AppState {
         &self.runtime
     }
 
-    /// Get a progress sender for reporting task progress.
-    #[allow(dead_code, reason = "public API reserved for future use")]
-    pub fn progress_sender(&self) -> ProgressSender {
-        self.runtime.progress_sender()
-    }
-
-    /// Spawn an async task on the runtime.
-    #[allow(dead_code, reason = "public API reserved for future use")]
-    pub fn spawn_task<F, T>(
-        &self,
-        category: TaskCategory,
-        description: Option<String>,
-        future: F,
-    ) -> TaskId
-    where
-        F: std::future::Future<Output = T> + Send + 'static,
-        T: Send + 'static,
-    {
-        self.runtime.spawn(category, description, future)
-    }
-
     /// Get the status of a task.
     pub async fn task_status(&self, task_id: TaskId) -> Option<TaskStatus> {
         self.runtime.task_status(task_id).await
@@ -153,17 +135,10 @@ impl AppState {
         &self,
         task_id: TaskId,
         info: SyncTaskInfo,
-        cancel_token: Arc<AtomicBool>,
+        cancel_token: CancelFlag,
     ) {
         let mut tasks = self.sync_tasks.write().await;
         tasks.insert(task_id, (info, cancel_token));
-    }
-
-    /// Unregister a sync task.
-    #[allow(dead_code, reason = "public API reserved for future use")]
-    pub async fn unregister_sync_task(&self, task_id: TaskId) {
-        let mut tasks = self.sync_tasks.write().await;
-        tasks.remove(&task_id);
     }
 
     /// Get info about a sync task.
@@ -202,7 +177,7 @@ impl AppState {
     }
 
     /// Register a download task with its cancellation flag.
-    pub async fn register_download_task(&self, task_id: TaskId, cancel_flag: Arc<AtomicBool>) {
+    pub async fn register_download_task(&self, task_id: TaskId, cancel_flag: CancelFlag) {
         let mut tasks = self.download_tasks.write().await;
         tasks.insert(task_id, cancel_flag);
     }

@@ -11,6 +11,7 @@ use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
 use crate::error::{Error, FileSystemError, Result};
+use crate::time::{system_time_to_secs, unix_timestamp_secs};
 
 /// Metadata for a playlist.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -184,16 +185,14 @@ impl PlaylistManager {
             let created = fs::metadata(playlist_path)
                 .and_then(|m| m.created())
                 .ok()
-                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                .map_or(0, |d| d.as_secs());
+                .map_or(0, system_time_to_secs);
             (None, created)
         };
 
         let modified_at = fs::metadata(playlist_path)
             .and_then(|m| m.modified())
             .ok()
-            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map_or(0, |d| d.as_secs());
+            .map_or(0, system_time_to_secs);
 
         let (track_count, total_bytes) = self.count_tracks(playlist_path);
 
@@ -313,9 +312,7 @@ impl PlaylistManager {
         })?;
 
         // Save metadata
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        let now = unix_timestamp_secs();
 
         let metadata = SavedPlaylistMetadata {
             title: None,
@@ -499,9 +496,7 @@ impl PlaylistManager {
 
         let metadata_file = playlist_path.join("playlist.json");
         if !metadata_file.exists() {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_secs());
+            let now = unix_timestamp_secs();
 
             let (track_count, total_size_bytes) = self.count_tracks(&playlist_path);
 
@@ -556,9 +551,7 @@ impl PlaylistManager {
         };
 
         if needs_new_metadata {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_secs());
+            let now = unix_timestamp_secs();
 
             let (track_count, total_size_bytes) = self.count_tracks(&playlist_path);
 
@@ -614,9 +607,7 @@ impl PlaylistManager {
             })?
             .to_string();
 
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        let now = unix_timestamp_secs();
 
         let (track_count, total_size_bytes) = self.count_tracks(folder_path);
 
@@ -722,9 +713,7 @@ impl PlaylistManager {
             serde_json::from_str(&content).map_err(Error::Serialization)
         } else {
             // Return default metadata if file doesn't exist
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_secs());
+            let now = unix_timestamp_secs();
             let (track_count, total_size_bytes) = self.count_tracks(&playlist_path);
 
             Ok(SavedPlaylistMetadata {
@@ -781,9 +770,7 @@ impl PlaylistManager {
         }
 
         // Update modified time
-        metadata.modified_at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        metadata.modified_at = unix_timestamp_secs();
 
         // Save
         let metadata_file = playlist_path.join("playlist.json");
@@ -817,9 +804,7 @@ impl PlaylistManager {
         let (track_count, total_size_bytes) = self.count_tracks(&playlist_path);
         metadata.track_count = track_count;
         metadata.total_size_bytes = total_size_bytes;
-        metadata.modified_at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        metadata.modified_at = unix_timestamp_secs();
 
         // Save
         let metadata_file = playlist_path.join("playlist.json");
@@ -872,9 +857,7 @@ impl PlaylistManager {
         let (track_count, total_size_bytes) = self.count_tracks(&playlist_path);
         metadata.track_count = track_count;
         metadata.total_size_bytes = total_size_bytes;
-        metadata.modified_at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        metadata.modified_at = unix_timestamp_secs();
 
         // Save
         let metadata_file = playlist_path.join("playlist.json");
@@ -927,9 +910,7 @@ impl PlaylistManager {
         let (track_count, total_size_bytes) = self.count_tracks(&playlist_path);
         metadata.track_count = track_count;
         metadata.total_size_bytes = total_size_bytes;
-        metadata.modified_at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        metadata.modified_at = unix_timestamp_secs();
 
         // Save
         let metadata_file = playlist_path.join("playlist.json");
@@ -1112,9 +1093,7 @@ impl SavedTrackMetadata {
         thumbnail_url: Option<String>,
     ) -> Self {
         let source_url = Some(format!("https://www.youtube.com/watch?v={video_id}"));
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        let now = unix_timestamp_secs();
 
         Self {
             file_name,

@@ -26,13 +26,14 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::{debug, info, warn};
 
 use crate::error::{Error, FileSystemError, Result};
+use crate::time::unix_timestamp_secs;
 use crate::transfer::{DEFAULT_CHUNK_SIZE, TransferResult, TransferredFile};
 
 // =============================================================================
@@ -69,9 +70,7 @@ impl FileChecksum {
     /// Create a new file checksum entry.
     #[must_use]
     pub fn new(file_name: String, checksum: String, size_bytes: u64) -> Self {
-        let computed_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        let computed_at = unix_timestamp_secs();
 
         Self {
             file_name,
@@ -128,9 +127,7 @@ impl ChecksumManifest {
     /// Create a new empty manifest.
     #[must_use]
     pub fn new() -> Self {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        let now = unix_timestamp_secs();
 
         Self {
             version: MANIFEST_VERSION,
@@ -172,17 +169,13 @@ impl ChecksumManifest {
 
     /// Add a file checksum to the manifest.
     pub fn add_file(&mut self, checksum: FileChecksum) {
-        self.updated_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        self.updated_at = unix_timestamp_secs();
         self.files.insert(checksum.file_name.clone(), checksum);
     }
 
     /// Remove a file from the manifest.
     pub fn remove_file(&mut self, file_name: &str) -> Option<FileChecksum> {
-        self.updated_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        self.updated_at = unix_timestamp_secs();
         self.files.remove(file_name)
     }
 
@@ -212,9 +205,7 @@ impl ChecksumManifest {
         for (name, checksum) in &other.files {
             self.files.insert(name.clone(), checksum.clone());
         }
-        self.updated_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
+        self.updated_at = unix_timestamp_secs();
     }
 
     /// Load a manifest from a JSON file.

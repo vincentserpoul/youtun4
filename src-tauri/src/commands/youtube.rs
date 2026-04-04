@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 use tracing::{debug, error, info};
 use youtun4_core::Error;
 use youtun4_core::youtube::{
@@ -11,9 +11,9 @@ use youtun4_core::youtube::{
     YouTubeDownloader, YouTubeUrlValidation, validate_youtube_url,
 };
 
-use crate::runtime::{TaskCategory, TaskId};
+use crate::runtime::TaskId;
 
-use super::error::map_err;
+use super::error::{emit_or_log, map_err};
 use super::state::AppState;
 
 /// Event names for `YouTube` download events emitted to the frontend.
@@ -341,14 +341,12 @@ pub async fn download_youtube_playlist(
             .map_err(|e| format!("Failed to create output directory: {e}"))?;
     }
 
+    // TODO: audio_quality and embed_thumbnail are accepted for forward compatibility
+    // but not yet wired through to the downloader.
     let _ = audio_quality;
     let _ = embed_thumbnail;
 
-    let task_id = state.runtime().spawn(
-        TaskCategory::Download,
-        Some(format!("Download playlist: {url}")),
-        async {},
-    );
+    let task_id = state.runtime().generate_task_id();
 
     // Create the downloader and register its cancel flag before spawning
     let config = RustyYtdlConfig::default();
@@ -360,151 +358,142 @@ pub async fn download_youtube_playlist(
     let app_handle = app;
     let download_tasks = Arc::clone(&state.download_tasks);
 
-    std::thread::spawn(move || {
-        if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_STARTED, &task_id) {
-            error!("Failed to emit download-started event: {}", e);
-        }
+    tokio::spawn(async move {
+        let app_handle_outer = app_handle.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            emit_or_log(&app_handle, youtube_events::DOWNLOAD_STARTED, &task_id);
 
-        let playlist_info = match downloader.parse_playlist_url(&url_clone) {
-            Ok(info) => info,
-            Err(e) => {
-                error!("Failed to parse playlist: {}", e);
-                let category = classify_error(&e);
-                let payload = DownloadResultPayload {
-                    task_id,
-                    success: false,
-                    successful_count: 0,
-                    failed_count: 0,
-                    skipped_count: 0,
-                    total_count: 0,
-                    results: vec![],
-                    error_message: Some(e.to_string()),
-                    error_category: Some(category),
-                    error_title: Some(category.title().to_string()),
-                    error_description: Some(category.description().to_string()),
-                };
-                if let Err(emit_err) = app_handle.emit(youtube_events::DOWNLOAD_FAILED, &payload) {
-                    error!("Failed to emit download-failed event: {}", emit_err);
+            let playlist_info = match downloader.parse_playlist_url(&url_clone) {
+                Ok(info) => info,
+                Err(e) => {
+                    error!("Failed to parse playlist: {}", e);
+                    let category = classify_error(&e);
+                    let payload = DownloadResultPayload {
+                        task_id,
+                        success: false,
+                        successful_count: 0,
+                        failed_count: 0,
+                        skipped_count: 0,
+                        total_count: 0,
+                        results: vec![],
+                        error_message: Some(e.to_string()),
+                        error_category: Some(category),
+                        error_title: Some(category.title().to_string()),
+                        error_description: Some(category.description().to_string()),
+                    };
+                    emit_or_log(&app_handle, youtube_events::DOWNLOAD_FAILED, &payload);
+                    return;
                 }
-                return;
-            }
-        };
+            };
 
-        info!(
-            "Playlist '{}' has {} videos",
-            playlist_info.title, playlist_info.video_count
-        );
+            info!(
+                "Playlist '{}' has {} videos",
+                playlist_info.title, playlist_info.video_count
+            );
 
-        let app_handle_for_progress = app_handle.clone();
-        let progress_callback = move |progress: DownloadProgress| {
-            let payload = DownloadProgressPayload::from_progress(task_id, &progress);
-            if let Err(e) =
-                app_handle_for_progress.emit(youtube_events::DOWNLOAD_PROGRESS, &payload)
-            {
-                error!("Failed to emit download-progress event: {}", e);
-            }
-        };
+            let app_handle_for_progress = app_handle.clone();
+            let progress_callback = move |progress: DownloadProgress| {
+                let payload = DownloadProgressPayload::from_progress(task_id, &progress);
+                emit_or_log(
+                    &app_handle_for_progress,
+                    youtube_events::DOWNLOAD_PROGRESS,
+                    &payload,
+                );
+            };
 
-        let results = match downloader.download_playlist(
-            &playlist_info,
-            &output_path,
-            Some(Box::new(progress_callback)),
-        ) {
-            Ok(results) => results,
-            Err(e) => {
-                error!("Download failed: {}", e);
-                let category = classify_error(&e);
+            let results = match downloader.download_playlist(
+                &playlist_info,
+                &output_path,
+                Some(Box::new(progress_callback)),
+            ) {
+                Ok(results) => results,
+                Err(e) => {
+                    error!("Download failed: {}", e);
+                    let category = classify_error(&e);
 
-                let event = if matches!(
-                    e,
-                    Error::Download(youtun4_core::error::DownloadError::Cancelled)
-                ) {
-                    youtube_events::DOWNLOAD_CANCELLED
-                } else {
-                    youtube_events::DOWNLOAD_FAILED
-                };
+                    let event = if matches!(
+                        e,
+                        Error::Download(youtun4_core::error::DownloadError::Cancelled)
+                    ) {
+                        youtube_events::DOWNLOAD_CANCELLED
+                    } else {
+                        youtube_events::DOWNLOAD_FAILED
+                    };
 
-                let payload = DownloadResultPayload {
-                    task_id,
-                    success: false,
-                    successful_count: 0,
-                    failed_count: 0,
-                    skipped_count: 0,
-                    total_count: playlist_info.video_count,
-                    results: vec![],
-                    error_message: Some(e.to_string()),
-                    error_category: Some(category),
-                    error_title: Some(category.title().to_string()),
-                    error_description: Some(category.description().to_string()),
-                };
-                if let Err(emit_err) = app_handle.emit(event, &payload) {
-                    error!("Failed to emit {} event: {}", event, emit_err);
+                    let payload = DownloadResultPayload {
+                        task_id,
+                        success: false,
+                        successful_count: 0,
+                        failed_count: 0,
+                        skipped_count: 0,
+                        total_count: playlist_info.video_count,
+                        results: vec![],
+                        error_message: Some(e.to_string()),
+                        error_category: Some(category),
+                        error_title: Some(category.title().to_string()),
+                        error_description: Some(category.description().to_string()),
+                    };
+                    emit_or_log(&app_handle, event, &payload);
+                    return;
                 }
-                return;
+            };
+
+            let successful_count = results.iter().filter(|r| r.success).count();
+            let failed_count = results
+                .iter()
+                .filter(|r| !r.success && r.error.is_some())
+                .count();
+            let skipped_count = results.len() - successful_count - failed_count;
+
+            let video_results: Vec<VideoDownloadResult> = results
+                .iter()
+                .map(|r| VideoDownloadResult {
+                    video_id: r.video.id.clone(),
+                    title: r.video.title.clone(),
+                    success: r.success,
+                    output_path: r
+                        .output_path
+                        .as_ref()
+                        .map(|p: &std::path::PathBuf| p.display().to_string()),
+                    error: r.error.clone(),
+                })
+                .collect();
+
+            let payload = DownloadResultPayload {
+                task_id,
+                success: failed_count == 0,
+                successful_count,
+                failed_count,
+                skipped_count,
+                total_count: results.len(),
+                results: video_results,
+                error_message: None,
+                error_category: None,
+                error_title: None,
+                error_description: None,
+            };
+
+            if failed_count == 0 {
+                info!(
+                    "Download completed: {} successful, {} skipped",
+                    successful_count, skipped_count
+                );
+            } else {
+                info!(
+                    "Download completed with errors: {} successful, {} failed, {} skipped",
+                    successful_count, failed_count, skipped_count
+                );
             }
-        };
 
-        let successful_count = results.iter().filter(|r| r.success).count();
-        let failed_count = results
-            .iter()
-            .filter(|r| !r.success && r.error.is_some())
-            .count();
-        let skipped_count = results.len() - successful_count - failed_count;
+            emit_or_log(&app_handle, youtube_events::DOWNLOAD_COMPLETED, &payload);
+        })
+        .await;
 
-        let video_results: Vec<VideoDownloadResult> = results
-            .iter()
-            .map(|r| VideoDownloadResult {
-                video_id: r.video.id.clone(),
-                title: r.video.title.clone(),
-                success: r.success,
-                output_path: r
-                    .output_path
-                    .as_ref()
-                    .map(|p: &std::path::PathBuf| p.display().to_string()),
-                error: r.error.clone(),
-            })
-            .collect();
-
-        let payload = DownloadResultPayload {
-            task_id,
-            success: failed_count == 0,
-            successful_count,
-            failed_count,
-            skipped_count,
-            total_count: results.len(),
-            results: video_results,
-            error_message: None,
-            error_category: None,
-            error_title: None,
-            error_description: None,
-        };
-
-        if failed_count == 0 {
-            info!(
-                "Download completed: {} successful, {} skipped",
-                successful_count, skipped_count
-            );
-        } else {
-            info!(
-                "Download completed with errors: {} successful, {} failed, {} skipped",
-                successful_count, failed_count, skipped_count
-            );
-        }
-
-        if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_COMPLETED, &payload) {
-            error!("Failed to emit download completed event: {}", e);
-        }
-
-        // Unregister the download task when done
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build();
-        if let Ok(rt) = rt {
-            rt.block_on(async {
-                let mut tasks = download_tasks.write().await;
-                tasks.remove(&task_id);
-            });
-        }
+        // Unregister the download task in async context — no runtime recreation needed
+        let mut tasks = download_tasks.write().await;
+        tasks.remove(&task_id);
+        drop(tasks);
+        drop(app_handle_outer);
     });
 
     info!("Download task {} spawned successfully", task_id);
@@ -553,9 +542,7 @@ fn emit_failure_event(app_handle: &AppHandle, error: &Error, payload: &DownloadR
         youtube_events::DOWNLOAD_FAILED
     };
 
-    if let Err(emit_err) = app_handle.emit(event, payload) {
-        error!("Failed to emit {} event: {}", event, emit_err);
-    }
+    emit_or_log(app_handle, event, payload);
 }
 
 /// Update playlist.json with source URL and thumbnail before download.
@@ -568,13 +555,28 @@ fn update_playlist_metadata_before_download(
         return;
     }
 
-    let Ok(content) = std::fs::read_to_string(playlist_json_path) else {
-        return;
+    let content = match std::fs::read_to_string(playlist_json_path) {
+        Ok(c) => c,
+        Err(e) => {
+            debug!(
+                "Could not read playlist metadata at {}: {e}",
+                playlist_json_path.display()
+            );
+            return;
+        }
     };
     let Ok(mut metadata) = serde_json::from_str::<serde_json::Value>(&content) else {
+        debug!(
+            "Could not parse playlist metadata at {}",
+            playlist_json_path.display()
+        );
         return;
     };
     let Some(obj) = metadata.as_object_mut() else {
+        debug!(
+            "Playlist metadata is not a JSON object at {}",
+            playlist_json_path.display()
+        );
         return;
     };
 
@@ -584,8 +586,18 @@ fn update_playlist_metadata_before_download(
         obj.insert("thumbnail_url".to_string(), serde_json::json!(thumb));
     }
 
-    if let Ok(updated) = serde_json::to_string_pretty(&metadata) {
-        let _ = std::fs::write(playlist_json_path, updated);
+    match serde_json::to_string_pretty(&metadata) {
+        Ok(updated) => {
+            if let Err(e) = std::fs::write(playlist_json_path, updated) {
+                debug!(
+                    "Could not write playlist metadata at {}: {e}",
+                    playlist_json_path.display()
+                );
+            }
+        }
+        Err(e) => {
+            debug!("Could not serialize playlist metadata: {e}");
+        }
     }
 }
 
@@ -803,25 +815,22 @@ pub async fn download_youtube_to_playlist(
     let output_path = playlist_path;
     let download_tasks = Arc::clone(&state.download_tasks);
 
-    std::thread::spawn(move || {
-        run_playlist_download(
-            task_id,
-            &app_handle,
-            &url_clone,
-            &playlist_name_clone,
-            &output_path,
-            &downloader,
-        );
-        // Unregister the download task when done
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build();
-        if let Ok(rt) = rt {
-            rt.block_on(async {
-                let mut tasks = download_tasks.write().await;
-                tasks.remove(&task_id);
-            });
-        }
+    tokio::spawn(async move {
+        let _ = tokio::task::spawn_blocking(move || {
+            run_playlist_download(
+                task_id,
+                &app_handle,
+                &url_clone,
+                &playlist_name_clone,
+                &output_path,
+                &downloader,
+            );
+        })
+        .await;
+
+        // Unregister the download task in async context — no runtime recreation needed
+        let mut tasks = download_tasks.write().await;
+        tasks.remove(&task_id);
     });
 
     info!(
@@ -840,9 +849,7 @@ fn run_playlist_download(
     output_path: &std::path::Path,
     downloader: &RustyYtdlDownloader,
 ) {
-    if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_STARTED, &task_id) {
-        error!("Failed to emit download-started event: {}", e);
-    }
+    emit_or_log(app_handle, youtube_events::DOWNLOAD_STARTED, &task_id);
 
     // Parse playlist
     let playlist_info = match downloader.parse_playlist_url(url) {
@@ -868,9 +875,11 @@ fn run_playlist_download(
     let app_handle_for_progress = app_handle.clone();
     let progress_callback = move |progress: DownloadProgress| {
         let payload = DownloadProgressPayload::from_progress(task_id, &progress);
-        if let Err(e) = app_handle_for_progress.emit(youtube_events::DOWNLOAD_PROGRESS, &payload) {
-            error!("Failed to emit download-progress event: {}", e);
-        }
+        emit_or_log(
+            &app_handle_for_progress,
+            youtube_events::DOWNLOAD_PROGRESS,
+            &payload,
+        );
     };
 
     // Download playlist
@@ -895,7 +904,5 @@ fn run_playlist_download(
     // Update playlist metadata after download
     update_playlist_metadata_after_download(&playlist_json_path, output_path, &results);
 
-    if let Err(e) = app_handle.emit(youtube_events::DOWNLOAD_COMPLETED, &payload) {
-        error!("Failed to emit download-completed event: {}", e);
-    }
+    emit_or_log(app_handle, youtube_events::DOWNLOAD_COMPLETED, &payload);
 }

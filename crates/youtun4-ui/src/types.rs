@@ -4,6 +4,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::utils::format_bytes;
+
 /// Information about a detected device.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DeviceInfo {
@@ -1234,24 +1236,6 @@ impl CapacityCheckResult {
         } else {
             format!("-{}", format_bytes((-remaining) as u64))
         }
-    }
-}
-
-/// Format bytes as a human-readable string.
-#[allow(
-    clippy::float_arithmetic,
-    clippy::cast_precision_loss,
-    reason = "acceptable for display formatting"
-)]
-fn format_bytes(bytes: u64) -> String {
-    if bytes >= 1_000_000_000 {
-        format!("{:.2} GB", bytes as f64 / 1_000_000_000.0)
-    } else if bytes >= 1_000_000 {
-        format!("{:.2} MB", bytes as f64 / 1_000_000.0)
-    } else if bytes >= 1_000 {
-        format!("{:.2} KB", bytes as f64 / 1_000.0)
-    } else {
-        format!("{bytes} bytes")
     }
 }
 

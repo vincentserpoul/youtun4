@@ -4,31 +4,7 @@ use leptos::prelude::*;
 
 use crate::components::empty_state::{EmptyStateSize, ErrorEmptyState, NoTracksEmptyState};
 use crate::types::TrackInfo;
-
-/// Format bytes to human-readable string.
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "precision loss is acceptable for display formatting"
-)]
-#[allow(
-    clippy::float_arithmetic,
-    reason = "float arithmetic needed for byte unit conversion"
-)]
-fn format_bytes(bytes: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = KB * 1024;
-    const GB: u64 = MB * 1024;
-
-    if bytes >= GB {
-        format!("{:.1} GB", bytes as f64 / GB as f64)
-    } else if bytes >= MB {
-        format!("{:.1} MB", bytes as f64 / MB as f64)
-    } else if bytes >= KB {
-        format!("{:.1} KB", bytes as f64 / KB as f64)
-    } else {
-        format!("{bytes} B")
-    }
-}
+use crate::utils::format_bytes;
 
 /// Format duration as MM:SS.
 fn format_duration(secs: u64) -> String {
@@ -70,9 +46,6 @@ fn TrackRow(
     // Artist from metadata
     let artist = track.metadata.as_ref().and_then(|m| m.artist.clone());
 
-    // Album from metadata
-    let album = track.metadata.as_ref().and_then(|m| m.album.clone());
-
     // Duration from metadata
     let duration = track
         .metadata
@@ -104,9 +77,6 @@ fn TrackRow(
                     <div class="track-artist">{a}</div>
                 })}
             </div>
-            {album.map(|a| view! {
-                <div class="track-album">{a}</div>
-            })}
             <div class="track-duration">{duration.unwrap_or_default()}</div>
             <div class="track-size">{format_bytes(track.size_bytes)}</div>
         </div>
@@ -137,7 +107,6 @@ fn TrackListHeader() -> impl IntoView {
         <div class="track-list-header">
             <div class="track-number">"#"</div>
             <div class="track-info">"Title"</div>
-            <div class="track-album">"Album"</div>
             <div class="track-duration">"Duration"</div>
             <div class="track-size">"Size"</div>
         </div>

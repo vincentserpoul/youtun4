@@ -34,6 +34,7 @@ pub mod playlist;
 pub mod queue;
 pub mod sync;
 pub mod thumbnail;
+pub mod time;
 pub mod transfer;
 pub mod youtube;
 
@@ -42,7 +43,9 @@ pub use cache::{
     CacheStats, CachedMetadata, DEFAULT_CACHE_TTL_SECS, DEFAULT_CLEANUP_TARGET,
     DEFAULT_CLEANUP_THRESHOLD, DEFAULT_MAX_CACHE_SIZE, default_cache_directory,
 };
-pub use cleanup::{CleanupEntry, CleanupOptions, CleanupResult, DeviceCleanupHandler};
+pub use cleanup::{
+    CleanupEntry, CleanupOptions, CleanupResult, DeviceCleanupHandler, SkippedEntry,
+};
 pub use config::{AppConfig, ConfigManager, DownloadQuality, NotificationPreferences, Theme};
 pub use device::{
     DEFAULT_POLL_INTERVAL, DeviceDetector, DeviceEvent, DeviceInfo, DeviceManager,

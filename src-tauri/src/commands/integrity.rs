@@ -2,15 +2,15 @@
 
 use std::path::PathBuf;
 
-use tauri::{AppHandle, Emitter};
-use tracing::{debug, error, info};
+use tauri::AppHandle;
+use tracing::{debug, info};
 use youtun4_core::Error;
 use youtun4_core::integrity::{
     ChecksumManifest, FileChecksum, IntegrityVerifier, VerificationOptions, VerificationProgress,
     VerificationResult,
 };
 
-use super::error::map_err;
+use super::error::{emit_or_log, map_err};
 
 /// Event names for integrity verification events.
 pub mod integrity_events {
@@ -78,18 +78,18 @@ pub async fn verify_directory_integrity(
 
     let app_handle = app.clone();
     let progress_callback = move |progress: &VerificationProgress| {
-        if let Err(e) = app_handle.emit(integrity_events::VERIFICATION_PROGRESS, progress) {
-            error!("Failed to emit verification-progress event: {}", e);
-        }
+        emit_or_log(
+            &app_handle,
+            integrity_events::VERIFICATION_PROGRESS,
+            progress,
+        );
     };
 
     let result = verifier
         .verify_directory(&path, &manifest, Some(progress_callback))
         .map_err(map_err)?;
 
-    if let Err(e) = app.emit(integrity_events::VERIFICATION_COMPLETED, &result) {
-        error!("Failed to emit verification-completed event: {}", e);
-    }
+    emit_or_log(&app, integrity_events::VERIFICATION_COMPLETED, &result);
 
     info!(
         "Verification complete: {} passed, {} failed, {} extra files",

@@ -33,6 +33,7 @@ pub mod components;
 pub mod tauri_api;
 pub mod theme;
 pub mod types;
+pub mod utils;
 
 pub use app::App;
 pub use types::{DeviceInfo, PlaylistMetadata, TrackInfo};

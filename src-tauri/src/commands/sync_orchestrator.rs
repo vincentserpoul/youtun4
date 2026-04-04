@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 use tracing::{error, info};
 use youtun4_core::Error;
 use youtun4_core::sync::{
@@ -12,9 +12,9 @@ use youtun4_core::sync::{
 };
 use youtun4_core::transfer::TransferOptions;
 
-use crate::runtime::{TaskCategory, TaskId};
+use crate::runtime::TaskId;
 
-use super::error::map_err;
+use super::error::{emit_or_log, map_err};
 use super::state::{AppState, SyncTaskInfo};
 use super::sync::sync_events;
 
@@ -71,15 +71,7 @@ pub async fn start_orchestrated_sync(
     let cancel_token = Arc::new(AtomicBool::new(false));
     let cancel_token_clone = Arc::clone(&cancel_token);
 
-    let task_id = state.runtime().spawn(
-        TaskCategory::FileTransfer,
-        Some(format!(
-            "Orchestrated sync: {} playlist(s) to '{}'",
-            playlists.len(),
-            device_mount_point
-        )),
-        async {},
-    );
+    let task_id = state.runtime().generate_task_id();
 
     let sync_info = SyncTaskInfo {
         task_id,
@@ -92,9 +84,7 @@ pub async fn start_orchestrated_sync(
         .register_sync_task(task_id, sync_info.clone(), Arc::clone(&cancel_token))
         .await;
 
-    if let Err(e) = app.emit(sync_events::SYNC_STARTED, &sync_info) {
-        error!("Failed to emit sync-started event: {}", e);
-    }
+    emit_or_log(&app, sync_events::SYNC_STARTED, &sync_info);
 
     let playlists_clone = playlists.clone();
     let device_mount_point_clone = device_mount_point.clone();
@@ -112,12 +102,11 @@ pub async fn start_orchestrated_sync(
 
         let app_handle_for_progress = app_handle.clone();
         let progress_callback = move |progress: &SyncProgress| {
-            if let Err(e) = app_handle_for_progress.emit(
+            emit_or_log(
+                &app_handle_for_progress,
                 sync_orchestrator_events::SYNC_ORCHESTRATOR_PROGRESS,
                 progress,
-            ) {
-                error!("Failed to emit sync-orchestrator-progress event: {}", e);
-            }
+            );
         };
 
         let playlist_mgr = playlist_manager.read().await;
@@ -161,9 +150,7 @@ pub async fn start_orchestrated_sync(
                     sync_orchestrator_events::SYNC_ORCHESTRATOR_FAILED
                 };
 
-                if let Err(e) = app_handle.emit(event, &sync_result) {
-                    error!("Failed to emit {} event: {}", event, e);
-                }
+                emit_or_log(&app_handle, event, &sync_result);
             }
             Err(e) => {
                 error!(
@@ -185,15 +172,11 @@ pub async fn start_orchestrated_sync(
                     error_message: Some(e.to_string()),
                 };
 
-                if let Err(emit_err) = app_handle.emit(
+                emit_or_log(
+                    &app_handle,
                     sync_orchestrator_events::SYNC_ORCHESTRATOR_FAILED,
                     &error_result,
-                ) {
-                    error!(
-                        "Failed to emit sync-orchestrator-failed event: {}",
-                        emit_err
-                    );
-                }
+                );
             }
         }
     });
@@ -234,12 +217,11 @@ pub async fn sync_playlists_to_device(
 
     let app_handle = app.clone();
     let progress_callback = move |progress: &SyncProgress| {
-        if let Err(e) = app_handle.emit(
+        emit_or_log(
+            &app_handle,
             sync_orchestrator_events::SYNC_ORCHESTRATOR_PROGRESS,
             progress,
-        ) {
-            error!("Failed to emit sync-orchestrator-progress event: {}", e);
-        }
+        );
     };
 
     let playlist_mgr = state.playlist_manager.read().await;

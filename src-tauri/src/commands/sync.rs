@@ -4,14 +4,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 use tracing::{debug, error, info};
 use youtun4_core::Error;
 use youtun4_core::transfer::{TransferOptions, TransferProgress};
 
-use crate::runtime::{TaskCategory, TaskId};
+use crate::runtime::TaskId;
 
-use super::error::map_err;
+use super::error::{emit_or_log, map_err};
 use super::state::{AppState, SyncTaskInfo};
 
 /// Event names for sync events emitted to the frontend.
@@ -128,11 +128,7 @@ pub async fn start_sync(
     let cancel_token = Arc::new(AtomicBool::new(false));
     let cancel_token_clone = Arc::clone(&cancel_token);
 
-    let task_id = state.runtime().spawn(
-        TaskCategory::FileTransfer,
-        Some(format!("Sync '{playlist_name}' to '{device_mount_point}'")),
-        async {},
-    );
+    let task_id = state.runtime().generate_task_id();
 
     let sync_info = SyncTaskInfo {
         task_id,
@@ -145,9 +141,7 @@ pub async fn start_sync(
         .register_sync_task(task_id, sync_info.clone(), cancel_token)
         .await;
 
-    if let Err(e) = app.emit(sync_events::SYNC_STARTED, &sync_info) {
-        error!("Failed to emit sync-started event: {}", e);
-    }
+    emit_or_log(&app, sync_events::SYNC_STARTED, &sync_info);
 
     let playlist_name_clone = playlist_name.clone();
     let device_mount_point_clone = device_mount_point.clone();
@@ -168,9 +162,11 @@ pub async fn start_sync(
                 &device_mount_point_for_progress,
                 progress,
             );
-            if let Err(e) = app_handle_for_progress.emit(sync_events::SYNC_PROGRESS, &payload) {
-                error!("Failed to emit sync-progress event: {}", e);
-            }
+            emit_or_log(
+                &app_handle_for_progress,
+                sync_events::SYNC_PROGRESS,
+                &payload,
+            );
         };
 
         let manager = playlist_manager.read().await;
@@ -224,9 +220,7 @@ pub async fn start_sync(
                     sync_events::SYNC_FAILED
                 };
 
-                if let Err(e) = app_handle.emit(event, &payload) {
-                    error!("Failed to emit {} event: {}", event, e);
-                }
+                emit_or_log(&app_handle, event, &payload);
             }
             Err(e) => {
                 error!("Sync task {} failed with error: {}", task_id, e);
@@ -245,9 +239,7 @@ pub async fn start_sync(
                     error_message: Some(e.to_string()),
                 };
 
-                if let Err(e) = app_handle.emit(sync_events::SYNC_FAILED, &payload) {
-                    error!("Failed to emit sync-failed event: {}", e);
-                }
+                emit_or_log(&app_handle, sync_events::SYNC_FAILED, &payload);
             }
         }
     });

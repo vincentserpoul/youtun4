@@ -1,5 +1,7 @@
 //! Error handling utilities for Tauri commands.
 
+use serde::Serialize;
+use tauri::{AppHandle, Emitter};
 use tracing::error;
 use youtun4_core::{Error, ErrorKind};
 
@@ -55,4 +57,30 @@ pub fn map_err(e: Error) -> String {
 #[allow(dead_code, reason = "utility function for testing")]
 pub fn error_kind(e: &Error) -> ErrorKind {
     e.kind()
+}
+
+/// Emit a Tauri event, logging on failure instead of propagating the error.
+///
+/// Most event emissions in command handlers are fire-and-forget notifications
+/// to the frontend. This helper reduces the repetitive `if let Err` pattern.
+pub fn emit_or_log(app: &AppHandle, event: &str, payload: &impl Serialize) {
+    if let Err(e) = app.emit(event, payload) {
+        error!("Failed to emit {event} event: {e}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn error_response_always_serializes() {
+        let response = ErrorResponse {
+            message: "something broke".to_string(),
+            kind: "Io".to_string(),
+            retryable: true,
+            retry_delay_secs: Some(5),
+        };
+        serde_json::to_string(&response).expect("ErrorResponse must always serialize");
+    }
 }

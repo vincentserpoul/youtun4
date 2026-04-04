@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 use tracing::{error, info};
 use youtun4_core::queue::{
     DownloadPriority, DownloadRequest, QueueConfig, QueueItem, QueueItemId, QueueStats,
@@ -14,7 +14,7 @@ use youtun4_core::youtube::{
 
 use crate::runtime::TaskCategory;
 
-use super::error::map_err;
+use super::error::{emit_or_log, map_err};
 use super::state::AppState;
 
 /// Event names for download queue events emitted to the frontend.
@@ -88,10 +88,8 @@ pub async fn queue_add_download(
     let queue = state.download_queue_arc();
     let item_id = queue.add(download_request).await;
 
-    if let Some(item) = queue.get_item(item_id).await
-        && let Err(e) = app.emit(queue_events::QUEUE_ITEM_ADDED, &item)
-    {
-        error!("Failed to emit queue-item-added event: {}", e);
+    if let Some(item) = queue.get_item(item_id).await {
+        emit_or_log(&app, queue_events::QUEUE_ITEM_ADDED, &item);
     }
 
     process_queue(app.clone(), state.clone()).await;
@@ -174,10 +172,8 @@ pub async fn queue_add_batch(
     let item_ids = queue.add_batch(download_requests).await;
 
     for &item_id in &item_ids {
-        if let Some(item) = queue.get_item(item_id).await
-            && let Err(e) = app.emit(queue_events::QUEUE_ITEM_ADDED, &item)
-        {
-            error!("Failed to emit queue-item-added event: {}", e);
+        if let Some(item) = queue.get_item(item_id).await {
+            emit_or_log(&app, queue_events::QUEUE_ITEM_ADDED, &item);
         }
     }
 
@@ -198,8 +194,8 @@ pub async fn queue_remove_item(
     let queue = state.download_queue_arc();
     let removed = queue.remove(item_id).await;
 
-    if removed && let Err(e) = app.emit(queue_events::QUEUE_ITEM_REMOVED, &item_id) {
-        error!("Failed to emit queue-item-removed event: {}", e);
+    if removed {
+        emit_or_log(&app, queue_events::QUEUE_ITEM_REMOVED, &item_id);
     }
 
     Ok(removed)
@@ -218,10 +214,7 @@ pub async fn queue_cancel_item(
     let cancelled = queue.cancel(item_id).await;
 
     if cancelled {
-        if let Err(e) = app.emit(queue_events::QUEUE_ITEM_CANCELLED, &item_id) {
-            error!("Failed to emit queue-item-cancelled event: {}", e);
-        }
-
+        emit_or_log(&app, queue_events::QUEUE_ITEM_CANCELLED, &item_id);
         process_queue(app.clone(), state.clone()).await;
     }
 
@@ -335,9 +328,7 @@ pub async fn queue_pause(
     let queue = state.download_queue_arc();
     queue.pause().await;
 
-    if let Err(e) = app.emit(queue_events::QUEUE_PAUSED, &()) {
-        error!("Failed to emit queue-paused event: {}", e);
-    }
+    emit_or_log(&app, queue_events::QUEUE_PAUSED, &());
 
     Ok(())
 }
@@ -353,9 +344,7 @@ pub async fn queue_resume(
     let queue = state.download_queue_arc();
     queue.resume().await;
 
-    if let Err(e) = app.emit(queue_events::QUEUE_RESUMED, &()) {
-        error!("Failed to emit queue-resumed event: {}", e);
-    }
+    emit_or_log(&app, queue_events::QUEUE_RESUMED, &());
 
     process_queue(app.clone(), state.clone()).await;
 
@@ -415,9 +404,7 @@ pub async fn queue_set_config(
     app_config.queue = config.clone();
     config_manager.update(app_config).map_err(map_err)?;
 
-    if let Err(e) = app.emit(queue_events::QUEUE_CONFIG_UPDATED, &config) {
-        error!("Failed to emit queue-config-updated event: {}", e);
-    }
+    emit_or_log(&app, queue_events::QUEUE_CONFIG_UPDATED, &config);
 
     drop(config_manager);
     process_queue(app.clone(), state.clone()).await;
@@ -483,14 +470,13 @@ pub async fn process_queue(app: AppHandle, state: State<'_, AppState>) {
                 async move {
                     queue_clone.mark_started(item_id, 0).await;
 
-                    if let Err(e) = app_clone.emit(queue_events::QUEUE_ITEM_STARTED, &serde_json::json!({
+                    emit_or_log(&app_clone, queue_events::QUEUE_ITEM_STARTED, &serde_json::json!({
                         "item_id": item_id,
                         "task_id": 0
-                    })) {
-                        error!("Failed to emit queue-item-started event: {}", e);
-                    }
+                    }));
 
                     let config = RustyYtdlConfig::default();
+                    // TODO: audio_quality and embed_thumbnail not yet wired to downloader
                     let _ = audio_quality;
                     let _ = embed_thumbnail;
 
@@ -501,12 +487,10 @@ pub async fn process_queue(app: AppHandle, state: State<'_, AppState>) {
                         Err(e) => {
                             error!("Failed to parse playlist for queue item {}: {}", item_id, e);
                             queue_clone.mark_failed(item_id, e.to_string()).await;
-                            if let Err(emit_err) = app_clone.emit(queue_events::QUEUE_ITEM_FAILED, &serde_json::json!({
+                            emit_or_log(&app_clone, queue_events::QUEUE_ITEM_FAILED, &serde_json::json!({
                                 "item_id": item_id,
                                 "error": e.to_string()
-                            })) {
-                                error!("Failed to emit queue-item-failed event: {}", emit_err);
-                            }
+                            }));
                             return;
                         }
                     };
@@ -525,38 +509,33 @@ pub async fn process_queue(app: AppHandle, state: State<'_, AppState>) {
                         let queue_inner = Arc::clone(&queue_for_progress);
                         let app_inner = app_for_progress.clone();
 
+                        let handle = tokio::runtime::Handle::current();
                         tokio::task::block_in_place(|| {
-                            tokio::runtime::Handle::current().block_on(async {
-                                queue_inner.update_progress(
-                                    item_id,
-                                    progress.overall_progress,
-                                    Some(progress.current_title.clone()),
-                                    Some(progress.total_videos),
-                                    Some(progress.videos_completed + progress.videos_skipped),
-                                ).await;
-                            });
+                            handle.block_on(queue_inner.update_progress(
+                                item_id,
+                                progress.overall_progress,
+                                Some(progress.current_title.clone()),
+                                Some(progress.total_videos),
+                                Some(progress.videos_completed + progress.videos_skipped),
+                            ));
                         });
 
-                        if let Err(e) = app_inner.emit(queue_events::QUEUE_ITEM_PROGRESS, &serde_json::json!({
+                        emit_or_log(&app_inner, queue_events::QUEUE_ITEM_PROGRESS, &serde_json::json!({
                             "item_id": item_id,
                             "progress": progress.overall_progress,
                             "current_video": progress.current_title,
                             "total_videos": progress.total_videos,
                             "videos_completed": progress.videos_completed + progress.videos_skipped,
-                        })) {
-                            error!("Failed to emit queue-item-progress event: {}", e);
-                        }
+                        }));
                     };
 
                     if let Err(e) = std::fs::create_dir_all(&output_dir) {
                         error!("Failed to create output directory for queue item {}: {}", item_id, e);
                         queue_clone.mark_failed(item_id, format!("Failed to create output directory: {e}")).await;
-                        if let Err(emit_err) = app_clone.emit(queue_events::QUEUE_ITEM_FAILED, &serde_json::json!({
+                        emit_or_log(&app_clone, queue_events::QUEUE_ITEM_FAILED, &serde_json::json!({
                             "item_id": item_id,
                             "error": format!("Failed to create output directory: {}", e)
-                        })) {
-                            error!("Failed to emit queue-item-failed event: {}", emit_err);
-                        }
+                        }));
                         return;
                     }
 
@@ -568,19 +547,15 @@ pub async fn process_queue(app: AppHandle, state: State<'_, AppState>) {
                         Ok(_results) => {
                             info!("Queue item {} completed successfully", item_id);
                             queue_clone.mark_completed(item_id).await;
-                            if let Err(e) = app_clone.emit(queue_events::QUEUE_ITEM_COMPLETED, &item_id) {
-                                error!("Failed to emit queue-item-completed event: {}", e);
-                            }
+                            emit_or_log(&app_clone, queue_events::QUEUE_ITEM_COMPLETED, &item_id);
                         }
                         Err(e) => {
                             error!("Queue item {} failed: {}", item_id, e);
                             queue_clone.mark_failed(item_id, e.to_string()).await;
-                            if let Err(emit_err) = app_clone.emit(queue_events::QUEUE_ITEM_FAILED, &serde_json::json!({
+                            emit_or_log(&app_clone, queue_events::QUEUE_ITEM_FAILED, &serde_json::json!({
                                 "item_id": item_id,
                                 "error": e.to_string()
-                            })) {
-                                error!("Failed to emit queue-item-failed event: {}", emit_err);
-                            }
+                            }));
                         }
                     }
                 },

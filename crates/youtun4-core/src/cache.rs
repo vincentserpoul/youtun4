@@ -29,13 +29,14 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
 use crate::error::{CacheError, Error, FileSystemError, Result};
 use crate::metadata::Mp3Metadata;
+use crate::time::{system_time_to_secs, unix_timestamp_secs};
 
 /// Default maximum cache size in bytes (100 MB).
 pub const DEFAULT_MAX_CACHE_SIZE: u64 = 100 * 1024 * 1024;
@@ -190,19 +191,13 @@ impl CacheEntry {
     /// Check if this entry has expired based on the given TTL.
     #[must_use]
     pub fn is_expired(&self, ttl_secs: u64) -> bool {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+        let now = unix_timestamp_secs();
         now.saturating_sub(self.created_at) > ttl_secs
     }
 
     /// Update the last accessed timestamp.
     pub fn touch(&mut self) {
-        self.last_accessed_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+        self.last_accessed_at = unix_timestamp_secs();
     }
 }
 
@@ -488,11 +483,7 @@ impl CacheManager {
 
         let modified_at = fs::metadata(path)
             .and_then(|m| m.modified())
-            .map(|t| {
-                t.duration_since(UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0)
-            })
+            .map(system_time_to_secs)
             .unwrap_or(0);
 
         let key = Self::metadata_cache_key(path, modified_at);
@@ -520,10 +511,7 @@ impl CacheManager {
             })
         })?;
 
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+        let now = unix_timestamp_secs();
 
         let entry = CacheEntry {
             key: key.clone(),
@@ -560,11 +548,7 @@ impl CacheManager {
 
         let modified_at = fs::metadata(path)
             .and_then(|m| m.modified())
-            .map(|t| {
-                t.duration_since(UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0)
-            })
+            .map(system_time_to_secs)
             .unwrap_or(0);
 
         let key = Self::metadata_cache_key(path, modified_at);
@@ -643,10 +627,7 @@ impl CacheManager {
             })
         })?;
 
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+        let now = unix_timestamp_secs();
 
         let entry = CacheEntry {
             key: key.clone(),
@@ -733,7 +714,7 @@ impl CacheManager {
     #[must_use]
     pub fn temp_file_path(&self, prefix: &str, extension: &str) -> PathBuf {
         let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
+            .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis())
             .unwrap_or(0);
         let filename = format!("{prefix}_{timestamp}.{extension}");
@@ -899,10 +880,7 @@ impl CacheManager {
             }
         }
 
-        self.manifest.last_cleanup_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+        self.manifest.last_cleanup_at = unix_timestamp_secs();
 
         self.save_manifest()?;
         #[allow(

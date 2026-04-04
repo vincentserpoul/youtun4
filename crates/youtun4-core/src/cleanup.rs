@@ -48,8 +48,8 @@ pub struct CleanupOptions {
     pub verify_deletions: bool,
     /// Whether to perform a dry run (report what would be deleted without deleting).
     pub dry_run: bool,
-    /// Maximum depth to traverse (-1 for unlimited).
-    pub max_depth: i32,
+    /// Maximum depth to traverse (`None` for unlimited).
+    pub max_depth: Option<usize>,
 }
 
 impl Default for CleanupOptions {
@@ -60,7 +60,7 @@ impl Default for CleanupOptions {
             protected_patterns: Vec::new(),
             verify_deletions: true,
             dry_run: false,
-            max_depth: -1,
+            max_depth: None,
         }
     }
 }
@@ -75,7 +75,7 @@ impl CleanupOptions {
             protected_patterns: Vec::new(),
             verify_deletions: true,
             dry_run: false,
-            max_depth: -1,
+            max_depth: None,
         }
     }
 
@@ -111,6 +111,15 @@ pub struct CleanupEntry {
     pub error: Option<String>,
 }
 
+/// A file or directory that was skipped during cleanup.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkippedEntry {
+    /// Path that was skipped.
+    pub path: PathBuf,
+    /// Reason the entry was skipped.
+    pub reason: String,
+}
+
 /// Result of a cleanup operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CleanupResult {
@@ -131,7 +140,7 @@ pub struct CleanupResult {
     /// Detailed entries for each file/directory processed.
     pub entries: Vec<CleanupEntry>,
     /// Files that were skipped with reasons.
-    pub skipped_entries: Vec<(PathBuf, String)>,
+    pub skipped_entries: Vec<SkippedEntry>,
     /// Whether verification passed (if enabled).
     pub verification_passed: Option<bool>,
     /// Duration of the cleanup operation in milliseconds.
@@ -277,7 +286,7 @@ impl DeviceCleanupHandler {
         &self,
         mount_point: &Path,
         options: &CleanupOptions,
-    ) -> Result<(Vec<CleanupEntry>, Vec<(PathBuf, String)>)> {
+    ) -> Result<(Vec<CleanupEntry>, Vec<SkippedEntry>)> {
         let mut entries_to_delete = Vec::new();
         let mut skipped = Vec::new();
 
@@ -291,14 +300,10 @@ impl DeviceCleanupHandler {
 
         // Build walker with depth configuration
         // SECURITY: follow_links(false) prevents following symlinks outside mount point
-        let walker = if options.max_depth < 0 {
-            WalkDir::new(mount_point).min_depth(1).follow_links(false)
-        } else {
-            WalkDir::new(mount_point)
-                .min_depth(1)
-                .max_depth(options.max_depth.unsigned_abs() as usize)
-                .follow_links(false)
-        };
+        let mut walker = WalkDir::new(mount_point).min_depth(1).follow_links(false);
+        if let Some(depth) = options.max_depth {
+            walker = walker.max_depth(depth);
+        }
 
         // Collect all entries first (we'll process from deepest to shallowest)
         let mut all_entries: Vec<_> = walker
@@ -315,7 +320,10 @@ impl DeviceCleanupHandler {
             // SECURITY: Skip symlinks entirely to prevent path traversal attacks
             if entry.file_type().is_symlink() {
                 debug!("Skipping symlink: {}", path.display());
-                skipped.push((path, "symlink".to_string()));
+                skipped.push(SkippedEntry {
+                    path,
+                    reason: "symlink".to_string(),
+                });
                 continue;
             }
 
@@ -327,14 +335,17 @@ impl DeviceCleanupHandler {
                     "SECURITY: Path {} resolves outside mount point, skipping",
                     path.display()
                 );
-                skipped.push((path, "path escapes mount point".to_string()));
+                skipped.push(SkippedEntry {
+                    path,
+                    reason: "path escapes mount point".to_string(),
+                });
                 continue;
             }
 
             // Check if protected
             if let Some(reason) = self.is_protected(&path, options) {
                 debug!("Skipping protected path: {} ({})", path.display(), reason);
-                skipped.push((path, reason));
+                skipped.push(SkippedEntry { path, reason });
                 continue;
             }
 
@@ -609,14 +620,10 @@ impl DeviceCleanupHandler {
             .collect();
 
         // SECURITY: follow_links(false) prevents following symlinks outside mount point
-        let walker = if options.max_depth < 0 {
-            WalkDir::new(mount_point).min_depth(1).follow_links(false)
-        } else {
-            WalkDir::new(mount_point)
-                .min_depth(1)
-                .max_depth(options.max_depth.unsigned_abs() as usize)
-                .follow_links(false)
-        };
+        let mut walker = WalkDir::new(mount_point).min_depth(1).follow_links(false);
+        if let Some(depth) = options.max_depth {
+            walker = walker.max_depth(depth);
+        }
 
         let mut entries = Vec::new();
         let mut skipped_entries = Vec::new();
@@ -632,7 +639,10 @@ impl DeviceCleanupHandler {
             // SECURITY: Skip symlinks entirely to prevent path traversal attacks
             if entry.file_type().is_symlink() {
                 debug!("Skipping symlink: {}", path.display());
-                skipped_entries.push((path, "symlink".to_string()));
+                skipped_entries.push(SkippedEntry {
+                    path,
+                    reason: "symlink".to_string(),
+                });
                 continue;
             }
 
@@ -644,13 +654,16 @@ impl DeviceCleanupHandler {
                     "SECURITY: Path {} resolves outside mount point, skipping",
                     path.display()
                 );
-                skipped_entries.push((path, "path escapes mount point".to_string()));
+                skipped_entries.push(SkippedEntry {
+                    path,
+                    reason: "path escapes mount point".to_string(),
+                });
                 continue;
             }
 
             // Check if protected
             if let Some(reason) = self.is_protected(&path, options) {
-                skipped_entries.push((path, reason));
+                skipped_entries.push(SkippedEntry { path, reason });
                 continue;
             }
 
@@ -661,7 +674,10 @@ impl DeviceCleanupHandler {
                 .is_some_and(|e| audio_extensions.contains(e.to_lowercase().as_str()));
 
             if !is_audio {
-                skipped_entries.push((path, "not an audio file".to_string()));
+                skipped_entries.push(SkippedEntry {
+                    path,
+                    reason: "not an audio file".to_string(),
+                });
                 continue;
             }
 
@@ -1167,7 +1183,7 @@ mod tests {
         assert!(options.protected_patterns.is_empty());
         assert!(options.verify_deletions);
         assert!(!options.dry_run);
-        assert_eq!(options.max_depth, -1);
+        assert_eq!(options.max_depth, None);
     }
 
     #[test]
@@ -1274,7 +1290,10 @@ mod tests {
             files_failed: 0,
             dry_run: false,
             entries: Vec::new(),
-            skipped_entries: vec![(PathBuf::from("/.hidden"), "hidden file".to_string())],
+            skipped_entries: vec![SkippedEntry {
+                path: PathBuf::from("/.hidden"),
+                reason: "hidden file".to_string(),
+            }],
             verification_passed: Some(true),
             duration_ms: 150,
         };
@@ -1306,7 +1325,7 @@ mod tests {
         .unwrap();
 
         let mut options = CleanupOptions::full_cleanup();
-        options.max_depth = 2; // Will visit depths 1 and 2 only
+        options.max_depth = Some(2); // Will visit depths 1 and 2 only
 
         let _result = handler
             .cleanup_device(temp_dir.path(), &options)
@@ -1487,8 +1506,10 @@ mod tests {
         assert!(!result.skipped_entries.is_empty());
 
         // Check that .hidden was skipped
-        let hidden_skipped = result.skipped_entries.iter().any(|(path, _)| {
-            path.file_name()
+        let hidden_skipped = result.skipped_entries.iter().any(|entry| {
+            entry
+                .path
+                .file_name()
                 .is_some_and(|n| n.to_string_lossy().starts_with('.'))
         });
         assert!(hidden_skipped);

@@ -10,9 +10,9 @@ fmt:
 fmt-check:
     cargo +nightly fmt --all -- --check
 
-# Run clippy on the entire workspace
+# Run clippy on the entire workspace (same flags as CI)
 clippy:
-    cargo clippy --workspace --all-targets -- -D warnings
+    cargo clippy --workspace --all-targets -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -W clippy::cognitive_complexity
 
 # Run the same clippy command used in GitHub Actions CI
 clippy-ci:
