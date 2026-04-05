@@ -1,9 +1,7 @@
 # Cargo configuration for the workspace
 
-# Use sccache to cache compiled artifacts (install via `just install-ci-tools`)
-# Set RUSTC_WRAPPER="" to disable if sccache is not installed
-[build]
-rustc-wrapper = "sccache"
+# To enable sccache locally, set: export RUSTC_WRAPPER=sccache
+# In CI, this is set per-job via the sccache-action step.
 
 [target.wasm32-unknown-unknown]
 # Enable bulk memory operations for WASM (required for memory.copy)
