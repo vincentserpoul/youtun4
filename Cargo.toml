@@ -62,6 +62,7 @@ console_error_panic_hook = "0.1"
 
 # Testing
 mockall = "0.14"
+proptest = "1.6"
 
 # Internal workspace crates
 youtun4-core = { version = "0.11.1", path = "crates/youtun4-core" }

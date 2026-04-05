@@ -33,6 +33,7 @@ mp3lame-encoder = "0.2"
 
 [dev-dependencies]
 mockall.workspace = true
+proptest.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["test-util", "macros"] }
 tracing-subscriber = { workspace = true }
