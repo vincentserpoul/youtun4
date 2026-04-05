@@ -220,6 +220,7 @@ jobs:
 
       - name: Generate coverage report
         run: |
+          mkdir -p coverage
           cargo llvm-cov nextest \
             --workspace \
             --exclude youtun4-ui \
