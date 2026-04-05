@@ -210,8 +210,8 @@ h6 {
   border: 1px solid rgba(34, 211, 238, 0.25);
   border-radius: var(--radius-xl);
   box-shadow:
-    0 0 20px rgba(34, 211, 238, 0.08),
-    0 0 45px rgba(34, 211, 238, 0.04);
+    0 0 12px rgba(34, 211, 238, 0.08),
+    0 0 12px rgba(34, 211, 238, 0.04);
   overflow: hidden;
   flex-shrink: 0;
   transition: transform var(--transition-smooth);
@@ -540,7 +540,7 @@ h6 {
 }
 
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 0 20px rgba(236, 72, 153, 0.5), 0 0 40px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.5), 0 0 12px rgba(139, 92, 246, 0.3);
   transform: translateY(-1px);
   filter: brightness(1.15);
 }
@@ -668,7 +668,7 @@ h6 {
 .device-item.selected {
   border-color: var(--accent-primary);
   background: var(--gradient-brand-subtle);
-  box-shadow: 0 0 24px var(--shadow-primary), inset 0 0 16px rgba(139, 92, 246, 0.05);
+  box-shadow: 0 0 12px var(--shadow-primary), inset 0 0 8px rgba(139, 92, 246, 0.05);
 }
 
 .device-item:focus-visible {
@@ -4364,7 +4364,7 @@ h6 {
   background: rgba(6, 3, 16, 0.88);
   border-radius: var(--radius-xl);
   border: 1px solid rgba(34, 211, 238, 0.25);
-  box-shadow: 0 0 20px rgba(34, 211, 238, 0.08);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.08);
   overflow: hidden;
 }
 
@@ -5103,7 +5103,7 @@ h6 {
   .layout-sidebar {
     width: 85vw;
     max-width: 320px;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
   }
 
   .layout-sidebar.open {
@@ -6258,7 +6258,7 @@ h6 {
 
 .cdb-status-dot.connected {
   background: #00ff88;
-  box-shadow: 0 0 8px rgba(0, 255, 136, 0.8), 0 0 20px rgba(0, 255, 136, 0.4);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.8), 0 0 12px rgba(0, 255, 136, 0.4);
 }
 
 .cdb-status-dot.disconnected {
@@ -6328,12 +6328,12 @@ h6 {
   letter-spacing: 0.1em;
   cursor: pointer;
   transition: all var(--transition-fast);
-  box-shadow: 0 2px 12px rgba(236, 72, 153, 0.4), 0 0 25px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 2px 12px rgba(236, 72, 153, 0.4), 0 0 12px rgba(139, 92, 246, 0.3);
   white-space: nowrap;
 }
 
 .btn-execute-sync:hover:not(:disabled) {
-  box-shadow: 0 4px 25px rgba(236, 72, 153, 0.6), 0 0 40px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.6), 0 0 12px rgba(139, 92, 246, 0.4);
   transform: translateY(-2px);
   filter: brightness(1.15);
 }
@@ -6364,7 +6364,7 @@ h6 {
   border: 1px solid rgba(34, 211, 238, 0.25);
   border-radius: var(--radius-xl);
   overflow: hidden;
-  box-shadow: 0 0 20px rgba(34, 211, 238, 0.08);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.08);
 }
 
 .playlist-table-header {
