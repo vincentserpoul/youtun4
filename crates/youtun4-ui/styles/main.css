@@ -598,7 +598,7 @@ h6 {
 
 .btn-icon:hover:not(:disabled) {
   transform: scale(1.1);
-  filter: drop-shadow(0 0 8px currentColor);
+  box-shadow: 0 0 8px currentColor;
 }
 
 .btn-icon:active:not(:disabled) {
@@ -1035,7 +1035,7 @@ h6 {
 .empty-state-icon svg {
   color: var(--accent-primary);
   transition: transform var(--transition-spring);
-  filter: drop-shadow(0 2px 8px var(--shadow-primary));
+  box-shadow: 0 2px 8px var(--shadow-primary);
 }
 
 .empty-state:hover .empty-state-icon svg {
@@ -5849,7 +5849,7 @@ h6 {
 .header-action-icon:hover {
   color: #ff2d8a;
   transform: scale(1.15);
-  filter: drop-shadow(0 0 10px rgba(236, 72, 153, 0.7));
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.7);
 }
 
 /* ========================================
@@ -6518,7 +6518,7 @@ h6 {
 .btn-table-action:hover:not(:disabled) {
   color: #ec4899;
   background: rgba(236, 72, 153, 0.15);
-  filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.5));
+  box-shadow: 0 0 6px rgba(236, 72, 153, 0.5);
 }
 
 .btn-table-action:disabled {
@@ -6529,7 +6529,7 @@ h6 {
 .btn-table-danger:hover:not(:disabled) {
   color: #f87171;
   background: rgba(248, 113, 113, 0.15);
-  filter: drop-shadow(0 0 6px rgba(248, 113, 113, 0.5));
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.5);
 }
 
 /* Table loading skeleton */
