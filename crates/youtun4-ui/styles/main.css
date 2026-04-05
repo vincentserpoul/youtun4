@@ -87,43 +87,37 @@ h6 {
   z-index: -1;
 }
 
-/* Synthwave retro sun — gradient circle with static dark bands */
+/* Synthwave retro sun — sits on the horizon, bottom clipped, bands in lower half */
 .synthwave-sun {
   position: absolute;
   z-index: 2;
   top: 18%;
   left: 50%;
   transform: translateX(-50%);
-  width: min(28vmin, 220px);
+  width: min(40vmin, 340px);
   aspect-ratio: 1;
-  background: linear-gradient(to bottom, #fdb428 0%, #f672ca 60%);
+  background: linear-gradient(to bottom, #fdb428 0%, #f97316 30%, #ec4899 65%, #d946ef 100%);
   border-radius: 50%;
-  /* Variable-width bands via mask — thinner at bottom, wider at top */
+  /* 4 horizontal bands in lower half — thicker toward bottom */
   mask: linear-gradient(
-    to top,
-    #0000 0%, 0%, #000 2%, 0%,
-    #0000 6%, 0%, #000 9%, 0%,
-    #0000 14%, 0%, #000 18%, 0%,
-    #0000 24%, 0%, #000 29%, 0%,
-    #0000 35%, 0%, #000 42%, 0%,
-    #0000 48%, 0%, #000 56%, 0%,
-    #0000 60%, 0%, #000 62%
+    to bottom,
+    #000 0%, #000 50%,
+    #0000 52%, #000 56%,
+    #0000 59%, #000 64%,
+    #0000 67%, #000 73%,
+    #0000 76%, #000 100%
   );
   -webkit-mask: linear-gradient(
-    to top,
-    #0000 0%, 0%, #000 2%, 0%,
-    #0000 6%, 0%, #000 9%, 0%,
-    #0000 14%, 0%, #000 18%, 0%,
-    #0000 24%, 0%, #000 29%, 0%,
-    #0000 35%, 0%, #000 42%, 0%,
-    #0000 48%, 0%, #000 56%, 0%,
-    #0000 60%, 0%, #000 62%
+    to bottom,
+    #000 0%, #000 50%,
+    #0000 52%, #000 56%,
+    #0000 59%, #000 64%,
+    #0000 67%, #000 73%,
+    #0000 76%, #000 100%
   );
-  mask-size: 100% 250%;
-  -webkit-mask-size: 100% 250%;
-  mask-position: 0 125%;
-  -webkit-mask-position: 0 125%;
+  clip-path: inset(0 0 28% 0);
 }
+
 
 /* Grid — bottom 75% */
 .grid-floor {
@@ -149,13 +143,16 @@ h6 {
   bottom: 0;
   height: 100%;
   background:
-    linear-gradient(to right, rgba(250, 196, 255, 0.5) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(250, 196, 255, 0.5) 1px, transparent 1px);
+    linear-gradient(to right, rgba(250, 196, 255, 0.5) 1.5px, transparent 1.5px),
+    linear-gradient(to bottom, rgba(250, 196, 255, 0.5) 1.5px, transparent 1.5px);
   background-size: 2rem 2rem;
   transform: rotateX(53deg)
-    translateX(calc(var(--mouse-x, 0) * -10px));
+    translateX(calc(var(--mouse-x, 0) * -10px))
+    translateZ(0);
   transform-origin: 50% 100%;
-  filter: blur(0.3px);
+  filter: blur(0.7px);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   animation: grid-scroll 16s linear infinite;
   /* Fade out at the top — grid converges to vanishing point */
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 15%);
@@ -168,9 +165,23 @@ h6 {
 }
 
 
-/* Horizon glow removed — was causing a visible line artifact */
+/* Palm tree silhouettes — same size/position as sun, masked to its circle */
 .grid-glow {
-  display: none;
+  position: absolute;
+  z-index: 3;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(40vmin, 340px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  clip-path: inset(0 0 28% 0);
+  pointer-events: none;
+  /* Palm SVG — shorter trees rooted at bottom of sun */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='%230a0418'%3E%3C!-- Left palm trunk — thin, curved left, rooted at bottom --%3E%3Cpath d='M112 200 Q109 185 106 170 Q102 152 99 135 Q96 120 94 108 Q93 102 95 97 L97 97 Q95 102 96 108 Q98 120 101 135 Q104 152 108 170 Q110 185 114 200Z'/%3E%3C!-- Left palm fronds — small, tight --%3E%3Cpath d='M95 100 Q84 93 72 91 Q81 87 95 95Z'/%3E%3Cpath d='M95 97 Q80 82 66 76 Q78 74 95 88Z'/%3E%3Cpath d='M96 95 Q88 76 82 68 Q90 71 98 88Z'/%3E%3Cpath d='M97 97 Q108 85 118 82 Q112 88 99 95Z'/%3E%3Cpath d='M96 100 Q108 94 120 95 Q112 99 98 99Z'/%3E%3C!-- Right palm trunk — thin, curved right, taller --%3E%3Cpath d='M132 200 Q134 182 136 165 Q139 145 142 128 Q145 112 147 98 Q149 88 147 80 L149 80 Q151 88 149 98 Q147 112 144 128 Q141 145 138 165 Q136 182 134 200Z'/%3E%3C!-- Right palm fronds — small, tight --%3E%3Cpath d='M148 84 Q138 72 126 67 Q136 64 148 78Z'/%3E%3Cpath d='M148 80 Q157 64 168 56 Q162 68 150 77Z'/%3E%3Cpath d='M149 84 Q160 76 170 75 Q164 80 151 83Z'/%3E%3Cpath d='M148 80 Q146 62 148 52 Q153 62 150 77Z'/%3E%3Cpath d='M147 84 Q137 77 126 79 Q134 74 147 80Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
 }
 
 .layout-header {
