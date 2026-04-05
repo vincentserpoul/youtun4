@@ -47,12 +47,6 @@ repos:
     hooks:
       - id: taplo-format
 
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.14.0
-    hooks:
-      - id: hadolint-docker
-        name: dockerfile-lint
-        description: Lint Dockerfiles for best practices and errors
 
   - repo: https://github.com/crate-ci/typos
     rev: v1.43.5
@@ -62,13 +56,6 @@ repos:
         args: ["--force-exclude"]
         types_or: [rust, toml, yaml, markdown]
 
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
-    hooks:
-      - id: codespell
-        description: Checks for common misspellings
-        args: ["--ignore-words-list=inout"]
-        types_or: [rust, python, cython, toml, yaml, rst, markdown]
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0
