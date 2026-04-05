@@ -17,6 +17,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_TOOLCHAIN: 1.94.0
   RUSTFLAGS: -D warnings
+  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   # ============================================================================
@@ -71,6 +72,12 @@ jobs:
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
+
+      - name: Configure sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
@@ -100,14 +107,27 @@ jobs:
           rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
           rustup default "${{ env.RUST_TOOLCHAIN }}"
 
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+      - name: Install just
+        uses: taiki-e/install-action@de6f06126afb86b5250a16ff961c57360c5edccc # v2
+        with:
+          tool: just
 
-      - name: Install cargo-deny
-        run: cargo install cargo-deny --locked
+      - name: Cache CI tools
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .bin
+          key: ci-tools-${{ runner.os }}-${{ runner.arch }}-v1
+
+      - name: Install CI tools
+        run: |
+          just install-ci-tools
+          echo "$PWD/.bin" >> "$GITHUB_PATH"
 
       - name: Install cargo-machete
         run: cargo install cargo-machete --locked
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
       - name: Check licenses and advisories
         run: cargo deny check
@@ -149,6 +169,12 @@ jobs:
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
+
+      - name: Configure sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
@@ -189,11 +215,19 @@ jobs:
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
+
+      - name: Configure sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
       - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin --locked
+        uses: taiki-e/install-action@de6f06126afb86b5250a16ff961c57360c5edccc # v2
+        with:
+          tool: cargo-tarpaulin
 
       - name: Generate coverage report
         run: |
@@ -232,8 +266,27 @@ jobs:
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Install trunk
-        run: cargo install trunk --locked
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
+
+      - name: Configure sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+
+      - name: Install just
+        uses: taiki-e/install-action@de6f06126afb86b5250a16ff961c57360c5edccc # v2
+        with:
+          tool: just
+
+      - name: Cache CI tools
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .bin
+          key: ci-tools-${{ runner.os }}-${{ runner.arch }}-v1
+
+      - name: Install CI tools
+        run: |
+          just install-ci-tools
+          echo "$PWD/.bin" >> "$GITHUB_PATH"
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
@@ -269,6 +322,12 @@ jobs:
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
+
+      - name: Configure sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
@@ -306,6 +365,12 @@ jobs:
 
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
+
+      - name: Configure sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
