@@ -17,7 +17,6 @@ env:
   CARGO_TERM_COLOR: always
   RUST_TOOLCHAIN: 1.94.0
   RUSTFLAGS: -D warnings
-  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   # ============================================================================
@@ -76,7 +75,9 @@ jobs:
         uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
 
       - name: Configure sccache
-        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
@@ -173,7 +174,9 @@ jobs:
         uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
 
       - name: Configure sccache
-        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
@@ -219,7 +222,9 @@ jobs:
         uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
 
       - name: Configure sccache
-        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
@@ -270,7 +275,9 @@ jobs:
         uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
 
       - name: Configure sccache
-        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
 
       - name: Install just
         uses: taiki-e/install-action@de6f06126afb86b5250a16ff961c57360c5edccc # v2
@@ -327,7 +334,9 @@ jobs:
         uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
 
       - name: Configure sccache
-        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
@@ -370,7 +379,9 @@ jobs:
         uses: mozilla-actions/sccache-action@054db53350805f83040bf3e6e9b8cf5a139aa7c9 # v0.0.7
 
       - name: Configure sccache
-        run: echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
