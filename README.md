@@ -8,10 +8,14 @@
 [![Security](https://github.com/vincentserpoul/youtun4/actions/workflows/security.yml/badge.svg)](https://github.com/vincentserpoul/youtun4/actions/workflows/security.yml)
 [![codecov](https://codecov.io/gh/vincentserpoul/youtun4/graph/badge.svg?token=91PBO9UKNN)](https://codecov.io/gh/vincentserpoul/youtun4)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Rust](https://img.shields.io/badge/rust-1.93%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.94%2B-orange.svg)](https://www.rust-lang.org/)
 [![Tauri](https://img.shields.io/badge/tauri-2.x-blue.svg)](https://tauri.app/)
 
 A desktop app for managing MP3 playlists from YouTube. Built with Tauri and Rust.
+
+<p align="center">
+  <img src="docs/screenshot.png" alt="Youtun4 Screenshot" width="700">
+</p>
 
 ## Features
 
