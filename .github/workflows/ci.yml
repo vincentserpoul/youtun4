@@ -59,7 +59,8 @@ jobs:
             librsvg2-dev \
             libssl-dev \
             libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libayatana-appindicator3-dev \
+            mold clang
 
       - name: Install Rust
         run: |
@@ -153,7 +154,8 @@ jobs:
             librsvg2-dev \
             libssl-dev \
             libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libayatana-appindicator3-dev \
+            mold clang
 
       - name: Install Rust
         run: |
@@ -194,7 +196,8 @@ jobs:
             librsvg2-dev \
             libssl-dev \
             libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libayatana-appindicator3-dev \
+            mold clang
 
       - name: Install Rust
         run: |
@@ -292,7 +295,8 @@ jobs:
             librsvg2-dev \
             libssl-dev \
             libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libayatana-appindicator3-dev \
+            mold clang
 
       - name: Install Rust
         run: |
@@ -330,7 +334,8 @@ jobs:
             librsvg2-dev \
             libssl-dev \
             libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libayatana-appindicator3-dev \
+            mold clang
 
       - name: Install Rust (MSRV)
         run: |
