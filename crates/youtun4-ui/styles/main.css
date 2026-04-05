@@ -151,15 +151,13 @@ h6 {
   bottom: 0;
   height: 100%;
   background:
-    linear-gradient(to right, rgba(250, 196, 255, 0.7) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(250, 196, 255, 0.7) 1px, transparent 1px);
+    linear-gradient(to right, rgba(250, 196, 255, 0.5) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(250, 196, 255, 0.5) 1px, transparent 1px);
   background-size: 2rem 2rem;
   transform: rotateX(53deg)
     translateX(calc(var(--mouse-x, 0) * -10px));
   transform-origin: 50% 100%;
-  filter: drop-shadow(0 0 4px rgba(223, 115, 115, 0.8)) blur(0.3px);
   animation: grid-scroll 16s linear infinite;
-  will-change: background-position;
   /* Fade out at the top — grid converges to vanishing point */
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 15%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 15%);
