@@ -37,3 +37,6 @@ playwright-report
 crates/youtun4-ui/dist/
 
 *.profraw
+
+# Pre-built CI tool binaries
+.bin/

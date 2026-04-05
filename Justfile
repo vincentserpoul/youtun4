@@ -149,6 +149,89 @@ tailwind-install:
     chmod +x .bin/tailwindcss
     echo "Installed .bin/tailwindcss (${VERSION})"
 
+# Download and install pre-built CI tool binaries to .bin/
+install-ci-tools:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p .bin
+
+    OS=$(uname -s)
+    ARCH=$(uname -m)
+
+    # Normalise arch: aarch64 → arm64 for our internal labels
+    case "${OS}-${ARCH}" in
+        Darwin-arm64|Darwin-aarch64)  OS_LABEL="darwin";  ARCH_LABEL="aarch64" ;;
+        Darwin-x86_64)                OS_LABEL="darwin";  ARCH_LABEL="x86_64"  ;;
+        Linux-aarch64)                OS_LABEL="linux";   ARCH_LABEL="aarch64" ;;
+        Linux-x86_64)                 OS_LABEL="linux";   ARCH_LABEL="x86_64"  ;;
+        *) echo "Unsupported platform: ${OS}-${ARCH}" && exit 1 ;;
+    esac
+
+    # ── trunk ────────────────────────────────────────────────────────────────
+    TRUNK_VERSION="0.21.14"
+    TRUNK_MARKER=".bin/.trunk-${TRUNK_VERSION}"
+    if [ -f "${TRUNK_MARKER}" ]; then
+        echo "trunk ${TRUNK_VERSION}: cached"
+    else
+        case "${OS_LABEL}-${ARCH_LABEL}" in
+            darwin-aarch64) TRUNK_TRIPLE="aarch64-apple-darwin"      ;;
+            darwin-x86_64)  TRUNK_TRIPLE="x86_64-apple-darwin"       ;;
+            linux-aarch64)  TRUNK_TRIPLE="aarch64-unknown-linux-musl" ;;
+            linux-x86_64)   TRUNK_TRIPLE="x86_64-unknown-linux-musl"  ;;
+        esac
+        TRUNK_ARCHIVE="trunk-${TRUNK_TRIPLE}.tar.gz"
+        TRUNK_URL="https://github.com/trunk-rs/trunk/releases/download/v${TRUNK_VERSION}/${TRUNK_ARCHIVE}"
+        echo "Downloading trunk ${TRUNK_VERSION} for ${TRUNK_TRIPLE}..."
+        curl -sL "${TRUNK_URL}" | tar -xzf - -C .bin trunk
+        chmod +x .bin/trunk
+        touch "${TRUNK_MARKER}"
+        echo "Installed .bin/trunk (${TRUNK_VERSION})"
+    fi
+
+    # ── cargo-deny ───────────────────────────────────────────────────────────
+    DENY_VERSION="0.19.0"
+    DENY_MARKER=".bin/.cargo-deny-${DENY_VERSION}"
+    if [ -f "${DENY_MARKER}" ]; then
+        echo "cargo-deny ${DENY_VERSION}: cached"
+    else
+        case "${OS_LABEL}-${ARCH_LABEL}" in
+            darwin-aarch64) DENY_TRIPLE="aarch64-apple-darwin"      ;;
+            darwin-x86_64)  DENY_TRIPLE="x86_64-apple-darwin"       ;;
+            linux-aarch64)  DENY_TRIPLE="aarch64-unknown-linux-musl" ;;
+            linux-x86_64)   DENY_TRIPLE="x86_64-unknown-linux-musl"  ;;
+        esac
+        DENY_ARCHIVE="cargo-deny-${DENY_VERSION}-${DENY_TRIPLE}.tar.gz"
+        DENY_URL="https://github.com/EmbarkStudios/cargo-deny/releases/download/${DENY_VERSION}/${DENY_ARCHIVE}"
+        DENY_SUBDIR="cargo-deny-${DENY_VERSION}-${DENY_TRIPLE}"
+        echo "Downloading cargo-deny ${DENY_VERSION} for ${DENY_TRIPLE}..."
+        curl -sL "${DENY_URL}" | tar -xzf - -C .bin --strip-components=1 "${DENY_SUBDIR}/cargo-deny"
+        chmod +x .bin/cargo-deny
+        touch "${DENY_MARKER}"
+        echo "Installed .bin/cargo-deny (${DENY_VERSION})"
+    fi
+
+    # ── sccache ──────────────────────────────────────────────────────────────
+    SCCACHE_VERSION="0.10.0"
+    SCCACHE_MARKER=".bin/.sccache-${SCCACHE_VERSION}"
+    if [ -f "${SCCACHE_MARKER}" ]; then
+        echo "sccache ${SCCACHE_VERSION}: cached"
+    else
+        case "${OS_LABEL}-${ARCH_LABEL}" in
+            darwin-aarch64) SCCACHE_TRIPLE="aarch64-apple-darwin"      ;;
+            darwin-x86_64)  SCCACHE_TRIPLE="x86_64-apple-darwin"       ;;
+            linux-aarch64)  SCCACHE_TRIPLE="aarch64-unknown-linux-musl" ;;
+            linux-x86_64)   SCCACHE_TRIPLE="x86_64-unknown-linux-musl"  ;;
+        esac
+        SCCACHE_ARCHIVE="sccache-v${SCCACHE_VERSION}-${SCCACHE_TRIPLE}.tar.gz"
+        SCCACHE_URL="https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/${SCCACHE_ARCHIVE}"
+        SCCACHE_SUBDIR="sccache-v${SCCACHE_VERSION}-${SCCACHE_TRIPLE}"
+        echo "Downloading sccache ${SCCACHE_VERSION} for ${SCCACHE_TRIPLE}..."
+        curl -sL "${SCCACHE_URL}" | tar -xzf - -C .bin --strip-components=1 "${SCCACHE_SUBDIR}/sccache"
+        chmod +x .bin/sccache
+        touch "${SCCACHE_MARKER}"
+        echo "Installed .bin/sccache (${SCCACHE_VERSION})"
+    fi
+
 # Validate OpenAPI spec with libopenapi-validator (requires Go)
 openapi-validate:
     cargo nextest run --workspace -E 'test(export_openapi_spec)' --success-output immediate 2>/dev/null
