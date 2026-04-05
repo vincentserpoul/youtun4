@@ -208,27 +208,29 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
-      - name: Install cargo-tarpaulin
+      - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@7a562dfa955aa2e4d5b0fd6ebd57ff9715c07b0b # v2.73.0
         with:
-          tool: cargo-tarpaulin
+          tool: cargo-llvm-cov
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@7a562dfa955aa2e4d5b0fd6ebd57ff9715c07b0b # v2.73.0
+        with:
+          tool: cargo-nextest
 
       - name: Generate coverage report
         run: |
-          cargo tarpaulin \
+          cargo llvm-cov nextest \
             --workspace \
             --exclude youtun4-ui \
             --exclude youtun4 \
-            --lib --tests \
-            --out xml \
-            --output-dir coverage \
-            --skip-clean \
-            --timeout 300
+            --codecov \
+            --output-path coverage/codecov.json
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2
         with:
-          files: coverage/cobertura.xml
+          files: coverage/codecov.json
           fail_ci_if_error: false
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
