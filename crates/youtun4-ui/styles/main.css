@@ -206,9 +206,7 @@ h6 {
   width: 280px;
   display: flex;
   flex-direction: column;
-  background: rgba(6, 3, 16, 0.5);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(6, 3, 16, 0.88);
   border: 1px solid rgba(34, 211, 238, 0.25);
   border-radius: var(--radius-xl);
   box-shadow:
@@ -4365,9 +4363,7 @@ h6 {
 
 /* Unified detail panel */
 .playlist-detail-panel {
-  background: rgba(6, 3, 16, 0.5);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(6, 3, 16, 0.88);
   border-radius: var(--radius-xl);
   border: 1px solid rgba(34, 211, 238, 0.25);
   box-shadow: 0 0 20px rgba(34, 211, 238, 0.08);
@@ -6154,9 +6150,7 @@ h6 {
    ======================================== */
 
 .connected-devices-bar {
-  background: rgba(6, 3, 16, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(6, 3, 16, 0.92);
   border: 1px solid rgba(34, 211, 238, 0.35);
   border-radius: var(--radius-xl);
   padding: var(--spacing-lg);
@@ -6368,9 +6362,7 @@ h6 {
    ======================================== */
 
 .playlist-table-container {
-  background: rgba(6, 3, 16, 0.5);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(6, 3, 16, 0.88);
   border: 1px solid rgba(34, 211, 238, 0.25);
   border-radius: var(--radius-xl);
   overflow: hidden;
