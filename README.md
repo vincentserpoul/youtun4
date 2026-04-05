@@ -92,11 +92,11 @@ cargo tauri dev
 Generate coverage reports locally:
 
 ```bash
-# Install tarpaulin
-cargo install cargo-tarpaulin
+# Generate coverage report (requires cargo-llvm-cov and cargo-nextest)
+just coverage
 
-# Generate coverage report
-cargo tarpaulin --workspace --out Html --output-dir coverage
+# Generate HTML coverage report
+just coverage-html
 ```
 
 ## Configuration
