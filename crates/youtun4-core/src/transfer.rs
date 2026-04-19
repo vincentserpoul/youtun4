@@ -873,7 +873,15 @@ impl TransferEngine {
         })?;
 
         // Get checksum
-        let checksum = hasher.map(|h| format!("{:x}", h.finalize()));
+        let checksum = hasher.map(|h| {
+            h.finalize()
+                .iter()
+                .fold(String::with_capacity(64), |mut s, b| {
+                    use core::fmt::Write as _;
+                    let _ = write!(s, "{b:02x}");
+                    s
+                })
+        });
 
         // Verify integrity if enabled
         if options.verify_integrity {
@@ -954,7 +962,14 @@ impl TransferEngine {
             hasher.update(&buffer[..bytes_read]);
         }
 
-        Ok(format!("{:x}", hasher.finalize()))
+        Ok(hasher
+            .finalize()
+            .iter()
+            .fold(String::with_capacity(64), |mut s, b| {
+                use core::fmt::Write as _;
+                let _ = write!(s, "{b:02x}");
+                s
+            }))
     }
 
     /// Verify that source and destination files have matching checksums.

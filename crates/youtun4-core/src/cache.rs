@@ -483,8 +483,7 @@ impl CacheManager {
 
         let modified_at = fs::metadata(path)
             .and_then(|m| m.modified())
-            .map(system_time_to_secs)
-            .unwrap_or(0);
+            .map_or(0, system_time_to_secs);
 
         let key = Self::metadata_cache_key(path, modified_at);
         let cache_path = self
@@ -548,8 +547,7 @@ impl CacheManager {
 
         let modified_at = fs::metadata(path)
             .and_then(|m| m.modified())
-            .map(system_time_to_secs)
-            .unwrap_or(0);
+            .map_or(0, system_time_to_secs);
 
         let key = Self::metadata_cache_key(path, modified_at);
 
@@ -715,8 +713,7 @@ impl CacheManager {
     pub fn temp_file_path(&self, prefix: &str, extension: &str) -> PathBuf {
         let timestamp = SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis())
-            .unwrap_or(0);
+            .map_or(0, |d| d.as_millis());
         let filename = format!("{prefix}_{timestamp}.{extension}");
         self.temp_dir().join(filename)
     }

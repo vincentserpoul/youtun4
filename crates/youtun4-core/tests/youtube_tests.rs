@@ -74,7 +74,7 @@ async fn test_rusty_ytdl_direct() {
         Ok(()) => {
             println!("Download successful!");
             if temp_path.exists() {
-                let size = std::fs::metadata(&temp_path).map(|m| m.len()).unwrap_or(0);
+                let size = std::fs::metadata(&temp_path).map_or(0, |m| m.len());
                 println!("File size: {size} bytes");
                 // Cleanup
                 let _ = std::fs::remove_file(&temp_path);
@@ -156,7 +156,7 @@ fn test_download_single_video() {
                 if let Some(path) = &r.output_path {
                     println!("    Path: {path:?}");
                     if path.exists() {
-                        let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+                        let size = std::fs::metadata(path).map_or(0, |m| m.len());
                         println!("    Size: {size} bytes");
                     }
                 }

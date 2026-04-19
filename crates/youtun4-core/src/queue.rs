@@ -220,15 +220,14 @@ impl QueueItem {
     fn new(id: QueueItemId, request: DownloadRequest) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| {
+            .map_or(0, |d| {
                 #[allow(
                     clippy::cast_possible_truncation,
                     reason = "duration in ms won't exceed u64"
                 )]
                 let ms = d.as_millis() as u64;
                 ms
-            })
-            .unwrap_or(0);
+            });
 
         Self {
             id,
@@ -556,15 +555,14 @@ impl DownloadQueueManager {
 
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| {
+                .map_or(0, |d| {
                     #[allow(
                         clippy::cast_possible_truncation,
                         reason = "duration in ms won't exceed u64"
                     )]
                     let ms = d.as_millis() as u64;
                     ms
-                })
-                .unwrap_or(0);
+                });
 
             item.status = QueueItemStatus::Cancelled;
             item.finished_at = Some(now);
@@ -687,15 +685,14 @@ impl DownloadQueueManager {
         if let Some(item) = state.find_item_mut(next_id) {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| {
+                .map_or(0, |d| {
                     #[allow(
                         clippy::cast_possible_truncation,
                         reason = "duration in ms won't exceed u64"
                     )]
                     let ms = d.as_millis() as u64;
                     ms
-                })
-                .unwrap_or(0);
+                });
 
             item.status = QueueItemStatus::Downloading;
             item.started_at = Some(now);
@@ -763,15 +760,14 @@ impl DownloadQueueManager {
         if let Some(item) = state.find_item_mut(id) {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| {
+                .map_or(0, |d| {
                     #[allow(
                         clippy::cast_possible_truncation,
                         reason = "duration in ms won't exceed u64"
                     )]
                     let ms = d.as_millis() as u64;
                     ms
-                })
-                .unwrap_or(0);
+                });
 
             item.status = QueueItemStatus::Completed;
             item.finished_at = Some(now);
@@ -791,15 +787,14 @@ impl DownloadQueueManager {
         if let Some(item) = state.find_item_mut(id) {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| {
+                .map_or(0, |d| {
                     #[allow(
                         clippy::cast_possible_truncation,
                         reason = "duration in ms won't exceed u64"
                     )]
                     let ms = d.as_millis() as u64;
                     ms
-                })
-                .unwrap_or(0);
+                });
 
             item.status = QueueItemStatus::Failed(error.clone());
             item.finished_at = Some(now);

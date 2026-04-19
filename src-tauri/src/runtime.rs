@@ -539,7 +539,7 @@ mod tests {
             Some("cancellable test".to_string()),
             |cancel_rx| async move {
                 tokio::select! {
-                    () = tokio::time::sleep(Duration::from_secs(60)) => {
+                    () = tokio::time::sleep(Duration::from_mins(1)) => {
                         "completed"
                     }
                     _ = cancel_rx => {

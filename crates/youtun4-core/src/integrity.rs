@@ -687,7 +687,14 @@ impl IntegrityVerifier {
             hasher.update(buffer.get(..bytes_read).unwrap_or(&buffer));
         }
 
-        Ok(format!("{:x}", hasher.finalize()))
+        Ok(hasher
+            .finalize()
+            .iter()
+            .fold(String::with_capacity(64), |mut s, b| {
+                use core::fmt::Write as _;
+                let _ = write!(s, "{b:02x}");
+                s
+            }))
     }
 
     /// Verify a single file against an expected checksum.
@@ -993,7 +1000,7 @@ impl IntegrityVerifier {
                 }
             }
 
-            let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+            let size = fs::metadata(&path).map_or(0, |m| m.len());
             files_to_process.push((file_name, path, size));
         }
 

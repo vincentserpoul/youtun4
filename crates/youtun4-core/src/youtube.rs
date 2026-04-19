@@ -880,7 +880,7 @@ fn extract_audio_to_m4a(input_path: &Path, output_path: &Path, title: &str) -> R
         })
     })?;
 
-    let file_size = input_file.metadata().map(|m| m.len()).unwrap_or(0);
+    let file_size = input_file.metadata().map_or(0, |m| m.len());
     let mut reader = BufReader::new(input_file);
 
     // Read the MP4 header
@@ -895,11 +895,7 @@ fn extract_audio_to_m4a(input_path: &Path, output_path: &Path, title: &str) -> R
     let audio_track = mp4_reader
         .tracks()
         .values()
-        .find(|t| {
-            t.track_type()
-                .map(|tt| tt == mp4::TrackType::Audio)
-                .unwrap_or(false)
-        })
+        .find(|t| t.track_type().is_ok_and(|tt| tt == mp4::TrackType::Audio))
         .ok_or_else(|| {
             Error::Download(DownloadError::AudioExtractionFailed {
                 title: title.to_string(),
@@ -2186,7 +2182,7 @@ impl YouTubeDownloader for RustyYtdlDownloader {
                 match self.download_single_video(&video.id, &video.title, output_dir) {
                     Ok(path) => {
                         // Get file size for bytes tracking
-                        let file_size = path.metadata().map(|m| m.len()).unwrap_or(0);
+                        let file_size = path.metadata().map_or(0, |m| m.len());
                         tracker.record_progress(tracker.total_bytes_downloaded + file_size);
                         tracker.video_completed();
 

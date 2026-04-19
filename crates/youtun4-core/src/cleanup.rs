@@ -353,7 +353,7 @@ impl DeviceCleanupHandler {
             let size_bytes = if is_directory {
                 0
             } else {
-                fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
+                fs::metadata(&path).map_or(0, |m| m.len())
             };
 
             entries_to_delete.push(CleanupEntry {
@@ -462,17 +462,14 @@ impl DeviceCleanupHandler {
 
         if options.dry_run {
             // Dry run - just report what would be deleted
-            let duration_ms = start_time
-                .elapsed()
-                .map(|d| {
-                    #[allow(
-                        clippy::cast_possible_truncation,
-                        reason = "duration in ms won't exceed u64"
-                    )]
-                    let ms = d.as_millis() as u64;
-                    ms
-                })
-                .unwrap_or(0);
+            let duration_ms = start_time.elapsed().map_or(0, |d| {
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "duration in ms won't exceed u64"
+                )]
+                let ms = d.as_millis() as u64;
+                ms
+            });
 
             return Ok(CleanupResult {
                 mount_point: mount_point.to_path_buf(),
@@ -513,17 +510,14 @@ impl DeviceCleanupHandler {
             .verify_deletions
             .then(|| self.verify_cleanup(&entries));
 
-        let duration_ms = start_time
-            .elapsed()
-            .map(|d| {
-                #[allow(
-                    clippy::cast_possible_truncation,
-                    reason = "duration in ms won't exceed u64"
-                )]
-                let ms = d.as_millis() as u64;
-                ms
-            })
-            .unwrap_or(0);
+        let duration_ms = start_time.elapsed().map_or(0, |d| {
+            #[allow(
+                clippy::cast_possible_truncation,
+                reason = "duration in ms won't exceed u64"
+            )]
+            let ms = d.as_millis() as u64;
+            ms
+        });
 
         let result = CleanupResult {
             mount_point: mount_point.to_path_buf(),
@@ -681,7 +675,7 @@ impl DeviceCleanupHandler {
                 continue;
             }
 
-            let size_bytes = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+            let size_bytes = fs::metadata(&path).map_or(0, |m| m.len());
 
             entries.push(CleanupEntry {
                 path,
@@ -696,17 +690,14 @@ impl DeviceCleanupHandler {
         let total_bytes: u64 = entries.iter().map(|e| e.size_bytes).sum();
 
         if options.dry_run {
-            let duration_ms = start_time
-                .elapsed()
-                .map(|d| {
-                    #[allow(
-                        clippy::cast_possible_truncation,
-                        reason = "duration in ms won't exceed u64"
-                    )]
-                    let ms = d.as_millis() as u64;
-                    ms
-                })
-                .unwrap_or(0);
+            let duration_ms = start_time.elapsed().map_or(0, |d| {
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "duration in ms won't exceed u64"
+                )]
+                let ms = d.as_millis() as u64;
+                ms
+            });
 
             return Ok(CleanupResult {
                 mount_point: mount_point.to_path_buf(),
@@ -740,17 +731,14 @@ impl DeviceCleanupHandler {
             .verify_deletions
             .then(|| self.verify_cleanup(&entries));
 
-        let duration_ms = start_time
-            .elapsed()
-            .map(|d| {
-                #[allow(
-                    clippy::cast_possible_truncation,
-                    reason = "duration in ms won't exceed u64"
-                )]
-                let ms = d.as_millis() as u64;
-                ms
-            })
-            .unwrap_or(0);
+        let duration_ms = start_time.elapsed().map_or(0, |d| {
+            #[allow(
+                clippy::cast_possible_truncation,
+                reason = "duration in ms won't exceed u64"
+            )]
+            let ms = d.as_millis() as u64;
+            ms
+        });
 
         Ok(CleanupResult {
             mount_point: mount_point.to_path_buf(),

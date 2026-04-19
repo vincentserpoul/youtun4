@@ -234,7 +234,7 @@ impl PlaylistManager {
         {
             let path = entry.path();
             if path.is_file() {
-                let size = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+                let size = fs::metadata(path).map_or(0, |m| m.len());
                 total_size_bytes += size;
 
                 if is_audio_file(path) {
@@ -667,7 +667,7 @@ impl PlaylistManager {
                     .and_then(|n| n.to_str())
                     .unwrap_or("unknown")
                     .to_string();
-                let size_bytes = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+                let size_bytes = fs::metadata(path).map_or(0, |m| m.len());
 
                 let metadata = if include_metadata {
                     crate::metadata::extract_metadata(path).ok()

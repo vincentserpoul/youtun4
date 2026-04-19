@@ -4,7 +4,7 @@ members = ["crates/youtun4-core", "crates/youtun4-ui", "src-tauri"]
 exclude = ["tools/icon-gen"]
 
 [workspace.package]
-version = "0.11.2"
+version = "0.11.3"
 edition = "2024"
 authors = ["VS"]
 license = "MIT"
