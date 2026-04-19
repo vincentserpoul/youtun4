@@ -4,7 +4,7 @@ members = ["crates/youtun4-core", "crates/youtun4-ui", "src-tauri"]
 exclude = ["tools/icon-gen"]
 
 [workspace.package]
-version = "0.11.1"
+version = "0.11.2"
 edition = "2024"
 authors = ["VS"]
 license = "MIT"
@@ -15,7 +15,7 @@ repository = "https://github.com/vincentserpoul/youtun4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
-tokio = { version = "1.50", features = [
+tokio = { version = "1.52", features = [
   "rt-multi-thread",
   "sync",
   "time",
@@ -29,10 +29,10 @@ tracing-appender = "0.2"
 tauri = { version = "2.10.3", features = [] }
 tauri-build = "2.5.6"
 tauri-plugin-opener = "2.5"
-tauri-plugin-mcp-bridge = "0.2"
+tauri-plugin-mcp-bridge = "0.11"
 
 # Leptos UI framework
-leptos = { version = "0.8.17", features = ["csr"] }
+leptos = { version = "0.8.19", features = ["csr"] }
 
 # Device detection
 sysinfo = "0.38"
@@ -46,7 +46,7 @@ regex = "1.12"
 walkdir = "2.5"
 tempfile = "3.27"
 dirs = "6.0"
-sha2 = "0.10"
+sha2 = "0.11"
 filetime = "0.2"
 
 # Audio metadata
@@ -62,7 +62,7 @@ console_error_panic_hook = "0.1"
 
 # Testing
 mockall = "0.14"
-proptest = "1.6"
+proptest = "1.11"
 
 # Internal workspace crates
 youtun4-core = { version = "0.11.1", path = "crates/youtun4-core" }

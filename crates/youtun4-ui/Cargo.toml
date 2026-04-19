@@ -27,7 +27,7 @@ serde-wasm-bindgen.workspace = true
 js-sys.workspace = true
 console_error_panic_hook.workspace = true
 web-sys.workspace = true
-gloo-timers = { version = "0.3", features = ["futures"] }
+gloo-timers = { version = "0.4", features = ["futures"] }
 
 [dev-dependencies]
 
