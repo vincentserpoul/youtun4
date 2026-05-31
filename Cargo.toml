@@ -4,7 +4,7 @@ members = ["crates/youtun4-core", "crates/youtun4-ui", "src-tauri"]
 exclude = ["tools/icon-gen"]
 
 [workspace.package]
-version = "0.11.4"
+version = "0.11.5"
 edition = "2024"
 authors = ["VS"]
 license = "MIT"
@@ -26,8 +26,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
 
 # Tauri framework
-tauri = { version = "2.11.1", features = [] }
-tauri-build = "2.6.1"
+tauri = { version = "2.11.2", features = [] }
+tauri-build = "2.6.2"
 tauri-plugin-opener = "2.5"
 tauri-plugin-mcp-bridge = "0.11"
 
@@ -50,7 +50,7 @@ sha2 = "0.11"
 filetime = "0.2"
 
 # Audio metadata
-id3 = "1.16"
+id3 = "1.17"
 
 # WASM/JavaScript interop (UI crate)
 wasm-bindgen = "0.2"
