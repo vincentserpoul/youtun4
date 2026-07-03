@@ -36,6 +36,10 @@ pub enum EmptyStateSize {
 }
 
 impl EmptyStateSize {
+    #[allow(
+        clippy::trivially_copy_pass_by_ref,
+        reason = "EmptyStateSize is passed by reference from leptos component props; matching on &self avoids an extra copy at call sites"
+    )]
     const fn icon_size(&self) -> (&'static str, &'static str) {
         match self {
             Self::Small => ("40", "40"),
@@ -44,6 +48,10 @@ impl EmptyStateSize {
         }
     }
 
+    #[allow(
+        clippy::trivially_copy_pass_by_ref,
+        reason = "EmptyStateSize is passed by reference from leptos component props; matching on &self avoids an extra copy at call sites"
+    )]
     const fn class(&self) -> &'static str {
         match self {
             Self::Small => "empty-state-small",

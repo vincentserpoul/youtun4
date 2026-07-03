@@ -78,6 +78,10 @@ where
 }
 
 /// Check if the Tauri API is available.
+#[allow(
+    clippy::expect_used,
+    reason = "both expect() calls are guarded immediately above by an is_none()/is_ok() check on the same value, so the panic path is unreachable"
+)]
 fn is_tauri_available() -> bool {
     let window = web_sys::window();
     if window.is_none() {

@@ -101,6 +101,10 @@ impl CapacityCheckResult {
 
     /// Get the remaining bytes after sync (can be negative if insufficient).
     #[must_use]
+    #[allow(
+        clippy::cast_possible_wrap,
+        reason = "byte counts are display-only capacity figures far below i64::MAX; wrap is not reachable in practice and the signed result is needed to represent a deficit"
+    )]
     pub const fn remaining_after_sync(&self) -> i64 {
         self.available_bytes as i64 - self.required_bytes as i64
     }

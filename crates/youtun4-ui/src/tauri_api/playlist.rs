@@ -262,6 +262,10 @@ pub async fn get_playlist_saved_metadata(name: &str) -> Result<SavedPlaylistMeta
 /// * `title` - New title (None to keep existing, Some("") to clear)
 /// * `description` - New description (None to keep existing, Some("") to clear)
 /// * `source_url` - New source URL (None to keep existing, Some(None) to clear, Some(Some(url)) to set)
+#[allow(
+    clippy::option_option,
+    reason = "distinguishes 'leave unchanged' (None) from 'clear field' (Some(None)) from 'set value' (Some(Some(url)))"
+)]
 pub async fn update_playlist_metadata(
     name: &str,
     title: Option<&str>,
