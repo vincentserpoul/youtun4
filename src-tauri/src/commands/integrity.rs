@@ -143,6 +143,7 @@ pub async fn update_manifest_file(
     let verifier = IntegrityVerifier::new();
     let checksum = verifier.compute_checksum(&path).map_err(map_err)?;
 
+    // One-shot metadata syscall; not worth spawn_blocking.
     let metadata = std::fs::metadata(&path).map_err(|e| {
         map_err(Error::FileSystem(
             youtun4_core::error::FileSystemError::ReadFailed {

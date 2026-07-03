@@ -1,11 +1,14 @@
 //! `YouTube` URL validation and download commands.
 
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use tauri::{AppHandle, State};
+use tokio::task::spawn_blocking;
 use tracing::{debug, error, info};
 use youtun4_core::Error;
+use youtun4_core::time::unix_timestamp_secs;
 use youtun4_core::youtube::{
     DownloadProgress, DownloadStatus, PlaylistInfo, RustyYtdlConfig, RustyYtdlDownloader,
     YouTubeDownloader, YouTubeUrlValidation, validate_youtube_url,
@@ -302,7 +305,7 @@ pub fn check_yt_dlp_available() -> std::result::Result<String, String> {
 pub async fn fetch_youtube_playlist_info(url: String) -> std::result::Result<PlaylistInfo, String> {
     info!("Fetching playlist info for URL: {}", url);
 
-    let result = tokio::task::spawn_blocking(move || {
+    let result = spawn_blocking(move || {
         let downloader = RustyYtdlDownloader::new();
         downloader.parse_playlist_url(&url)
     })
@@ -337,7 +340,8 @@ pub async fn download_youtube_playlist(
     let output_path = PathBuf::from(&output_dir);
 
     if !output_path.exists() {
-        std::fs::create_dir_all(&output_path)
+        // One-shot metadata syscall; not worth spawn_blocking.
+        fs::create_dir_all(&output_path)
             .map_err(|e| format!("Failed to create output directory: {e}"))?;
     }
 
@@ -360,7 +364,7 @@ pub async fn download_youtube_playlist(
 
     tokio::spawn(async move {
         let app_handle_outer = app_handle.clone();
-        let _ = tokio::task::spawn_blocking(move || {
+        let _ = spawn_blocking(move || {
             emit_or_log(&app_handle, youtube_events::DOWNLOAD_STARTED, &task_id);
 
             let playlist_info = match downloader.parse_playlist_url(&url_clone) {
@@ -454,7 +458,7 @@ pub async fn download_youtube_playlist(
                     output_path: r
                         .output_path
                         .as_ref()
-                        .map(|p: &std::path::PathBuf| p.display().to_string()),
+                        .map(|p: &PathBuf| p.display().to_string()),
                     error: r.error.clone(),
                 })
                 .collect();
@@ -547,7 +551,7 @@ fn emit_failure_event(app_handle: &AppHandle, error: &Error, payload: &DownloadR
 
 /// Update playlist.json with source URL and thumbnail before download.
 fn update_playlist_metadata_before_download(
-    playlist_json_path: &std::path::Path,
+    playlist_json_path: &Path,
     source_url: &str,
     playlist_info: &PlaylistInfo,
 ) {
@@ -555,7 +559,7 @@ fn update_playlist_metadata_before_download(
         return;
     }
 
-    let content = match std::fs::read_to_string(playlist_json_path) {
+    let content = match fs::read_to_string(playlist_json_path) {
         Ok(c) => c,
         Err(e) => {
             debug!(
@@ -588,7 +592,7 @@ fn update_playlist_metadata_before_download(
 
     match serde_json::to_string_pretty(&metadata) {
         Ok(updated) => {
-            if let Err(e) = std::fs::write(playlist_json_path, updated) {
+            if let Err(e) = fs::write(playlist_json_path, updated) {
                 debug!(
                     "Could not write playlist metadata at {}: {e}",
                     playlist_json_path.display()
@@ -602,11 +606,11 @@ fn update_playlist_metadata_before_download(
 }
 
 /// Count audio files and calculate total size in a directory.
-fn count_audio_files(dir: &std::path::Path) -> (usize, u64) {
+fn count_audio_files(dir: &Path) -> (usize, u64) {
     let mut track_count = 0usize;
     let mut total_size = 0u64;
 
-    let Ok(entries) = std::fs::read_dir(dir) else {
+    let Ok(entries) = fs::read_dir(dir) else {
         return (track_count, total_size);
     };
 
@@ -622,7 +626,7 @@ fn count_audio_files(dir: &std::path::Path) -> (usize, u64) {
 
         if AUDIO_EXTENSIONS.contains(&ext.to_lowercase().as_str()) {
             track_count += 1;
-            if let Ok(meta) = std::fs::metadata(&path) {
+            if let Ok(meta) = fs::metadata(&path) {
                 total_size += meta.len();
             }
         }
@@ -635,9 +639,7 @@ fn count_audio_files(dir: &std::path::Path) -> (usize, u64) {
 fn build_tracks_metadata(
     results: &[youtun4_core::youtube::DownloadResult],
 ) -> Vec<serde_json::Value> {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs());
+    let now = unix_timestamp_secs();
 
     results
         .iter()
@@ -646,7 +648,7 @@ fn build_tracks_metadata(
             let file_name = r
                 .output_path
                 .as_ref()
-                .and_then(|p: &std::path::PathBuf| p.file_name())
+                .and_then(|p: &PathBuf| p.file_name())
                 .and_then(|n: &std::ffi::OsStr| n.to_str())
                 .unwrap_or("")
                 .to_string();
@@ -667,11 +669,11 @@ fn build_tracks_metadata(
 
 /// Update playlist.json with track count, size, and metadata after download.
 fn update_playlist_metadata_after_download(
-    playlist_json_path: &std::path::Path,
-    output_path: &std::path::Path,
+    playlist_json_path: &Path,
+    output_path: &Path,
     results: &[youtun4_core::youtube::DownloadResult],
 ) {
-    let Ok(content) = std::fs::read_to_string(playlist_json_path) else {
+    let Ok(content) = fs::read_to_string(playlist_json_path) else {
         return;
     };
     let Ok(mut metadata) = serde_json::from_str::<serde_json::Value>(&content) else {
@@ -701,7 +703,7 @@ fn update_playlist_metadata_after_download(
     obj.insert("tracks".to_string(), serde_json::json!(tracks_metadata));
 
     if let Ok(updated) = serde_json::to_string_pretty(&metadata) {
-        let _ = std::fs::write(playlist_json_path, updated);
+        let _ = fs::write(playlist_json_path, updated);
     }
 
     info!(
@@ -733,7 +735,7 @@ fn create_success_payload(
             output_path: r
                 .output_path
                 .as_ref()
-                .map(|p: &std::path::PathBuf| p.display().to_string()),
+                .map(|p: &PathBuf| p.display().to_string()),
             error: r.error.clone(),
         })
         .collect();
@@ -797,7 +799,8 @@ pub async fn download_youtube_to_playlist(
     drop(playlist_manager);
 
     if !playlist_path.exists() {
-        std::fs::create_dir_all(&playlist_path)
+        // One-shot metadata syscall; not worth spawn_blocking.
+        fs::create_dir_all(&playlist_path)
             .map_err(|e| format!("Failed to create playlist directory: {e}"))?;
     }
 
@@ -816,7 +819,7 @@ pub async fn download_youtube_to_playlist(
     let download_tasks = Arc::clone(&state.download_tasks);
 
     tokio::spawn(async move {
-        let _ = tokio::task::spawn_blocking(move || {
+        let _ = spawn_blocking(move || {
             run_playlist_download(
                 task_id,
                 &app_handle,
@@ -846,7 +849,7 @@ fn run_playlist_download(
     app_handle: &AppHandle,
     url: &str,
     playlist_name: &str,
-    output_path: &std::path::Path,
+    output_path: &Path,
     downloader: &RustyYtdlDownloader,
 ) {
     emit_or_log(app_handle, youtube_events::DOWNLOAD_STARTED, &task_id);

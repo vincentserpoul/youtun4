@@ -529,6 +529,7 @@ pub async fn process_queue(app: AppHandle, state: State<'_, AppState>) {
                         }));
                     };
 
+                    // One-shot metadata syscall; not worth spawn_blocking.
                     if let Err(e) = std::fs::create_dir_all(&output_dir) {
                         error!("Failed to create output directory for queue item {}: {}", item_id, e);
                         queue_clone.mark_failed(item_id, format!("Failed to create output directory: {e}")).await;

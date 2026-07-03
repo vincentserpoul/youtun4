@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use tauri::{AppHandle, State};
 use tracing::{debug, info};
+use youtun4_core::TransferEngine;
 use youtun4_core::transfer::{TransferOptions, TransferProgress, TransferResult};
 
 use super::error::{emit_or_log, map_err};
@@ -32,20 +33,23 @@ pub async fn sync_playlist_with_progress(
         ..Default::default()
     };
 
-    let app_handle = app.clone();
-    let progress_callback = move |progress: &TransferProgress| {
-        emit_or_log(&app_handle, "transfer-progress", progress);
-    };
+    let app_handle = app;
 
-    let manager = state.playlist_manager.read().await;
-    manager
-        .sync_to_device_with_progress(
+    let manager = state.playlist_manager_arc().read_owned().await;
+    let result = tokio::task::spawn_blocking(move || {
+        let progress_callback = move |progress: &TransferProgress| {
+            emit_or_log(&app_handle, "transfer-progress", progress);
+        };
+        manager.sync_to_device_with_progress(
             &playlist_name,
             &mount_point,
             &options,
             Some(progress_callback),
         )
-        .map_err(map_err)
+    })
+    .await
+    .map_err(|e| format!("Sync task failed: {e}"))?;
+    result.map_err(map_err)
 }
 
 /// Get default transfer options.
@@ -87,19 +91,21 @@ pub async fn transfer_files_to_device(
     let source_paths: Vec<PathBuf> = source_files.iter().map(PathBuf::from).collect();
 
     let app_handle = app;
-    let progress_callback = move |progress: &TransferProgress| {
-        emit_or_log(&app_handle, "transfer-progress", progress);
-    };
-
-    let mut engine = youtun4_core::TransferEngine::new();
-    engine
-        .transfer_files(
+    let result = tokio::task::spawn_blocking(move || {
+        let progress_callback = move |progress: &TransferProgress| {
+            emit_or_log(&app_handle, "transfer-progress", progress);
+        };
+        let mut engine = TransferEngine::new();
+        engine.transfer_files(
             &source_paths,
             &mount_point,
             &options,
             Some(progress_callback),
         )
-        .map_err(map_err)
+    })
+    .await
+    .map_err(|e| format!("Transfer task failed: {e}"))?;
+    result.map_err(map_err)
 }
 
 /// Compute the checksum of a file.
@@ -108,9 +114,14 @@ pub async fn compute_file_checksum(file_path: String) -> std::result::Result<Str
     debug!("Computing checksum for: {}", file_path);
 
     let path = PathBuf::from(&file_path);
-    let engine = youtun4_core::TransferEngine::new();
 
-    engine.compute_file_checksum(&path).map_err(map_err)
+    let result = tokio::task::spawn_blocking(move || {
+        let engine = TransferEngine::new();
+        engine.compute_file_checksum(&path)
+    })
+    .await
+    .map_err(|e| format!("Checksum task failed: {e}"))?;
+    result.map_err(map_err)
 }
 
 /// Verify integrity of a transferred file.
@@ -127,12 +138,21 @@ pub async fn verify_file_integrity(
     let source = PathBuf::from(&source_path);
     let dest = PathBuf::from(&destination_path);
 
-    let engine = youtun4_core::TransferEngine::new();
+    let result = tokio::task::spawn_blocking(move || {
+        let engine = TransferEngine::new();
+        let source_checksum = engine.compute_file_checksum(&source)?;
+        let dest_checksum = engine.compute_file_checksum(&dest)?;
+        Ok((
+            source_checksum == dest_checksum,
+            source_checksum,
+            dest_checksum,
+        ))
+    })
+    .await
+    .map_err(|e| format!("Integrity check task failed: {e}"))?;
+    let (matches, source_checksum, dest_checksum): (bool, String, String) =
+        result.map_err(map_err)?;
 
-    let source_checksum = engine.compute_file_checksum(&source).map_err(map_err)?;
-    let dest_checksum = engine.compute_file_checksum(&dest).map_err(map_err)?;
-
-    let matches = source_checksum == dest_checksum;
     info!(
         "Integrity check: {} (source={}, dest={})",
         if matches { "PASSED" } else { "FAILED" },

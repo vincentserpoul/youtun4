@@ -257,6 +257,7 @@ pub async fn rename_playlist(
         )));
     }
 
+    // Same-filesystem rename is O(1) metadata work; not worth spawn_blocking.
     std::fs::rename(&old_path, &new_path).map_err(|e| {
         map_err(Error::FileSystem(
             youtun4_core::error::FileSystemError::WriteFailed {
