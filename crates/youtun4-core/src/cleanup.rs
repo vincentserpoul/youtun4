@@ -287,9 +287,6 @@ impl DeviceCleanupHandler {
         mount_point: &Path,
         options: &CleanupOptions,
     ) -> Result<(Vec<CleanupEntry>, Vec<SkippedEntry>)> {
-        let mut entries_to_delete = Vec::new();
-        let mut skipped = Vec::new();
-
         // SECURITY: Canonicalize mount_point to resolve any symlinks and get absolute path
         let canonical_mount = mount_point.canonicalize().map_err(|e| {
             Error::FileSystem(FileSystemError::InvalidPath {
@@ -313,6 +310,9 @@ impl DeviceCleanupHandler {
 
         // Sort by depth (deepest first) so we can delete children before parents
         all_entries.sort_by_key(|b| std::cmp::Reverse(b.depth()));
+
+        let mut entries_to_delete = Vec::with_capacity(all_entries.len());
+        let mut skipped = Vec::new();
 
         for entry in all_entries {
             let path = entry.path().to_path_buf();

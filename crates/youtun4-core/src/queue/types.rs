@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::time::unix_timestamp_millis;
+
 /// Unique identifier for a queue item.
 pub type QueueItemId = u64;
 
@@ -206,16 +208,7 @@ pub struct QueueItem {
 impl QueueItem {
     /// Create a new queue item from a download request.
     pub(super) fn new(id: QueueItemId, request: DownloadRequest) -> Self {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| {
-                #[allow(
-                    clippy::cast_possible_truncation,
-                    reason = "duration in ms won't exceed u64"
-                )]
-                let ms = d.as_millis() as u64;
-                ms
-            });
+        let now = unix_timestamp_millis();
 
         Self {
             id,

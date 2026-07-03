@@ -69,12 +69,12 @@ pub struct FileChecksum {
 impl FileChecksum {
     /// Create a new file checksum entry.
     #[must_use]
-    pub fn new(file_name: String, checksum: String, size_bytes: u64) -> Self {
+    pub fn new(file_name: impl Into<String>, checksum: impl Into<String>, size_bytes: u64) -> Self {
         let computed_at = unix_timestamp_secs();
 
         Self {
-            file_name,
-            checksum,
+            file_name: file_name.into(),
+            checksum: checksum.into(),
             size_bytes,
             computed_at,
         }

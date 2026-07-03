@@ -8,6 +8,7 @@ use super::types::{
     DownloadPriority, DownloadRequest, MAX_CONCURRENT_DOWNLOADS, MIN_CONCURRENT_DOWNLOADS,
     QueueConfig, QueueEvent, QueueItem, QueueItemId, QueueItemStatus, QueueStats,
 };
+use crate::time::unix_timestamp_millis;
 
 /// Manages a queue of download requests with concurrent processing support.
 pub struct DownloadQueueManager {
@@ -121,16 +122,7 @@ impl DownloadQueueManager {
                 return false;
             }
 
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| {
-                    #[allow(
-                        clippy::cast_possible_truncation,
-                        reason = "duration in ms won't exceed u64"
-                    )]
-                    let ms = d.as_millis() as u64;
-                    ms
-                });
+            let now = unix_timestamp_millis();
 
             item.status = QueueItemStatus::Cancelled;
             item.finished_at = Some(now);
@@ -251,16 +243,7 @@ impl DownloadQueueManager {
 
         // Find and update the item
         if let Some(item) = state.find_item_mut(next_id) {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| {
-                    #[allow(
-                        clippy::cast_possible_truncation,
-                        reason = "duration in ms won't exceed u64"
-                    )]
-                    let ms = d.as_millis() as u64;
-                    ms
-                });
+            let now = unix_timestamp_millis();
 
             item.status = QueueItemStatus::Downloading;
             item.started_at = Some(now);
@@ -326,16 +309,7 @@ impl DownloadQueueManager {
         let mut state = self.state.write().await;
 
         if let Some(item) = state.find_item_mut(id) {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| {
-                    #[allow(
-                        clippy::cast_possible_truncation,
-                        reason = "duration in ms won't exceed u64"
-                    )]
-                    let ms = d.as_millis() as u64;
-                    ms
-                });
+            let now = unix_timestamp_millis();
 
             item.status = QueueItemStatus::Completed;
             item.finished_at = Some(now);
@@ -353,16 +327,7 @@ impl DownloadQueueManager {
         let mut state = self.state.write().await;
 
         if let Some(item) = state.find_item_mut(id) {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| {
-                    #[allow(
-                        clippy::cast_possible_truncation,
-                        reason = "duration in ms won't exceed u64"
-                    )]
-                    let ms = d.as_millis() as u64;
-                    ms
-                });
+            let now = unix_timestamp_millis();
 
             item.status = QueueItemStatus::Failed(error.clone());
             item.finished_at = Some(now);

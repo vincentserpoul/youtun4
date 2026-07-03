@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -135,9 +136,9 @@ impl PlatformMountHandler {
     )]
     fn check_write_access(&self, mount_point: &Path) -> bool {
         let test_file = mount_point.join(".youtun4_access_check");
-        match std::fs::write(&test_file, "test") {
+        match fs::write(&test_file, "test") {
             Ok(()) => {
-                let _ = std::fs::remove_file(&test_file);
+                let _ = fs::remove_file(&test_file);
                 true
             }
             Err(_) => false,
@@ -315,7 +316,7 @@ impl PlatformMountHandler {
             });
         }
 
-        let mounts = std::fs::read_to_string("/proc/mounts")
+        let mounts = fs::read_to_string("/proc/mounts")
             .map_err(|e| Error::Internal(format!("Failed to read /proc/mounts: {e}")))?;
 
         for line in mounts.lines() {
