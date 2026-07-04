@@ -49,6 +49,18 @@ jobs:
             printf 'VERSION=%s\n' "${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify tag matches app version
+        env:
+          RELEASE_TAG: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          CARGO_VERSION=$(sed -nE 's/^version = "([^"]+)"$/\1/p' Cargo.toml | head -1)
+          TAURI_VERSION=$(jq -r .version src-tauri/tauri.conf.json)
+          if [ "$RELEASE_TAG" != "v$CARGO_VERSION" ] || [ "$CARGO_VERSION" != "$TAURI_VERSION" ]; then
+            echo "Tag $RELEASE_TAG does not match Cargo.toml ($CARGO_VERSION) or tauri.conf.json ($TAURI_VERSION)."
+            echo "Cut releases with 'just release X.Y.Z' so packages are named after the release version."
+            exit 1
+          fi
+
       - name: Create Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

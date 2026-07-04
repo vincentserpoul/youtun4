@@ -1,0 +1,11 @@
+# cargo-audit configuration
+# https://docs.rs/cargo-audit/latest/cargo_audit/config/index.html
+
+[advisories]
+# quick-xml 0.39 DoS advisories (via plist <- tauri-utils). Only used to
+# parse trusted build-time/bundle plist files, never untrusted XML.
+# Remove once plist releases with quick-xml >= 0.41 (already on master).
+ignore = [
+    "RUSTSEC-2026-0194", # quick-xml quadratic attribute-name check
+    "RUSTSEC-2026-0195", # quick-xml unbounded namespace allocation
+]

@@ -92,6 +92,35 @@ ci-local: check clippy-ci test
 # Check, lint, and test (quick local iteration)
 dev: check clippy test
 
+# Cut a release: bump versions everywhere, commit, and tag (then push to trigger the pipeline)
+release VERSION:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    V="{{ VERSION }}"
+    V="${V#v}"
+    if ! [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Invalid version '$V' (expected X.Y.Z or vX.Y.Z)" && exit 1
+    fi
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "Working tree is not clean; commit or stash first." && exit 1
+    fi
+    if git rev-parse -q --verify "refs/tags/v$V" >/dev/null; then
+        echo "Tag v$V already exists." && exit 1
+    fi
+    # Workspace version (inherited by all crates via version.workspace = true)
+    sed -i.bak -E "s/^version = \"[^\"]+\"$/version = \"$V\"/" Cargo.toml
+    # Internal dependency pin
+    sed -i.bak -E "s/^youtun4-core = \{ version = \"[^\"]+\"/youtun4-core = { version = \"$V\"/" Cargo.toml
+    # Tauri bundle version — names the released packages (.dmg/.msi/.deb/.AppImage)
+    sed -i.bak -E "s/\"version\": \"[^\"]+\"/\"version\": \"$V\"/" src-tauri/tauri.conf.json
+    rm -f Cargo.toml.bak src-tauri/tauri.conf.json.bak
+    cargo update --workspace --quiet
+    git add Cargo.toml Cargo.lock src-tauri/tauri.conf.json
+    git commit -m "chore(release): v$V"
+    git tag -a "v$V" -m "Youtun4 v$V"
+    echo "Release v$V committed and tagged."
+    echo "Push it to trigger the release pipeline:  git push origin main v$V"
+
 # Update dependencies
 update:
     cargo update

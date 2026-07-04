@@ -64,7 +64,7 @@ console_error_panic_hook = "0.1"
 mockall = "0.14"
 
 # Internal workspace crates
-youtun4-core = { version = "0.11.1", path = "crates/youtun4-core" }
+youtun4-core = { version = "0.11.6", path = "crates/youtun4-core" }
 
 [workspace.metadata.tools]
 cargo-audit = "0.22.1"
