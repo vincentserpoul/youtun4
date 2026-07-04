@@ -21,6 +21,10 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_TOOLCHAIN: 1.95.0
+  # Kept explicitly empty and mirrored by the warm-release-cache job in
+  # ci.yml: RUSTFLAGS is part of both the rust-cache key and cargo's
+  # fingerprints, so any mismatch makes the warmed cache unusable.
+  RUSTFLAGS: ''
 
 jobs:
   # ============================================================================
@@ -98,11 +102,21 @@ jobs:
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Install trunk
-        run: cargo install trunk --locked
+      # Restore the release-profile dependency cache warmed on main by
+      # ci.yml's warm-release-cache job. Caches created on tag refs are
+      # invisible to later tags, so saving here would be wasted upload time.
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        with:
+          shared-key: release-build
+          save-if: "false"
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
+      # Prebuilt binaries (tauri-cli via the cargo-binstall fallback)
+      # instead of compiling both tools from source (~13 min per job).
+      - name: Install trunk and Tauri CLI
+        uses: taiki-e/install-action@7a562dfa955aa2e4d5b0fd6ebd57ff9715c07b0b # v2.73.0
+        with:
+          tool: trunk,tauri-cli
 
       # No explicit trunk build — cargo tauri build runs beforeBuildCommand
       - name: Build macOS app (Universal)
@@ -146,11 +160,21 @@ jobs:
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Install trunk
-        run: cargo install trunk --locked
+      # Restore the release-profile dependency cache warmed on main by
+      # ci.yml's warm-release-cache job. Caches created on tag refs are
+      # invisible to later tags, so saving here would be wasted upload time.
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        with:
+          shared-key: release-build
+          save-if: "false"
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
+      # Prebuilt binaries (tauri-cli via the cargo-binstall fallback)
+      # instead of compiling both tools from source (~13 min per job).
+      - name: Install trunk and Tauri CLI
+        uses: taiki-e/install-action@7a562dfa955aa2e4d5b0fd6ebd57ff9715c07b0b # v2.73.0
+        with:
+          tool: trunk,tauri-cli
 
       # No explicit trunk build — cargo tauri build runs beforeBuildCommand
       - name: Build Windows app
@@ -207,11 +231,21 @@ jobs:
       - name: Add WASM target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Install trunk
-        run: cargo install trunk --locked
+      # Restore the release-profile dependency cache warmed on main by
+      # ci.yml's warm-release-cache job. Caches created on tag refs are
+      # invisible to later tags, so saving here would be wasted upload time.
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        with:
+          shared-key: release-build
+          save-if: "false"
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
+      # Prebuilt binaries (tauri-cli via the cargo-binstall fallback)
+      # instead of compiling both tools from source (~13 min per job).
+      - name: Install trunk and Tauri CLI
+        uses: taiki-e/install-action@7a562dfa955aa2e4d5b0fd6ebd57ff9715c07b0b # v2.73.0
+        with:
+          tool: trunk,tauri-cli
 
       # No explicit trunk build — cargo tauri build runs beforeBuildCommand
       - name: Build Linux app
