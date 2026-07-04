@@ -5,7 +5,9 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info};
 
-use crate::error::{DeviceError, Error, Result};
+#[cfg(any(target_os = "macos", target_os = "linux", test))]
+use crate::error::DeviceError;
+use crate::error::{Error, Result};
 
 // =============================================================================
 // Device Mount Handler
