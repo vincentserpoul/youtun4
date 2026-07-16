@@ -20,7 +20,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_TOOLCHAIN: 1.95.0
+  RUST_TOOLCHAIN: 1.97.1
   # Kept explicitly empty and mirrored by the warm-release-cache job in
   # ci.yml: RUSTFLAGS is part of both the rust-cache key and cargo's
   # fingerprints, so any mismatch makes the warmed cache unusable.

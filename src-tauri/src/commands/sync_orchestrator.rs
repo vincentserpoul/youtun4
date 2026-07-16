@@ -81,8 +81,9 @@ pub async fn start_orchestrated_sync(
         skip_existing,
     };
     state
-        .register_sync_task(task_id, sync_info.clone(), Arc::clone(&cancel_token))
-        .await;
+        .try_register_sync_task(task_id, sync_info.clone(), Arc::clone(&cancel_token))
+        .await
+        .map_err(map_err)?;
 
     emit_or_log(&app, sync_events::SYNC_STARTED, &sync_info);
 
@@ -213,6 +214,7 @@ pub async fn sync_playlists_to_device(
     }
 
     let orchestrator = SyncOrchestrator::new();
+    let playlist_name = playlists.first().cloned().unwrap_or_default();
     let request = SyncRequest::new(playlists, mount_point);
 
     let app_handle = app.clone();
@@ -224,18 +226,38 @@ pub async fn sync_playlists_to_device(
         );
     };
 
+    let task_id = state.runtime().generate_task_id();
+    let sync_info = SyncTaskInfo {
+        task_id,
+        playlist_name,
+        device_mount_point: device_mount_point.clone(),
+        verify_integrity: options.transfer_options.verify_integrity,
+        skip_existing: options.transfer_options.skip_existing,
+    };
+    state
+        .try_register_sync_task(task_id, sync_info, Arc::new(AtomicBool::new(false)))
+        .await
+        .map_err(map_err)?;
+
     let playlist_mgr = state.playlist_manager.read().await;
     let device_mgr = state.device_manager.read().await;
 
-    orchestrator
-        .sync(
-            &playlist_mgr,
-            &*device_mgr,
-            request,
-            &options,
-            Some(progress_callback),
-        )
-        .map_err(map_err)
+    // Capture the result without `?` so the registration is always removed,
+    // regardless of success or failure.
+    let result = orchestrator.sync(
+        &playlist_mgr,
+        &*device_mgr,
+        request,
+        &options,
+        Some(progress_callback),
+    );
+
+    drop(playlist_mgr);
+    drop(device_mgr);
+
+    state.unregister_sync_task(task_id).await;
+
+    result.map_err(map_err)
 }
 
 /// Get default sync options for the orchestrator.

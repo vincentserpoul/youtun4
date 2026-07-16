@@ -138,8 +138,9 @@ pub async fn start_sync(
         skip_existing,
     };
     state
-        .register_sync_task(task_id, sync_info.clone(), cancel_token)
-        .await;
+        .try_register_sync_task(task_id, sync_info.clone(), cancel_token)
+        .await
+        .map_err(map_err)?;
 
     emit_or_log(&app, sync_events::SYNC_STARTED, &sync_info);
 

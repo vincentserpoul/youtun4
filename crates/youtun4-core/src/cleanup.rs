@@ -1230,7 +1230,7 @@ mod tests {
             .cleanup_device(temp_dir.path(), &options)
             .expect("Cleanup should succeed");
 
-        assert!(result.verification_passed == Some(true));
+        assert_eq!(result.verification_passed, Some(true));
     }
 
     #[test]

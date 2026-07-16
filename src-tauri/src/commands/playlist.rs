@@ -7,6 +7,8 @@
 )]
 
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use tauri::State;
 use tracing::{debug, info};
@@ -18,7 +20,7 @@ use youtun4_core::playlist::{
 };
 
 use super::error::map_err;
-use super::state::AppState;
+use super::state::{AppState, SyncTaskInfo};
 
 /// List all playlists.
 #[tauri::command]
@@ -77,10 +79,29 @@ pub async fn sync_playlist(
     );
 
     let mount_point = PathBuf::from(&device_mount_point);
-    let manager = state.playlist_manager.read().await;
-    manager
-        .sync_to_device(&playlist_name, &mount_point)
-        .map_err(map_err)
+    let task_id = state.runtime().generate_task_id();
+    let sync_info = SyncTaskInfo {
+        task_id,
+        playlist_name: playlist_name.clone(),
+        device_mount_point: device_mount_point.clone(),
+        verify_integrity: false,
+        skip_existing: false,
+    };
+    // Cancel flag is unused for this blocking command: cancel_sync cannot
+    // interrupt a sync that runs to completion within the command itself.
+    state
+        .try_register_sync_task(task_id, sync_info, Arc::new(AtomicBool::new(false)))
+        .await
+        .map_err(map_err)?;
+
+    // Capture the result without `?` so the registration is always removed.
+    // (A Drop guard is not possible: removal needs the async RwLock.)
+    let result = {
+        let manager = state.playlist_manager.read().await;
+        manager.sync_to_device(&playlist_name, &mount_point)
+    };
+    state.unregister_sync_task(task_id).await;
+    result.map_err(map_err)
 }
 
 /// Get tracks for a playlist.

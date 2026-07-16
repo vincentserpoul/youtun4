@@ -45,6 +45,9 @@ fn PlaylistTableRow(
     on_download: Callback<String>,
     /// Whether a device is connected (for enabling sync).
     has_device: Signal<bool>,
+    /// Whether a sync is currently in progress (disables the sync button).
+    #[prop(into)]
+    syncing: Signal<bool>,
     /// Whether this playlist has a source URL for downloading.
     #[prop(default = false)]
     has_source_url: bool,
@@ -83,8 +86,8 @@ fn PlaylistTableRow(
                 // Sync to device button
                 <button
                     class="btn btn-icon btn-table-action"
-                    title="Sync to device"
-                    disabled=move || !has_device.get()
+                    title=move || if syncing.get() { "Sync in progress" } else { "Sync to device" }
+                    disabled=move || !has_device.get() || syncing.get()
                     on:click=move |e| {
                         e.stop_propagation();
                         on_sync.run(name_for_sync.clone());
@@ -180,6 +183,9 @@ pub fn PlaylistTable(
     /// Name of the playlist currently being downloaded, if any.
     #[prop(optional)]
     downloading_playlist: Option<ReadSignal<Option<String>>>,
+    /// Whether a sync is currently in progress (disables all sync buttons).
+    #[prop(into)]
+    syncing: Signal<bool>,
 ) -> impl IntoView {
     let has_device = Signal::derive(move || selected_device.get().is_some());
 
@@ -278,6 +284,7 @@ pub fn PlaylistTable(
                                                             on_sync=on_sync
                                                             on_download=on_download
                                                             has_device=has_device
+                                                            syncing=syncing
                                                             has_source_url=has_source
                                                             is_downloading=is_downloading
                                                         />

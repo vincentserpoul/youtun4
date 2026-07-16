@@ -57,6 +57,9 @@ fn PlaylistDetailHeader(
     /// Whether this playlist is currently being downloaded.
     #[prop(default = false)]
     is_downloading: bool,
+    /// Whether a sync is currently in progress (disables the sync button).
+    #[prop(into)]
+    syncing: Signal<bool>,
 ) -> impl IntoView {
     let playlist_name = playlist.name.clone();
     let playlist_name_for_sync = playlist.name.clone();
@@ -194,8 +197,9 @@ fn PlaylistDetailHeader(
                 </button>
                 <button
                     class="btn btn-secondary"
+                    disabled=move || syncing.get()
                     on:click=move |_| on_sync.run(playlist_name_for_sync.clone())
-                    title="Sync to device"
+                    title=move || if syncing.get() { "Sync in progress" } else { "Sync to device" }
                 >
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                         <path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>
@@ -429,6 +433,9 @@ pub fn PlaylistDetailView(
     /// Refresh trigger - increment to reload tracks.
     #[prop(optional, default = 0u32.into())]
     refresh_trigger: Signal<u32>,
+    /// Whether a sync is currently in progress (disables the sync button).
+    #[prop(into)]
+    syncing: Signal<bool>,
 ) -> impl IntoView {
     let (state, set_state) = signal(PlaylistDetailState::Loading);
     let (playlist, set_playlist) = signal::<Option<PlaylistMetadata>>(None);
@@ -550,6 +557,7 @@ pub fn PlaylistDetailView(
                                     on_download=on_download
                                     on_delete=on_delete
                                     is_downloading=is_downloading
+                                    syncing=syncing
                                 />
                                 <div class="playlist-detail-tracks">
                                     <div class="tracks-divider">"TRACKS"</div>

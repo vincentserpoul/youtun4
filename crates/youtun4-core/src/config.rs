@@ -586,7 +586,7 @@ mod tests {
     #[test]
     fn test_config_file_path_uses_correct_name() {
         let path = config_file_path();
-        assert!(path.file_name().unwrap().to_str().unwrap() == "config.json");
+        assert_eq!(path.file_name().unwrap().to_str().unwrap(), "config.json");
     }
 
     #[test]

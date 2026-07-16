@@ -102,8 +102,21 @@ impl RustyYtdlDownloader {
     }
 
     /// Fetch playlist info by scraping the `YouTube` playlist page.
+    ///
+    /// `YouTube` only embeds the first page (up to 100 videos) of a playlist in
+    /// the initial page load. Larger playlists are paginated via a
+    /// continuation token that must be followed using the internal `browse`
+    /// API. This function fetches the initial page and then pages through any
+    /// continuations to collect the full video list.
     #[allow(clippy::unused_self, reason = "consistent API")]
     fn fetch_playlist_info(&self, playlist_id: &str) -> Result<(String, Vec<VideoInfo>)> {
+        // Hard cap on continuation pages to guarantee termination even if
+        // YouTube keeps returning a fresh token. Bumped from 100 to 200
+        // because continuation pages in the new lockupViewModel layout can
+        // be as small as ~20 items, so more pages are needed to reach the
+        // same total video count.
+        const MAX_CONTINUATION_PAGES: usize = 200;
+
         let url = format!("https://www.youtube.com/playlist?list={playlist_id}");
 
         info!("Fetching playlist page: {}", url);
@@ -135,10 +148,189 @@ impl RustyYtdlDownloader {
         let title =
             Self::extract_playlist_title(&html).unwrap_or_else(|| "Unknown Playlist".to_string());
 
-        // Extract video IDs and titles from the page
-        let videos = Self::extract_videos_from_html(&html)?;
+        // Parse ytInitialData once and derive both the video list and the
+        // continuation token from the same `serde_json::Value`, rather than
+        // re-extracting and re-parsing the (often multi-megabyte) JSON blob
+        // twice.
+        let initial_data = Self::extract_yt_initial_data(&html).ok();
+
+        let mut videos = initial_data
+            .as_ref()
+            .map(Self::videos_from_initial_data)
+            .unwrap_or_default();
+
+        if videos.is_empty() {
+            warn!("No videos found in playlist HTML, trying alternative extraction");
+            videos = Self::extract_videos_regex(&html);
+        }
+
+        // Extract the continuation token (if any) so we can page through the
+        // rest of the playlist beyond the first ~100 videos.
+        let mut continuation_token = initial_data.as_ref().and_then(|json| {
+            Self::find_playlist_contents(json)
+                .and_then(|contents| Self::find_continuation_token(contents))
+        });
+
+        if continuation_token.is_some() {
+            let Some(api_key) = Self::extract_innertube_api_key(&html) else {
+                warn!(
+                    "Playlist '{}' has a continuation token but no INNERTUBE_API_KEY was found; \
+                     only the first page of videos will be returned",
+                    playlist_id
+                );
+                return Ok((title, videos));
+            };
+            let client_version = Self::extract_client_version(&html);
+            let mut page = 0usize;
+
+            while let Some(token) = continuation_token.take() {
+                page += 1;
+                if page > MAX_CONTINUATION_PAGES {
+                    warn!(
+                        "Reached max continuation pages ({}) for playlist '{}', stopping",
+                        MAX_CONTINUATION_PAGES, playlist_id
+                    );
+                    break;
+                }
+
+                match Self::fetch_continuation_page(&client, &api_key, &client_version, &token) {
+                    Ok((mut page_videos, next_token)) => {
+                        videos.append(&mut page_videos);
+                        continuation_token = next_token;
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Failed to fetch continuation page {} for playlist '{}': {}",
+                            page, playlist_id, e
+                        );
+                        break;
+                    }
+                }
+            }
+        }
 
         Ok((title, videos))
+    }
+
+    /// Extract the `YouTube` internal API key from the playlist page HTML.
+    fn extract_innertube_api_key(html: &str) -> Option<String> {
+        let re = Regex::new(r#""INNERTUBE_API_KEY":"([^"]+)""#).ok()?;
+        re.captures(html)
+            .and_then(|caps| caps.get(1))
+            .map(|m| m.as_str().to_string())
+    }
+
+    /// Extract the `YouTube` client version from the playlist page HTML,
+    /// falling back to a reasonable default if it can't be found.
+    fn extract_client_version(html: &str) -> String {
+        Regex::new(r#""INNERTUBE_CONTEXT_CLIENT_VERSION":"([^"]+)""#)
+            .ok()
+            .and_then(|re| re.captures(html))
+            .and_then(|caps| caps.get(1))
+            .map_or_else(
+                || "2.20240101.00.00".to_string(),
+                |m| m.as_str().to_string(),
+            )
+    }
+
+    /// Fetch a single continuation page from the `YouTube` `browse` API.
+    ///
+    /// Returns the videos parsed from the page and the next continuation
+    /// token, if any.
+    fn fetch_continuation_page(
+        client: &reqwest::blocking::Client,
+        api_key: &str,
+        client_version: &str,
+        token: &str,
+    ) -> Result<(Vec<VideoInfo>, Option<String>)> {
+        let url = format!("https://www.youtube.com/youtubei/v1/browse?key={api_key}");
+
+        let body = serde_json::json!({
+            "context": {
+                "client": {
+                    "clientName": "WEB",
+                    "clientVersion": client_version,
+                }
+            },
+            "continuation": token,
+        });
+
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            )
+            .body(body.to_string())
+            .send()
+            .map_err(|e| {
+                Error::Download(DownloadError::PlaylistParseFailed {
+                    playlist_id: String::new(),
+                    reason: format!("Failed to fetch continuation page: {e}"),
+                })
+            })?;
+
+        let text = response.text().map_err(|e| {
+            Error::Download(DownloadError::PlaylistParseFailed {
+                playlist_id: String::new(),
+                reason: format!("Failed to read continuation response: {e}"),
+            })
+        })?;
+
+        let json: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
+            Error::Download(DownloadError::PlaylistParseFailed {
+                playlist_id: String::new(),
+                reason: format!("Failed to parse continuation response: {e}"),
+            })
+        })?;
+
+        let items = json
+            .get("onResponseReceivedActions")
+            .and_then(|actions| actions.as_array())
+            .and_then(|actions| actions.first())
+            .and_then(|action| action.get("appendContinuationItemsAction"))
+            .and_then(|action| action.get("continuationItems"))
+            .and_then(|items| items.as_array());
+
+        let Some(items) = items else {
+            return Ok((Vec::new(), None));
+        };
+
+        let videos = items.iter().filter_map(Self::parse_playlist_item).collect();
+        let next_token = Self::find_continuation_token(items);
+
+        Ok((videos, next_token))
+    }
+
+    /// Find the continuation token in a `contents`/`continuationItems` array,
+    /// if a trailing continuation item is present.
+    ///
+    /// Supports both the legacy layout (`continuationItemRenderer`) and the
+    /// current `lockupViewModel`-based layout (`continuationItemViewModel`).
+    fn find_continuation_token(contents: &[serde_json::Value]) -> Option<String> {
+        contents.iter().find_map(|item| {
+            // Legacy layout.
+            let old = item
+                .get("continuationItemRenderer")
+                .and_then(|r| r.get("continuationEndpoint"))
+                .and_then(|e| e.get("continuationCommand"))
+                .and_then(|c| c.get("token"))
+                .and_then(|t| t.as_str());
+
+            if let Some(token) = old {
+                return Some(token.to_string());
+            }
+
+            // Current lockupViewModel layout.
+            item.get("continuationItemViewModel")?
+                .get("continuationCommand")?
+                .get("innertubeCommand")?
+                .get("continuationCommand")?
+                .get("token")?
+                .as_str()
+                .map(String::from)
+        })
     }
 
     /// Extract playlist title from HTML.
@@ -159,33 +351,21 @@ impl RustyYtdlDownloader {
         None
     }
 
-    /// Extract video information from playlist HTML.
-    fn extract_videos_from_html(html: &str) -> Result<Vec<VideoInfo>> {
-        let mut videos = Vec::new();
+    /// Extract video information from an already-parsed `ytInitialData`
+    /// JSON value.
+    ///
+    /// Returns an empty `Vec` (rather than an error) when no playlist
+    /// contents can be located, so callers can decide how to fall back
+    /// (e.g. regex-based extraction).
+    fn videos_from_initial_data(json_data: &serde_json::Value) -> Vec<VideoInfo> {
+        let Some(contents) = Self::find_playlist_contents(json_data) else {
+            return Vec::new();
+        };
 
-        // YouTube embeds playlist data as JSON in the page
-        // Look for: "playlistVideoListRenderer":{"contents":[...]
-        // Or in ytInitialData
-
-        // First try to find ytInitialData
-        let json_data = Self::extract_yt_initial_data(html)?;
-
-        // Parse the JSON to extract video info
-        if let Some(contents) = Self::find_playlist_contents(&json_data) {
-            for item in contents {
-                if let Some(video) = Self::parse_playlist_item(item) {
-                    videos.push(video);
-                }
-            }
-        }
-
-        if videos.is_empty() {
-            warn!("No videos found in playlist HTML, trying alternative extraction");
-            // Fallback: try regex-based extraction
-            videos = Self::extract_videos_regex(html);
-        }
-
-        Ok(videos)
+        contents
+            .iter()
+            .filter_map(Self::parse_playlist_item)
+            .collect()
     }
 
     /// Extract ytInitialData JSON from HTML.
@@ -270,11 +450,17 @@ impl RustyYtdlDownloader {
     }
 
     /// Find playlist contents in the parsed JSON.
+    ///
+    /// Navigates: `contents.twoColumnBrowseResultsRenderer.tabs[*].tabRenderer.content
+    /// .sectionListRenderer.contents[*].itemSectionRenderer.contents`.
+    ///
+    /// From there, two layouts are supported:
+    /// - legacy: an item wraps a `playlistVideoListRenderer`, whose own
+    ///   `contents` array holds the `playlistVideoRenderer` items;
+    /// - current: the `itemSectionRenderer.contents` array directly holds
+    ///   `lockupViewModel`/`continuationItemViewModel` items, so that array
+    ///   itself is returned.
     fn find_playlist_contents(json: &serde_json::Value) -> Option<&Vec<serde_json::Value>> {
-        // Navigate: contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content
-        //           .sectionListRenderer.contents[0].itemSectionRenderer.contents[0]
-        //           .playlistVideoListRenderer.contents
-
         let contents = json.get("contents")?;
         let two_col = contents.get("twoColumnBrowseResultsRenderer")?;
         let tabs = two_col.get("tabs")?.as_array()?;
@@ -289,10 +475,21 @@ impl RustyYtdlDownloader {
                     if let Some(item_section) = section.get("itemSectionRenderer")
                         && let Some(item_contents) = item_section.get("contents")?.as_array()
                     {
+                        // Legacy layout: a wrapping playlistVideoListRenderer.
                         for item in item_contents {
                             if let Some(playlist_renderer) = item.get("playlistVideoListRenderer") {
                                 return playlist_renderer.get("contents")?.as_array();
                             }
+                        }
+
+                        // Current layout: lockupViewModel/continuationItemViewModel
+                        // items directly in the section's contents array.
+                        let is_current_layout = item_contents.iter().any(|item| {
+                            item.get("lockupViewModel").is_some()
+                                || item.get("continuationItemViewModel").is_some()
+                        });
+                        if is_current_layout {
+                            return Some(item_contents);
                         }
                     }
                 }
@@ -303,9 +500,25 @@ impl RustyYtdlDownloader {
     }
 
     /// Parse a single playlist item from JSON.
+    ///
+    /// Supports both the legacy `playlistVideoRenderer` item shape and the
+    /// current `lockupViewModel` shape. Returns `None` for non-video items
+    /// (e.g. `continuationItemViewModel`, or a `lockupViewModel` whose
+    /// `contentType` is not a video, such as a nested playlist).
     fn parse_playlist_item(item: &serde_json::Value) -> Option<VideoInfo> {
-        let renderer = item.get("playlistVideoRenderer")?;
+        if let Some(renderer) = item.get("playlistVideoRenderer") {
+            return Self::parse_playlist_video_renderer(renderer);
+        }
 
+        if let Some(lockup) = item.get("lockupViewModel") {
+            return Self::parse_lockup_view_model(lockup);
+        }
+
+        None
+    }
+
+    /// Parse a legacy `playlistVideoRenderer` item into a `VideoInfo`.
+    fn parse_playlist_video_renderer(renderer: &serde_json::Value) -> Option<VideoInfo> {
         let id = renderer.get("videoId")?.as_str()?.to_string();
 
         let title = renderer
@@ -346,6 +559,72 @@ impl RustyYtdlDownloader {
             .and_then(|thumbs| thumbs.as_array())
             .and_then(|arr| arr.last())
             .and_then(|thumb| thumb.get("url"))
+            .and_then(|u| u.as_str())
+            .map(String::from);
+
+        Some(VideoInfo {
+            id,
+            title,
+            duration_secs,
+            channel,
+            thumbnail_url,
+        })
+    }
+
+    /// Parse a current-layout `lockupViewModel` item into a `VideoInfo`.
+    ///
+    /// Returns `None` when `contentType` is not
+    /// `LOCKUP_CONTENT_TYPE_VIDEO` (e.g. a nested playlist entry).
+    fn parse_lockup_view_model(lockup: &serde_json::Value) -> Option<VideoInfo> {
+        if lockup.get("contentType").and_then(|c| c.as_str()) != Some("LOCKUP_CONTENT_TYPE_VIDEO") {
+            return None;
+        }
+
+        let id = lockup.get("contentId")?.as_str()?.to_string();
+
+        let metadata = lockup.get("metadata")?.get("lockupMetadataViewModel")?;
+
+        let title = metadata.get("title")?.get("content")?.as_str()?.to_string();
+
+        let channel = metadata
+            .get("metadata")
+            .and_then(|m| m.get("contentMetadataViewModel"))
+            .and_then(|m| m.get("metadataRows"))
+            .and_then(|rows| rows.as_array())
+            .and_then(|rows| rows.first())
+            .and_then(|row| row.get("metadataParts"))
+            .and_then(|parts| parts.as_array())
+            .and_then(|parts| parts.first())
+            .and_then(|part| part.get("text"))
+            .and_then(|text| text.get("content"))
+            .and_then(|c| c.as_str())
+            .map(String::from);
+
+        let thumbnail_view_model = lockup.get("contentImage")?.get("thumbnailViewModel")?;
+
+        let duration_secs = thumbnail_view_model
+            .get("overlays")
+            .and_then(|overlays| overlays.as_array())
+            .and_then(|overlays| {
+                overlays.iter().find_map(|overlay| {
+                    overlay
+                        .get("thumbnailBottomOverlayViewModel")?
+                        .get("badges")?
+                        .as_array()?
+                        .iter()
+                        .find_map(|badge| {
+                            badge.get("thumbnailBadgeViewModel")?.get("text")?.as_str()
+                        })
+                })
+            })
+            .and_then(parse_duration_text);
+
+        let thumbnail_url = thumbnail_view_model
+            .get("image")
+            .and_then(|image| image.get("sources"))
+            .and_then(|sources| sources.as_array())
+            .and_then(|sources| sources.last())
+            .and_then(|source| source.get("url"))
             .and_then(|u| u.as_str())
             .map(String::from);
 
@@ -862,4 +1141,303 @@ fn html_decode(s: &str) -> String {
         .replace("&quot;", "\"")
         .replace("&#39;", "'")
         .replace("&apos;", "'")
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    reason = "acceptable in tests"
+)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn playlist_video_item(video_id: &str, title: &str) -> serde_json::Value {
+        json!({
+            "playlistVideoRenderer": {
+                "videoId": video_id,
+                "title": {
+                    "runs": [{ "text": title }]
+                },
+                "lengthSeconds": "125",
+            }
+        })
+    }
+
+    fn continuation_item(token: &str) -> serde_json::Value {
+        json!({
+            "continuationItemRenderer": {
+                "continuationEndpoint": {
+                    "continuationCommand": {
+                        "token": token
+                    }
+                }
+            }
+        })
+    }
+
+    /// Builds a synthetic `lockupViewModel` playlist item matching the
+    /// current `YouTube` playlist page layout.
+    fn lockup_item(
+        content_id: &str,
+        title: &str,
+        duration_text: &str,
+        channel: &str,
+    ) -> serde_json::Value {
+        json!({
+            "lockupViewModel": {
+                "contentId": content_id,
+                "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+                "metadata": {
+                    "lockupMetadataViewModel": {
+                        "title": {
+                            "content": title
+                        },
+                        "metadata": {
+                            "contentMetadataViewModel": {
+                                "metadataRows": [
+                                    {
+                                        "metadataParts": [
+                                            { "text": { "content": channel } }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "contentImage": {
+                    "thumbnailViewModel": {
+                        "image": {
+                            "sources": [
+                                { "url": "https://i.ytimg.com/vi/low.jpg" },
+                                { "url": "https://i.ytimg.com/vi/high.jpg" }
+                            ]
+                        },
+                        "overlays": [
+                            {
+                                "thumbnailBottomOverlayViewModel": {
+                                    "badges": [
+                                        {
+                                            "thumbnailBadgeViewModel": {
+                                                "text": duration_text
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        })
+    }
+
+    /// Builds a synthetic `continuationItemViewModel`, the new-layout
+    /// equivalent of `continuation_item`.
+    fn continuation_item_view_model(token: &str) -> serde_json::Value {
+        json!({
+            "continuationItemViewModel": {
+                "continuationCommand": {
+                    "innertubeCommand": {
+                        "continuationCommand": {
+                            "token": token
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    #[test]
+    fn find_continuation_token_finds_trailing_token() {
+        let contents = vec![
+            playlist_video_item("aaaaaaaaaaa", "Video A"),
+            playlist_video_item("bbbbbbbbbbb", "Video B"),
+            continuation_item("CONTINUATION_TOKEN_123"),
+        ];
+
+        let token = RustyYtdlDownloader::find_continuation_token(&contents);
+
+        assert_eq!(token, Some("CONTINUATION_TOKEN_123".to_string()));
+    }
+
+    #[test]
+    fn find_continuation_token_returns_none_when_absent() {
+        let contents = vec![
+            playlist_video_item("aaaaaaaaaaa", "Video A"),
+            playlist_video_item("bbbbbbbbbbb", "Video B"),
+        ];
+
+        let token = RustyYtdlDownloader::find_continuation_token(&contents);
+
+        assert_eq!(token, None);
+    }
+
+    #[test]
+    fn find_continuation_token_returns_none_for_empty_contents() {
+        let contents: Vec<serde_json::Value> = vec![];
+
+        let token = RustyYtdlDownloader::find_continuation_token(&contents);
+
+        assert_eq!(token, None);
+    }
+
+    #[test]
+    fn find_continuation_token_finds_trailing_token_new_layout() {
+        let contents = vec![
+            lockup_item("aaaaaaaaaaa", "Video A", "2:45", "Channel A"),
+            lockup_item("bbbbbbbbbbb", "Video B", "3:10", "Channel B"),
+            continuation_item_view_model("NEW_CONTINUATION_TOKEN"),
+        ];
+
+        let token = RustyYtdlDownloader::find_continuation_token(&contents);
+
+        assert_eq!(token, Some("NEW_CONTINUATION_TOKEN".to_string()));
+    }
+
+    #[test]
+    fn parse_playlist_item_parses_lockup_view_model() {
+        let item = lockup_item("dQw4w9WgXcQ", "Some Title", "2:45", "Some Channel");
+
+        let video = RustyYtdlDownloader::parse_playlist_item(&item).expect("should parse");
+
+        assert_eq!(video.id, "dQw4w9WgXcQ");
+        assert_eq!(video.title, "Some Title");
+        assert_eq!(video.duration_secs, Some(165));
+        assert_eq!(video.channel, Some("Some Channel".to_string()));
+        assert_eq!(
+            video.thumbnail_url,
+            Some("https://i.ytimg.com/vi/high.jpg".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_playlist_item_returns_none_for_non_video_lockup() {
+        let mut item = lockup_item("PLxxxxxxxxxxxxxxxxxx", "Some Playlist", "2:45", "Channel");
+        item["lockupViewModel"]["contentType"] = json!("LOCKUP_CONTENT_TYPE_PLAYLIST");
+
+        let video = RustyYtdlDownloader::parse_playlist_item(&item);
+
+        assert!(video.is_none());
+    }
+
+    #[test]
+    fn find_playlist_contents_finds_new_layout_items() {
+        let items = vec![
+            lockup_item("aaaaaaaaaaa", "Video A", "2:45", "Channel A"),
+            continuation_item_view_model("NEXT_TOKEN"),
+        ];
+
+        let json_data = json!({
+            "contents": {
+                "twoColumnBrowseResultsRenderer": {
+                    "tabs": [
+                        {
+                            "tabRenderer": {
+                                "content": {
+                                    "sectionListRenderer": {
+                                        "contents": [
+                                            {
+                                                "itemSectionRenderer": {
+                                                    "contents": items
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        });
+
+        let contents =
+            RustyYtdlDownloader::find_playlist_contents(&json_data).expect("should find contents");
+
+        assert_eq!(contents.len(), 2);
+        assert!(contents[0].get("lockupViewModel").is_some());
+        assert!(contents[1].get("continuationItemViewModel").is_some());
+    }
+
+    /// Simulates the parsing performed by `fetch_continuation_page`: given a
+    /// synthetic `browse` API response, navigate to the continuation items
+    /// and parse videos + the next token, without performing any network I/O.
+    #[test]
+    fn parses_synthetic_continuation_response() {
+        let response = json!({
+            "onResponseReceivedActions": [
+                {
+                    "appendContinuationItemsAction": {
+                        "continuationItems": [
+                            playlist_video_item("ccccccccccc", "Video C"),
+                            playlist_video_item("ddddddddddd", "Video D"),
+                            continuation_item("NEXT_TOKEN_456"),
+                        ]
+                    }
+                }
+            ]
+        });
+
+        let items = response
+            .get("onResponseReceivedActions")
+            .and_then(|actions| actions.as_array())
+            .and_then(|actions| actions.first())
+            .and_then(|action| action.get("appendContinuationItemsAction"))
+            .and_then(|action| action.get("continuationItems"))
+            .and_then(|items| items.as_array())
+            .expect("continuation items should be present");
+
+        let videos: Vec<VideoInfo> = items
+            .iter()
+            .filter_map(RustyYtdlDownloader::parse_playlist_item)
+            .collect();
+        let next_token = RustyYtdlDownloader::find_continuation_token(items);
+
+        assert_eq!(videos.len(), 2);
+        assert_eq!(videos[0].id, "ccccccccccc");
+        assert_eq!(videos[0].title, "Video C");
+        assert_eq!(videos[1].id, "ddddddddddd");
+        assert_eq!(videos[1].title, "Video D");
+        assert_eq!(next_token, Some("NEXT_TOKEN_456".to_string()));
+    }
+
+    #[test]
+    fn extract_innertube_api_key_finds_key() {
+        let html = r#"someJunk...,"INNERTUBE_API_KEY":"AIzaSyABC123","otherKey":"value"..."#;
+
+        let key = RustyYtdlDownloader::extract_innertube_api_key(html);
+
+        assert_eq!(key, Some("AIzaSyABC123".to_string()));
+    }
+
+    #[test]
+    fn extract_innertube_api_key_returns_none_when_absent() {
+        let html = "no api key here";
+
+        let key = RustyYtdlDownloader::extract_innertube_api_key(html);
+
+        assert_eq!(key, None);
+    }
+
+    #[test]
+    fn extract_client_version_finds_version() {
+        let html = r#"..."INNERTUBE_CONTEXT_CLIENT_VERSION":"2.20250101.01.00"..."#;
+
+        let version = RustyYtdlDownloader::extract_client_version(html);
+
+        assert_eq!(version, "2.20250101.01.00");
+    }
+
+    #[test]
+    fn extract_client_version_falls_back_to_default() {
+        let html = "no version here";
+
+        let version = RustyYtdlDownloader::extract_client_version(html);
+
+        assert_eq!(version, "2.20240101.00.00");
+    }
 }

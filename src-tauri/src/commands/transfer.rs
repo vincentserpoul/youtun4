@@ -1,6 +1,8 @@
 //! File transfer commands.
 
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use tauri::{AppHandle, State};
 use tracing::{debug, info};
@@ -8,7 +10,7 @@ use youtun4_core::TransferEngine;
 use youtun4_core::transfer::{TransferOptions, TransferProgress, TransferResult};
 
 use super::error::{emit_or_log, map_err};
-use super::state::AppState;
+use super::state::{AppState, SyncTaskInfo};
 
 /// Sync a playlist to a device with progress tracking.
 #[tauri::command]
@@ -33,10 +35,23 @@ pub async fn sync_playlist_with_progress(
         ..Default::default()
     };
 
+    let task_id = state.runtime().generate_task_id();
+    let sync_info = SyncTaskInfo {
+        task_id,
+        playlist_name: playlist_name.clone(),
+        device_mount_point: device_mount_point.clone(),
+        verify_integrity,
+        skip_existing,
+    };
+    state
+        .try_register_sync_task(task_id, sync_info, Arc::new(AtomicBool::new(false)))
+        .await
+        .map_err(map_err)?;
+
     let app_handle = app;
 
     let manager = state.playlist_manager_arc().read_owned().await;
-    let result = tokio::task::spawn_blocking(move || {
+    let joined = tokio::task::spawn_blocking(move || {
         let progress_callback = move |progress: &TransferProgress| {
             emit_or_log(&app_handle, "transfer-progress", progress);
         };
@@ -47,8 +62,13 @@ pub async fn sync_playlist_with_progress(
             Some(progress_callback),
         )
     })
-    .await
-    .map_err(|e| format!("Sync task failed: {e}"))?;
+    .await;
+
+    // Unregister before either `?` so both join-panic and transfer-error
+    // paths still clean up the registration.
+    state.unregister_sync_task(task_id).await;
+
+    let result = joined.map_err(|e| format!("Sync task failed: {e}"))?;
     result.map_err(map_err)
 }
 

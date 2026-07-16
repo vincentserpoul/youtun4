@@ -11,6 +11,7 @@ use youtun4_core::{
     Error, Result,
     config::ConfigManager,
     device::{DeviceManager, DeviceWatcherHandle, PlatformMountHandler},
+    error::DeviceError,
     playlist::PlaylistManager,
     queue::DownloadQueueManager,
 };
@@ -61,6 +62,23 @@ pub struct AppState {
     pub(crate) download_tasks: Arc<RwLock<DownloadTaskMap>>,
     /// Download queue manager for handling multiple playlist downloads.
     pub(crate) download_queue: Arc<DownloadQueueManager>,
+}
+
+/// Insert a sync task only if no other sync is active (single critical section).
+fn try_insert_sync_task(
+    tasks: &mut SyncTaskMap,
+    task_id: TaskId,
+    info: SyncTaskInfo,
+    cancel_token: CancelFlag,
+) -> Result<()> {
+    if !tasks.is_empty() {
+        return Err(Error::Device(DeviceError::DeviceBusy {
+            mount_point: PathBuf::from(&info.device_mount_point),
+            reason: "a sync is already in progress".to_string(),
+        }));
+    }
+    tasks.insert(task_id, (info, cancel_token));
+    Ok(())
 }
 
 impl AppState {
@@ -130,15 +148,25 @@ impl AppState {
         Arc::clone(&self.device_watcher_handle)
     }
 
-    /// Register a sync task with its cancellation token.
-    pub async fn register_sync_task(
+    /// Atomically register a sync task, failing if another sync is already active.
+    ///
+    /// # Errors
+    ///
+    /// Returns `DeviceError::DeviceBusy` if a sync is already in progress.
+    pub async fn try_register_sync_task(
         &self,
         task_id: TaskId,
         info: SyncTaskInfo,
         cancel_token: CancelFlag,
-    ) {
+    ) -> Result<()> {
         let mut tasks = self.sync_tasks.write().await;
-        tasks.insert(task_id, (info, cancel_token));
+        try_insert_sync_task(&mut tasks, task_id, info, cancel_token)
+    }
+
+    /// Remove a sync task registration (on completion, failure, or cancellation).
+    pub async fn unregister_sync_task(&self, task_id: TaskId) {
+        let mut tasks = self.sync_tasks.write().await;
+        tasks.remove(&task_id);
     }
 
     /// Get info about a sync task.
@@ -200,5 +228,94 @@ impl AppState {
             debug!("Download task {} not found for cancellation", task_id);
             false
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "acceptable in tests"
+)]
+mod tests {
+    use super::{SyncTaskInfo, SyncTaskMap, TaskId, try_insert_sync_task};
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
+
+    /// Build a sample `SyncTaskInfo` for a given task ID.
+    fn sample_info(task_id: TaskId) -> SyncTaskInfo {
+        SyncTaskInfo {
+            task_id,
+            playlist_name: "My Playlist".to_string(),
+            device_mount_point: "/media/device".to_string(),
+            verify_integrity: false,
+            skip_existing: false,
+        }
+    }
+
+    #[test]
+    fn insert_into_empty_map_succeeds() {
+        let mut tasks: SyncTaskMap = SyncTaskMap::new();
+        let result = try_insert_sync_task(
+            &mut tasks,
+            1,
+            sample_info(1),
+            Arc::new(AtomicBool::new(false)),
+        );
+
+        result.expect("insert into empty map should succeed");
+        assert_eq!(tasks.len(), 1);
+    }
+
+    #[test]
+    fn second_insert_while_busy_is_rejected() {
+        let mut tasks: SyncTaskMap = SyncTaskMap::new();
+        try_insert_sync_task(
+            &mut tasks,
+            1,
+            sample_info(1),
+            Arc::new(AtomicBool::new(false)),
+        )
+        .expect("first insert should succeed");
+
+        let result = try_insert_sync_task(
+            &mut tasks,
+            2,
+            sample_info(2),
+            Arc::new(AtomicBool::new(false)),
+        );
+
+        let err = result.expect_err("second insert should be rejected");
+        assert!(
+            err.to_string()
+                .contains("is busy: a sync is already in progress")
+        );
+        assert_eq!(tasks.len(), 1);
+        assert!(tasks.contains_key(&1));
+    }
+
+    #[test]
+    fn insert_after_removal_succeeds() {
+        let mut tasks: SyncTaskMap = SyncTaskMap::new();
+        try_insert_sync_task(
+            &mut tasks,
+            1,
+            sample_info(1),
+            Arc::new(AtomicBool::new(false)),
+        )
+        .expect("first insert should succeed");
+
+        tasks.remove(&1);
+
+        let result = try_insert_sync_task(
+            &mut tasks,
+            2,
+            sample_info(2),
+            Arc::new(AtomicBool::new(false)),
+        );
+
+        result.expect("insert after removal should succeed");
+        assert_eq!(tasks.len(), 1);
+        assert!(tasks.contains_key(&2));
     }
 }

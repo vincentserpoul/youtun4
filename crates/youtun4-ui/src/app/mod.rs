@@ -75,7 +75,7 @@ fn AppContent() -> impl IntoView {
     let (detail_view_playlist, set_detail_view_playlist) = signal::<Option<String>>(None);
 
     // Syncing state for the sync button
-    let (_syncing, set_syncing) = signal(false);
+    let (syncing, set_syncing) = signal(false);
 
     // Transfer progress state
     let (transfer_progress, set_transfer_progress) = signal::<Option<TransferProgress>>(None);
@@ -152,6 +152,16 @@ fn AppContent() -> impl IntoView {
         load_devices();
         load_playlists();
 
+        // Best-effort: if a sync was already active (e.g. this view was
+        // (re)mounted mid-sync), reflect that in the syncing signal.
+        spawn_local(async move {
+            if let Ok(syncs) = tauri_api::list_active_syncs().await
+                && !syncs.is_empty()
+            {
+                set_syncing.set(true);
+            }
+        });
+
         // Start the device watcher for automatic device detection
         // IMPORTANT: Set up event listeners BEFORE starting the watcher to avoid missing
         // the initial "devices-refreshed" event that is emitted immediately on watcher start.
@@ -226,6 +236,10 @@ fn AppContent() -> impl IntoView {
     // Callback when sync is requested from detail view
     let on_detail_sync = {
         Callback::new(move |name: String| {
+            if syncing.get() {
+                notifications.warning("A sync is already in progress");
+                return;
+            }
             let selected = selected_device.get();
             let name_for_notification = name.clone();
             if let Some(device) = selected {
@@ -236,6 +250,7 @@ fn AppContent() -> impl IntoView {
                 ));
                 let name_clone = name;
                 let device_mount = device.mount_point;
+                set_syncing.set(true);
                 spawn_local(async move {
                     match tauri_api::sync_playlist(&name_clone, &device_mount).await {
                         Ok(()) => {
@@ -243,10 +258,12 @@ fn AppContent() -> impl IntoView {
                             notifications.success(format!(
                                 "\"{name_for_notification}\" synced successfully"
                             ));
+                            set_syncing.set(false);
                         }
                         Err(e) => {
                             leptos::logging::error!("Failed to sync playlist: {}", e);
                             notifications.error(format!("Failed to sync playlist: {e}"));
+                            set_syncing.set(false);
                         }
                     }
                 });
@@ -340,28 +357,34 @@ fn AppContent() -> impl IntoView {
     });
 
     let on_playlist_sync = Callback::new(move |name: String| {
-        let selected = selected_device.get();
+        if syncing.get() {
+            notifications.warning("A sync is already in progress");
+            return;
+        }
+        let Some(device) = selected_device.get() else {
+            notifications.warning("Please select a device first");
+            return;
+        };
         let name_for_notification = name.clone();
+        leptos::logging::log!("Syncing playlist {} to {}", name, device.mount_point);
+        notifications.info(format!(
+            "Syncing \"{}\" to {}...",
+            name_for_notification, device.name
+        ));
+        set_syncing.set(true);
         spawn_local(async move {
-            if let Some(device) = selected {
-                leptos::logging::log!("Syncing playlist {} to {}", name, device.mount_point);
-                notifications.info(format!(
-                    "Syncing \"{}\" to {}...",
-                    name_for_notification, device.name
-                ));
-                match tauri_api::sync_playlist(&name, &device.mount_point).await {
-                    Ok(()) => {
-                        leptos::logging::log!("Playlist synced successfully");
-                        notifications
-                            .success(format!("\"{name_for_notification}\" synced successfully"));
-                    }
-                    Err(e) => {
-                        leptos::logging::error!("Failed to sync playlist: {}", e);
-                        notifications.error(format!("Failed to sync playlist: {e}"));
-                    }
+            match tauri_api::sync_playlist(&name, &device.mount_point).await {
+                Ok(()) => {
+                    leptos::logging::log!("Playlist synced successfully");
+                    notifications
+                        .success(format!("\"{name_for_notification}\" synced successfully"));
+                    set_syncing.set(false);
                 }
-            } else {
-                notifications.warning("Please select a device first");
+                Err(e) => {
+                    leptos::logging::error!("Failed to sync playlist: {}", e);
+                    notifications.error(format!("Failed to sync playlist: {e}"));
+                    set_syncing.set(false);
+                }
             }
         });
     });
@@ -416,6 +439,10 @@ fn AppContent() -> impl IntoView {
 
     // Sync selected playlist callback (used in selection mode)
     let on_sync_selected = move |_: web_sys::MouseEvent| {
+        if syncing.get() {
+            notifications.warning("A sync is already in progress");
+            return;
+        }
         let selected_pl = selected_playlist.get();
         let selected_dev = selected_device.get();
 
@@ -573,6 +600,7 @@ fn AppContent() -> impl IntoView {
                                 on_delete=on_detail_delete
                                 is_downloading=is_dl
                                 refresh_trigger=detail_refresh_trigger.into()
+                                syncing=syncing
                             />
                         }.into_any()
                     } else if selection_mode.get() {
@@ -592,7 +620,11 @@ fn AppContent() -> impl IntoView {
                                 <button
                                     class="btn btn-primary"
                                     on:click=on_sync_selected
-                                    disabled=move || selected_playlist.get().is_none() || selected_device.get().is_none()
+                                    disabled=move || {
+                                        selected_playlist.get().is_none()
+                                            || selected_device.get().is_none()
+                                            || syncing.get()
+                                    }
                                 >
                                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                                         <path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>
@@ -627,6 +659,7 @@ fn AppContent() -> impl IntoView {
                                 on_retry=on_playlist_retry
                                 on_create=Callback::new(move |()| set_create_dialog_open.set(true))
                                 downloading_playlist=downloading_playlist
+                                syncing=syncing
                             />
                         }.into_any()
                     }

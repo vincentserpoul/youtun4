@@ -54,7 +54,7 @@ Strict lint configuration in workspace `Cargo.toml`:
 
 ## Toolchain
 
-- Rust 1.95.0 (pinned in `rust-toolchain.toml`)
+- Rust 1.97.1 (pinned in `rust-toolchain.toml`)
 - Edition 2024
 - Nightly required for `rustfmt` only (`cargo +nightly fmt`)
 - WASM target: `wasm32-unknown-unknown`
