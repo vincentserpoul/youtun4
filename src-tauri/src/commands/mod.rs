@@ -19,6 +19,7 @@
 //! - `youtube`: `YouTube` URL validation and downloads
 //! - `cache`: Cache management
 //! - `queue`: Download queue management
+//! - `updater`: Application self-update
 
 mod cache;
 mod config;
@@ -35,6 +36,7 @@ mod sync;
 mod sync_orchestrator;
 mod task;
 mod transfer;
+mod updater;
 mod youtube;
 
 // Re-export AppState for main.rs
@@ -54,4 +56,5 @@ pub use sync::*;
 pub use sync_orchestrator::*;
 pub use task::*;
 pub use transfer::*;
+pub use updater::*;
 pub use youtube::*;

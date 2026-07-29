@@ -11,6 +11,7 @@ mod playlist;
 mod sync;
 mod task;
 mod transfer;
+mod updater;
 mod youtube;
 
 pub use config::*;
@@ -19,10 +20,12 @@ pub use playlist::*;
 pub use sync::*;
 pub use task::*;
 pub use transfer::*;
+pub use updater::*;
 pub use youtube::*;
 
 pub use device::device_events;
 pub use sync::{sync_events, sync_orchestrator_events};
+pub use updater::updater_events;
 pub use youtube::youtube_events;
 
 #[wasm_bindgen]

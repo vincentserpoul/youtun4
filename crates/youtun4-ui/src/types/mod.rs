@@ -9,6 +9,7 @@ mod playlist;
 mod sync;
 mod task;
 mod transfer;
+mod updater;
 mod youtube;
 
 pub use config::*;
@@ -18,4 +19,5 @@ pub use playlist::*;
 pub use sync::*;
 pub use task::*;
 pub use transfer::*;
+pub use updater::*;
 pub use youtube::*;

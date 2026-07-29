@@ -4,7 +4,39 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::tauri_api;
-use crate::types::{AppConfig, DownloadQuality, NotificationPreferences, Theme};
+use crate::types::{
+    AppConfig, DownloadQuality, NotificationPreferences, Theme, UpdateInfo, UpdateProgress,
+};
+
+/// Bytes per megabyte, for progress labels.
+const BYTES_PER_MB: u64 = 1024 * 1024;
+
+/// State of the self-update flow.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum UpdateStatus {
+    /// No check has been run yet.
+    Idle,
+    /// Contacting the update endpoint.
+    Checking,
+    /// The running version is the published one.
+    UpToDate,
+    /// A newer version is published.
+    Available(UpdateInfo),
+    /// The update package is downloading and installing.
+    Installing,
+    /// The check or the install failed.
+    Failed(String),
+}
+
+/// Render a download size as `"12 MB / 34 MB"`, or `"12 MB"` when the total
+/// size is unknown.
+fn progress_label(progress: UpdateProgress) -> String {
+    let downloaded = progress.downloaded / BYTES_PER_MB;
+    progress.total.map_or_else(
+        || format!("{downloaded} MB"),
+        |total| format!("{downloaded} MB / {} MB", total / BYTES_PER_MB),
+    )
+}
 
 /// Settings panel component for configuring application preferences.
 #[component]
@@ -30,6 +62,24 @@ pub fn SettingsPanel(
     let (error_message, set_error_message) = signal::<Option<String>>(None);
     let (success_message, set_success_message) = signal::<Option<String>>(None);
     let (active_tab, set_active_tab) = signal::<&'static str>("storage");
+
+    // Self-update state
+    let (app_version, set_app_version) = signal::<String>(String::new());
+    let (update_status, set_update_status) = signal(UpdateStatus::Idle);
+    let (update_progress, set_update_progress) = signal::<Option<UpdateProgress>>(None);
+
+    // Subscribe to download progress once; the panel outlives any single
+    // update, and the app restarts as soon as one finishes installing.
+    Effect::new(move || {
+        spawn_local(async move {
+            let listener =
+                tauri_api::listen_to_update_progress(move |p| set_update_progress.set(Some(p)))
+                    .await;
+            if let Err(e) = listener {
+                leptos::logging::error!("Failed to listen for update progress: {}", e);
+            }
+        });
+    });
 
     // Load current settings when panel opens
     Effect::new(move || {
@@ -62,6 +112,16 @@ pub fn SettingsPanel(
                     }
                     Err(e) => {
                         leptos::logging::error!("Failed to load default directory: {}", e);
+                    }
+                }
+
+                // Load the running version for the Updates tab
+                match tauri_api::get_app_version().await {
+                    Ok(version) => {
+                        set_app_version.set(version);
+                    }
+                    Err(e) => {
+                        leptos::logging::error!("Failed to load app version: {}", e);
                     }
                 }
 
@@ -119,6 +179,34 @@ pub fn SettingsPanel(
         set_notif_device.set(true);
     };
 
+    // Check for a newer published version
+    let on_check_update = move |_| {
+        spawn_local(async move {
+            set_update_status.set(UpdateStatus::Checking);
+            match tauri_api::check_for_update().await {
+                Ok(Some(info)) => set_update_status.set(UpdateStatus::Available(info)),
+                Ok(None) => set_update_status.set(UpdateStatus::UpToDate),
+                Err(e) => {
+                    leptos::logging::error!("Update check failed: {}", e);
+                    set_update_status.set(UpdateStatus::Failed(e));
+                }
+            }
+        });
+    };
+
+    // Download and install the update; the app restarts on success, so the
+    // only outcome handled here is failure.
+    let on_install_update = move |_| {
+        spawn_local(async move {
+            set_update_progress.set(None);
+            set_update_status.set(UpdateStatus::Installing);
+            if let Err(e) = tauri_api::install_update().await {
+                leptos::logging::error!("Update install failed: {}", e);
+                set_update_status.set(UpdateStatus::Failed(e));
+            }
+        });
+    };
+
     view! {
         <div
             class="settings-overlay"
@@ -172,6 +260,16 @@ pub fn SettingsPanel(
                             <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
                         </svg>
                         "Notifications"
+                    </button>
+                    <button
+                        class="settings-tab"
+                        class:active=move || active_tab.get() == "updates"
+                        on:click=move |_| set_active_tab.set("updates")
+                    >
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                        </svg>
+                        "Updates"
                     </button>
                 </div>
 
@@ -343,6 +441,111 @@ pub fn SettingsPanel(
                                         />
                                     </label>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    // Updates Tab
+                    <div class="settings-tab-content" class:hidden=move || active_tab.get() != "updates">
+                        <div class="settings-section">
+                            <h3>"Application Updates"</h3>
+                            <p class="settings-description">
+                                "Youtun4 updates itself from signed GitHub releases."
+                            </p>
+
+                            <div class="settings-field">
+                                <p class="settings-hint">
+                                    "Installed version: " {move || app_version.get()}
+                                </p>
+                            </div>
+
+                            {move || match update_status.get() {
+                                UpdateStatus::Idle => None,
+                                UpdateStatus::Checking => Some(view! {
+                                    <p class="settings-hint">"Checking for updates..."</p>
+                                }.into_any()),
+                                UpdateStatus::UpToDate => Some(view! {
+                                    <p class="settings-hint">"You are running the latest version."</p>
+                                }.into_any()),
+                                UpdateStatus::Available(info) => {
+                                    let headline = info.date.as_ref().map_or_else(
+                                        || format!("Version {} is available", info.version),
+                                        |date| format!("Version {} is available ({date})", info.version),
+                                    );
+                                    let notes = info.notes.clone();
+                                    Some(view! {
+                                        <div class="settings-message settings-success">
+                                            <span>{headline}</span>
+                                        </div>
+                                        {notes.map(|notes| view! {
+                                            <p class="settings-hint">{notes}</p>
+                                        })}
+                                    }.into_any())
+                                }
+                                UpdateStatus::Installing => Some(view! {
+                                    <div class="settings-field">
+                                        <div class="download-progress-bar-container">
+                                            <div class="download-progress-bar">
+                                                <div
+                                                    class="download-progress-fill"
+                                                    style:width=move || update_progress.get()
+                                                        .and_then(|p| p.percent())
+                                                        .map_or_else(
+                                                            || "0%".to_string(),
+                                                            |percent| format!("{percent}%"),
+                                                        )
+                                                ></div>
+                                            </div>
+                                            <div class="download-progress-percent">
+                                                {move || update_progress.get()
+                                                    .and_then(|p| p.percent())
+                                                    .map_or_else(
+                                                        || "--".to_string(),
+                                                        |percent| format!("{percent}%"),
+                                                    )}
+                                            </div>
+                                        </div>
+                                        <p class="settings-hint">
+                                            {move || update_progress.get().map_or_else(
+                                                || "Starting download...".to_string(),
+                                                progress_label,
+                                            )}
+                                        </p>
+                                    </div>
+                                }.into_any()),
+                                UpdateStatus::Failed(message) => Some(view! {
+                                    <div class="settings-message settings-error">
+                                        <span>{message}</span>
+                                    </div>
+                                }.into_any()),
+                            }}
+
+                            <div class="settings-field">
+                                {move || match update_status.get() {
+                                    UpdateStatus::Available(_) => view! {
+                                        <button class="btn btn-primary" on:click=on_install_update>
+                                            "Download & Install"
+                                        </button>
+                                    }.into_any(),
+                                    UpdateStatus::Installing => view! {
+                                        <button class="btn btn-primary" disabled=true>
+                                            <span class="spinner"></span>
+                                            " Installing..."
+                                        </button>
+                                    }.into_any(),
+                                    UpdateStatus::Idle
+                                    | UpdateStatus::Checking
+                                    | UpdateStatus::UpToDate
+                                    | UpdateStatus::Failed(_) => view! {
+                                        <button
+                                            class="btn btn-secondary"
+                                            on:click=on_check_update
+                                            disabled=move || update_status.get() == UpdateStatus::Checking
+                                        >
+                                            "Check for Updates"
+                                        </button>
+                                    }.into_any(),
+                                }}
                             </div>
                         </div>
                     </div>

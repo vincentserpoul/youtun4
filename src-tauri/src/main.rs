@@ -55,8 +55,17 @@ fn main() {
         }
     };
 
-    #[allow(unused_mut, reason = "mut needed when mcp-bridge feature is enabled")]
+    #[allow(
+        unused_mut,
+        reason = "mut needed on desktop and when the mcp-bridge feature is enabled"
+    )]
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+
+    // Self-update is desktop-only; mobile apps are updated via the app stores.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build())
+    };
 
     #[cfg(feature = "mcp-bridge")]
     {
@@ -193,6 +202,10 @@ fn main() {
             commands::queue_get_config,
             commands::queue_set_config,
             commands::queue_set_max_concurrent,
+            // Self-update commands
+            commands::get_app_version,
+            commands::check_for_update,
+            commands::install_update,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| {

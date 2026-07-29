@@ -132,6 +132,22 @@ Pre-built binaries are available on the [Releases](https://github.com/vincentser
 | macOS    | `.dmg` (Universal binary: Intel + Apple Silicon) |
 | Linux    | `.deb`, `.rpm`, `.AppImage`                      |
 
+### Self-update
+
+Settings → Updates checks for a newer release and installs it in place. The app
+reads a `latest.json` manifest attached to the newest published release, verifies
+the download against a minisign public key baked into `tauri.conf.json`, then
+restarts into the new version.
+
+Only the formats the updater can replace are covered: the macOS `.app`, the
+Windows NSIS installer, and the Linux `.AppImage`. Installs from `.deb` or `.rpm`
+are owned by the system package manager and update through it instead.
+
+Cutting a release requires the `TAURI_SIGNING_PRIVATE_KEY` and
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secrets in the `release` environment —
+without them the build produces no signatures and the release job fails rather
+than publishing a manifest the app would reject.
+
 ## License
 
 MIT
