@@ -8557,7 +8557,7 @@ dependencies = [
 
 [[package]]
 name = "youtun4"
-version = "0.13.1"
+version = "0.13.2"
 dependencies = [
  "dirs",
  "serde",
@@ -8578,7 +8578,7 @@ dependencies = [
 
 [[package]]
 name = "youtun4-core"
-version = "0.13.1"
+version = "0.13.2"
 dependencies = [
  "dirs",
  "filetime",
@@ -8604,7 +8604,7 @@ dependencies = [
 
 [[package]]
 name = "youtun4-ui"
-version = "0.13.1"
+version = "0.13.2"
 dependencies = [
  "console_error_panic_hook",
  "gloo-timers",
