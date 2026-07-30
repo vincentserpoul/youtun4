@@ -64,7 +64,8 @@ fn main() {
     // Self-update is desktop-only; mobile apps are updated via the app stores.
     #[cfg(desktop)]
     {
-        builder = builder.plugin(tauri_plugin_updater::Builder::new().build())
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+        info!("Self-update plugin enabled");
     };
 
     #[cfg(feature = "mcp-bridge")]

@@ -472,7 +472,7 @@ pub fn SettingsPanel(
                                         || format!("Version {} is available", info.version),
                                         |date| format!("Version {} is available ({date})", info.version),
                                     );
-                                    let notes = info.notes.clone();
+                                    let notes = info.notes;
                                     Some(view! {
                                         <div class="settings-message settings-success">
                                             <span>{headline}</span>
