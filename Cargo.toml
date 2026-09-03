@@ -29,13 +29,13 @@ tracing-appender = "0.2"
 tauri = { version = "2.11.2", features = [] }
 tauri-build = "2.6.2"
 tauri-plugin-opener = "2.5"
-tauri-plugin-mcp-bridge = "0.11"
+tauri-plugin-mcp-bridge = "0.13"
 
 # Leptos UI framework
 leptos = { version = "0.8.19", features = ["csr"] }
 
 # Device detection
-sysinfo = "0.38"
+sysinfo = "0.39"
 
 # YouTube downloading (pure Rust) - use git version for 403 fix and android_sdkless player
 # Note: version is for publishing; git rev is used locally until fix is released
@@ -61,7 +61,7 @@ web-sys = { version = "0.3", features = ["Window", "Document", "Element"] }
 console_error_panic_hook = "0.1"
 
 # Testing
-mockall = "0.14"
+mockall = "0.15"
 
 # Internal workspace crates
 youtun4-core = { version = "0.13.4", path = "crates/youtun4-core" }
