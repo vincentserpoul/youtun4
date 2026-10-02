@@ -309,7 +309,7 @@ fn test_delete_playlist_workflow() {
         .playlist_manager
         .list_playlists()
         .expect("Should list");
-    assert!(playlists.is_empty());
+    assert_eq!(playlists, [] as [youtun4_core::PlaylistMetadata; 0]);
 }
 
 #[test]
@@ -419,7 +419,7 @@ fn test_repair_corrupted_metadata() {
         .playlist_manager
         .repair_folder("CorruptedPlaylist")
         .expect("Should repair");
-    assert!(!repairs.is_empty());
+    assert_ne!(repairs, [] as [std::string::String; 0]);
 
     // Now it should be valid
     let validation = fixture

@@ -851,7 +851,7 @@ mod tests {
     fn test_platform_mount_handler_default() {
         let handler = PlatformMountHandler::default();
         // Should not panic and should have a platform set
-        assert!(!handler.platform().is_empty());
+        assert_ne!(handler.platform(), "");
     }
 
     #[test]

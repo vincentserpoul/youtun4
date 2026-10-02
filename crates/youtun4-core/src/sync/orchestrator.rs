@@ -1088,7 +1088,7 @@ mod tests {
     fn test_mock_device_detector_empty() {
         let detector = MockDeviceDetector::new();
         let devices = detector.list_devices().expect("should list");
-        assert!(devices.is_empty());
+        assert_eq!(devices, Vec::<DeviceInfo>::new());
         assert!(!detector.is_device_connected(Path::new("/any/path")));
     }
 

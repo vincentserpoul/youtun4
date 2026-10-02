@@ -1201,7 +1201,7 @@ mod tests {
         assert!(result.metadata_valid);
         assert_eq!(result.audio_file_count, 1);
         assert!(result.is_valid());
-        assert!(result.issues.is_empty());
+        assert_eq!(result.issues, Vec::<String>::new());
     }
 
     #[test]
@@ -1210,7 +1210,7 @@ mod tests {
         let result = manager.validate_folder("DoesNotExist");
         assert!(!result.exists);
         assert!(!result.is_valid());
-        assert!(!result.issues.is_empty());
+        assert_ne!(result.issues, Vec::<String>::new());
     }
 
     #[test]
@@ -1282,7 +1282,7 @@ mod tests {
         fs::write(folder_path.join("song.mp3"), "mp3 data").expect("Write");
 
         let repairs = manager.repair_folder("NeedsRepair").expect("Should repair");
-        assert!(!repairs.is_empty());
+        assert_ne!(repairs, Vec::<String>::new());
         assert!(folder_path.join("playlist.json").exists());
     }
 
@@ -1297,7 +1297,7 @@ mod tests {
         fs::write(playlist_path.join("playlist.json"), "invalid json").expect("Write");
 
         let repairs = manager.repair_folder("CorruptMeta").expect("Should repair");
-        assert!(!repairs.is_empty());
+        assert_ne!(repairs, Vec::<String>::new());
 
         // Verify metadata is now valid
         let result = manager.validate_folder("CorruptMeta");
@@ -1391,7 +1391,7 @@ mod tests {
             .expect("Should create");
 
         let tracks = manager.list_tracks("EmptyPlaylist").expect("Should list");
-        assert!(tracks.is_empty());
+        assert_eq!(tracks, Vec::<TrackInfo>::new());
     }
 
     #[test]
@@ -1432,7 +1432,7 @@ mod tests {
     fn test_list_playlists_empty() {
         let (manager, _temp) = setup_test_manager();
         let playlists = manager.list_playlists().expect("Should list");
-        assert!(playlists.is_empty());
+        assert_eq!(playlists, Vec::<PlaylistMetadata>::new());
     }
 
     #[test]

@@ -86,9 +86,9 @@ mod tests {
     #[test]
     fn test_icons_are_valid() {
         // Ensure all icons are non-empty
-        assert!(!icons::HOME.is_empty());
-        assert!(!icons::PLAYLISTS.is_empty());
-        assert!(!icons::DEVICES.is_empty());
-        assert!(!icons::SETTINGS.is_empty());
+        assert_ne!(icons::HOME, "");
+        assert_ne!(icons::PLAYLISTS, "");
+        assert_ne!(icons::DEVICES, "");
+        assert_ne!(icons::SETTINGS, "");
     }
 }

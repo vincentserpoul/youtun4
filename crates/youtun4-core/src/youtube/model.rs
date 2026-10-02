@@ -300,7 +300,7 @@ mod tests {
 
             assert_eq!(progress.current_index, 0);
             assert_eq!(progress.total_videos, 0);
-            assert!(progress.current_title.is_empty());
+            assert_eq!(progress.current_title, "");
             assert!((progress.current_progress - 0.0).abs() < f64::EPSILON);
             assert!((progress.overall_progress - 0.0).abs() < f64::EPSILON);
             assert_eq!(progress.status, DownloadStatus::Starting);

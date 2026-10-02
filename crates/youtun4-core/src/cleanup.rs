@@ -1168,7 +1168,7 @@ mod tests {
 
         assert!(options.skip_hidden);
         assert!(options.skip_system_files);
-        assert!(options.protected_patterns.is_empty());
+        assert_eq!(options.protected_patterns, Vec::<String>::new());
         assert!(options.verify_deletions);
         assert!(!options.dry_run);
         assert_eq!(options.max_depth, None);

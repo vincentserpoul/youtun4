@@ -336,7 +336,7 @@ mod tests {
     fn test_extract_metadata_batch_empty() {
         let paths: Vec<&Path> = vec![];
         let results = extract_metadata_batch(paths.into_iter());
-        assert!(results.is_empty());
+        assert_eq!(results, Vec::<(std::path::PathBuf, Mp3Metadata)>::new());
     }
 
     #[test]

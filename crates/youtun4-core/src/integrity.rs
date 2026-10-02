@@ -1425,7 +1425,7 @@ mod tests {
         let options = VerificationOptions::strict();
 
         assert!(options.check_extra_files);
-        assert!(options.file_extensions.is_empty());
+        assert_eq!(options.file_extensions, Vec::<String>::new());
     }
 
     #[test]
