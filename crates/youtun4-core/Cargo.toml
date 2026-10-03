@@ -27,7 +27,7 @@ mp4 = "0.14"
 # AAC decoding (for HE-AAC to MP3 conversion)
 # - aac: AAC decoder
 # - isomp4: MP4/M4A container support
-symphonia = { version = "0.5", features = ["aac", "isomp4"] }
+symphonia = { version = "0.6.1", features = ["aac", "isomp4"] }
 # MP3 encoding (LAME bindings - compiles from source, no system deps)
 mp3lame-encoder = "0.2"
 

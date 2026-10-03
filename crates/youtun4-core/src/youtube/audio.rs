@@ -5,12 +5,12 @@ use tracing::{info, warn};
 
 // Audio re-encoding for HE-AAC compatibility
 use mp3lame_encoder::{Builder as LameBuilder, DualPcm, FlushNoGap};
-use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::DecoderOptions;
-use symphonia::core::formats::FormatOptions;
+use symphonia::core::codecs::CodecParameters;
+use symphonia::core::codecs::audio::AudioDecoderOptions;
+use symphonia::core::formats::probe::Hint;
+use symphonia::core::formats::{FormatOptions, TrackType};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
 
 use crate::error::{DownloadError, Error, Result};
 
@@ -385,12 +385,12 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
         hint.with_extension(ext);
     }
 
-    let probed = symphonia::default::get_probe()
-        .format(
+    let mut format = symphonia::default::get_probe()
+        .probe(
             &hint,
             mss,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
+            FormatOptions::default(),
+            MetadataOptions::default(),
         )
         .map_err(|e| {
             Error::Download(DownloadError::AudioExtractionFailed {
@@ -399,31 +399,11 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
             })
         })?;
 
-    let mut format = probed.format;
-
-    // Find an audio track - MP4 files from YouTube have both video and audio tracks
-    // We need to explicitly find a track with an audio codec
+    // Find an audio track - MP4 files from YouTube have both video and audio tracks.
+    // Prefer a track with a known audio codec, then fall back to any audio track.
     let track = format
-        .tracks()
-        .iter()
-        .find(|t| {
-            // Check if this track has an audio codec type
-            matches!(
-                t.codec_params.codec,
-                symphonia::core::codecs::CODEC_TYPE_AAC
-                    | symphonia::core::codecs::CODEC_TYPE_MP3
-                    | symphonia::core::codecs::CODEC_TYPE_FLAC
-                    | symphonia::core::codecs::CODEC_TYPE_VORBIS
-                    | symphonia::core::codecs::CODEC_TYPE_OPUS
-            )
-        })
-        .or_else(|| {
-            // Fallback: try to find any track with sample_rate (audio tracks have this)
-            format
-                .tracks()
-                .iter()
-                .find(|t| t.codec_params.sample_rate.is_some())
-        })
+        .first_track_known_codec(TrackType::Audio)
+        .or_else(|| format.first_track(TrackType::Audio))
         .ok_or_else(|| {
             Error::Download(DownloadError::AudioExtractionFailed {
                 title: title.to_string(),
@@ -435,20 +415,31 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
         })?;
 
     let track_id = track.id;
-    let sample_rate = track.codec_params.sample_rate.unwrap_or(44100);
-    let channels = track
+    let audio_params = track
         .codec_params
+        .as_ref()
+        .and_then(CodecParameters::audio)
+        .ok_or_else(|| {
+            Error::Download(DownloadError::AudioExtractionFailed {
+                title: title.to_string(),
+                reason: format!("Audio track {track_id} has no codec parameters"),
+            })
+        })?;
+
+    let sample_rate = audio_params.sample_rate.unwrap_or(44100);
+    let channels = audio_params
         .channels
+        .as_ref()
         .map_or(2, symphonia::core::audio::Channels::count);
 
     info!(
         "Found audio track {}: codec={:?}, {} Hz, {} channels - encoding to MP3",
-        track_id, track.codec_params.codec, sample_rate, channels
+        track_id, audio_params.codec, sample_rate, channels
     );
 
     // Create decoder for the audio track
     let mut decoder_codecs = symphonia::default::get_codecs()
-        .make(&track.codec_params, &DecoderOptions::default())
+        .make_audio_decoder(audio_params, &AudioDecoderOptions::default())
         .map_err(|e| {
             Error::Download(DownloadError::AudioExtractionFailed {
                 title: title.to_string(),
@@ -520,11 +511,14 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
 
     let mut total_samples = 0u64;
     let mut mp3_buffer = Vec::with_capacity(16384);
+    let mut samples: Vec<i16> = Vec::new();
 
     // Decode and encode loop
     loop {
         let packet = match format.next_packet() {
-            Ok(p) => p,
+            Ok(Some(p)) => p,
+            // End of stream
+            Ok(None) => break,
             Err(symphonia::core::errors::Error::IoError(ref e))
                 if e.kind() == std::io::ErrorKind::UnexpectedEof =>
             {
@@ -539,7 +533,7 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
         };
 
         // Skip packets from other tracks (e.g., video track)
-        if packet.track_id() != track_id {
+        if packet.track_id != track_id {
             continue;
         }
 
@@ -549,11 +543,7 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
             Err(_) => continue,
         };
 
-        let spec = *decoded_packet.spec();
-        let mut sample_buf = SampleBuffer::<i16>::new(decoded_packet.capacity() as u64, spec);
-        sample_buf.copy_interleaved_ref(decoded_packet);
-
-        let samples = sample_buf.samples();
+        decoded_packet.copy_to_vec_interleaved(&mut samples);
         total_samples += samples.len() as u64;
 
         // Split into left/right for LAME
