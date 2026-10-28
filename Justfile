@@ -197,7 +197,7 @@ install-ci-tools:
     esac
 
     # ── trunk ────────────────────────────────────────────────────────────────
-    TRUNK_VERSION="0.21.14"
+    TRUNK_VERSION="0.22.1"
     TRUNK_MARKER=".bin/.trunk-${TRUNK_VERSION}"
     if [ -f "${TRUNK_MARKER}" ]; then
         echo "trunk ${TRUNK_VERSION}: cached"
@@ -218,7 +218,7 @@ install-ci-tools:
     fi
 
     # ── cargo-deny ───────────────────────────────────────────────────────────
-    DENY_VERSION="0.19.0"
+    DENY_VERSION="0.20.2"
     DENY_MARKER=".bin/.cargo-deny-${DENY_VERSION}"
     if [ -f "${DENY_MARKER}" ]; then
         echo "cargo-deny ${DENY_VERSION}: cached"
@@ -240,7 +240,7 @@ install-ci-tools:
     fi
 
     # ── sccache ──────────────────────────────────────────────────────────────
-    SCCACHE_VERSION="0.10.0"
+    SCCACHE_VERSION="0.19.0"
     SCCACHE_MARKER=".bin/.sccache-${SCCACHE_VERSION}"
     if [ -f "${SCCACHE_MARKER}" ]; then
         echo "sccache ${SCCACHE_VERSION}: cached"

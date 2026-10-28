@@ -38,7 +38,7 @@ jobs:
     outputs:
       tag: ${{ steps.get_version.outputs.VERSION }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -87,7 +87,7 @@ jobs:
     environment:
       name: release
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -106,7 +106,7 @@ jobs:
       # ci.yml's warm-release-cache job. Caches created on tag refs are
       # invisible to later tags, so saving here would be wasted upload time.
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: release-build
           save-if: "false"
@@ -114,7 +114,7 @@ jobs:
       # Prebuilt binaries (tauri-cli via the cargo-binstall fallback)
       # instead of compiling both tools from source (~13 min per job).
       - name: Install trunk and Tauri CLI
-        uses: taiki-e/install-action@7a562dfa955aa2e4d5b0fd6ebd57ff9715c07b0b # v2.73.0
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
         with:
           tool: trunk,tauri-cli
 
@@ -150,7 +150,7 @@ jobs:
     environment:
       name: release
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -166,7 +166,7 @@ jobs:
       # ci.yml's warm-release-cache job. Caches created on tag refs are
       # invisible to later tags, so saving here would be wasted upload time.
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: release-build
           save-if: "false"
@@ -174,7 +174,7 @@ jobs:
       # Prebuilt binaries (tauri-cli via the cargo-binstall fallback)
       # instead of compiling both tools from source (~13 min per job).
       - name: Install trunk and Tauri CLI
-        uses: taiki-e/install-action@7a562dfa955aa2e4d5b0fd6ebd57ff9715c07b0b # v2.73.0
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
         with:
           tool: trunk,tauri-cli
 
@@ -214,7 +214,7 @@ jobs:
     environment:
       name: release
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -241,7 +241,7 @@ jobs:
       # ci.yml's warm-release-cache job. Caches created on tag refs are
       # invisible to later tags, so saving here would be wasted upload time.
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: release-build
           save-if: "false"
@@ -249,7 +249,7 @@ jobs:
       # Prebuilt binaries (tauri-cli via the cargo-binstall fallback)
       # instead of compiling both tools from source (~13 min per job).
       - name: Install trunk and Tauri CLI
-        uses: taiki-e/install-action@7a562dfa955aa2e4d5b0fd6ebd57ff9715c07b0b # v2.73.0
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
         with:
           tool: trunk,tauri-cli
 
@@ -285,7 +285,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
