@@ -15,6 +15,9 @@ pub struct UpdateInfo {
     pub date: Option<String>,
 }
 
+/// Bytes per megabyte, for progress labels.
+const BYTES_PER_MB: u64 = 1024 * 1024;
+
 /// Download progress for an update package.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UpdateProgress {
@@ -36,6 +39,17 @@ impl UpdateProgress {
             return None;
         }
         Some(self.downloaded.saturating_mul(100) / total)
+    }
+
+    /// Render the download size as `"12 MB / 34 MB"`, or `"12 MB"` when the
+    /// total size is unknown.
+    #[must_use]
+    pub fn size_label(&self) -> String {
+        let downloaded = self.downloaded / BYTES_PER_MB;
+        self.total.map_or_else(
+            || format!("{downloaded} MB"),
+            |total| format!("{downloaded} MB / {} MB", total / BYTES_PER_MB),
+        )
     }
 }
 
@@ -68,6 +82,24 @@ mod tests {
             total: Some(3),
         };
         assert_eq!(progress.percent(), Some(33));
+    }
+
+    #[test]
+    fn size_label_without_total() {
+        let progress = UpdateProgress {
+            downloaded: 12 * BYTES_PER_MB,
+            total: None,
+        };
+        assert_eq!(progress.size_label(), "12 MB");
+    }
+
+    #[test]
+    fn size_label_with_total() {
+        let progress = UpdateProgress {
+            downloaded: 12 * BYTES_PER_MB,
+            total: Some(34 * BYTES_PER_MB),
+        };
+        assert_eq!(progress.size_label(), "12 MB / 34 MB");
     }
 
     #[test]

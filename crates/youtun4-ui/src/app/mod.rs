@@ -12,11 +12,13 @@ use crate::components::{
     DeviceStatusIndicator, DownloadPanelState, DownloadProgressPanel, Layout, LayoutMain,
     LayoutSidebar, LoadingState, NotificationProvider, PlaylistDetailView, PlaylistListState,
     PlaylistSelectionList, PlaylistSelectionState, PlaylistSelectionSummary, PlaylistTable,
-    SettingsPanel, TransferPanelState, TransferProgressPanel, use_notifications,
+    SettingsPanel, TransferPanelState, TransferProgressPanel, UpdateDialog, use_notifications,
 };
 use crate::tauri_api;
 use crate::theme::generate_css_variables;
-use crate::types::{DeviceInfo, DownloadProgress, PlaylistMetadata, TaskId, TransferProgress};
+use crate::types::{
+    DeviceInfo, DownloadProgress, PlaylistMetadata, TaskId, TransferProgress, UpdateInfo,
+};
 
 /// Main application component.
 #[component]
@@ -46,6 +48,7 @@ fn AppContent() -> impl IntoView {
     let (selected_device, set_selected_device) = signal::<Option<DeviceInfo>>(None);
     let (selected_playlist, set_selected_playlist) = signal::<Option<PlaylistMetadata>>(None);
     let (settings_open, set_settings_open) = signal(false);
+    let (available_update, set_available_update) = signal::<Option<UpdateInfo>>(None);
     let (playlist_list_state, set_playlist_list_state) = signal(PlaylistListState::Loading);
     let (playlist_error, set_playlist_error) = signal::<Option<String>>(None);
 
@@ -159,6 +162,18 @@ fn AppContent() -> impl IntoView {
                 && !syncs.is_empty()
             {
                 set_syncing.set(true);
+            }
+        });
+
+        // Startup update check: offer a newer release in a dialog. A failed
+        // check (offline, dev build without a manifest) is only logged so it
+        // never nags the user at launch; the settings panel still allows a
+        // manual check.
+        spawn_local(async move {
+            match tauri_api::check_for_update().await {
+                Ok(Some(info)) => set_available_update.set(Some(info)),
+                Ok(None) => {}
+                Err(e) => leptos::logging::warn!("Startup update check failed: {}", e),
             }
         });
 
@@ -671,6 +686,12 @@ fn AppContent() -> impl IntoView {
         <SettingsPanel
             is_open=settings_open
             on_close=on_settings_close
+        />
+
+        // Update Available Dialog (shown after the startup update check)
+        <UpdateDialog
+            update=available_update
+            on_dismiss=Callback::new(move |()| set_available_update.set(None))
         />
 
         // Delete Playlist Confirmation Dialog

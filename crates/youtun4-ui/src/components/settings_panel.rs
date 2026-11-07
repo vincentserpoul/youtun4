@@ -8,9 +8,6 @@ use crate::types::{
     AppConfig, DownloadQuality, NotificationPreferences, Theme, UpdateInfo, UpdateProgress,
 };
 
-/// Bytes per megabyte, for progress labels.
-const BYTES_PER_MB: u64 = 1024 * 1024;
-
 /// State of the self-update flow.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum UpdateStatus {
@@ -26,16 +23,6 @@ enum UpdateStatus {
     Installing,
     /// The check or the install failed.
     Failed(String),
-}
-
-/// Render a download size as `"12 MB / 34 MB"`, or `"12 MB"` when the total
-/// size is unknown.
-fn progress_label(progress: UpdateProgress) -> String {
-    let downloaded = progress.downloaded / BYTES_PER_MB;
-    progress.total.map_or_else(
-        || format!("{downloaded} MB"),
-        |total| format!("{downloaded} MB / {} MB", total / BYTES_PER_MB),
-    )
 }
 
 /// Settings panel component for configuring application preferences.
@@ -508,7 +495,7 @@ pub fn SettingsPanel(
                                         <p class="settings-hint">
                                             {move || update_progress.get().map_or_else(
                                                 || "Starting download...".to_string(),
-                                                progress_label,
+                                                |p| p.size_label(),
                                             )}
                                         </p>
                                     </div>

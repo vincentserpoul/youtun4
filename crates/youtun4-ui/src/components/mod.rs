@@ -22,6 +22,7 @@ pub mod settings_panel;
 pub mod toast;
 pub mod track_list;
 pub mod transfer_progress_panel;
+pub mod update_dialog;
 
 pub use button::Button;
 pub use confirm_dialog::{ConfirmDialog, DeletePlaylistDialog};
@@ -61,3 +62,4 @@ pub use track_list::{TrackItemCompact, TrackList, TrackListState};
 pub use transfer_progress_panel::{
     TransferPanelState, TransferProgressIndicator, TransferProgressPanel,
 };
+pub use update_dialog::UpdateDialog;
