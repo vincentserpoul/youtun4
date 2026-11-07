@@ -1,10 +1,12 @@
-use std::path::Path;
+use std::num::NonZeroU32;
+use std::path::{Path, PathBuf};
 
 use mp4::Mp4Reader;
 use tracing::{info, warn};
 
 // Audio re-encoding for HE-AAC compatibility
 use mp3lame_encoder::{Builder as LameBuilder, DualPcm, FlushNoGap};
+use symphonia::core::audio::Channels;
 use symphonia::core::codecs::CodecParameters;
 use symphonia::core::codecs::audio::AudioDecoderOptions;
 use symphonia::core::formats::probe::Hint;
@@ -26,6 +28,10 @@ use crate::error::{DownloadError, Error, Result};
 /// including VLC and most MP3 players that support AAC/M4A.
 ///
 /// The output file uses .aac extension which is recognized by most players.
+/// HE-AAC sources are re-encoded to MP3 instead, see [`reencode_aac_to_mp3`].
+///
+/// Returns the path of the file actually written, which has the `.aac` or `.mp3`
+/// extension regardless of the extension of `output_path`.
 ///
 /// # Errors
 ///
@@ -38,7 +44,7 @@ pub(super) fn extract_audio_to_m4a(
     input_path: &Path,
     output_path: &Path,
     title: &str,
-) -> Result<()> {
+) -> Result<PathBuf> {
     use std::io::{BufReader, BufWriter, Seek, SeekFrom, Write};
 
     info!(
@@ -297,7 +303,7 @@ pub(super) fn extract_audio_to_m4a(
         "Successfully extracted {} audio samples to AAC (ADTS format): {:?}",
         sample_count, aac_output_path
     );
-    Ok(())
+    Ok(aac_output_path)
 }
 
 /// Create a 7-byte ADTS header for an AAC frame.
@@ -349,16 +355,76 @@ const fn create_adts_header(profile: u8, freq_index: u8, chan_conf: u8, frame_le
     header
 }
 
+/// MPEG-4 audio object type of AAC-LC (ISO/IEC 14496-3, table 1.17).
+const AOT_AAC_LC: u8 = 2;
+/// MPEG-4 audio object type of SBR, i.e. HE-AAC wrapping an AAC-LC core.
+const AOT_SBR: u8 = 5;
+/// MPEG-4 audio object type of PS, i.e. HE-AACv2 wrapping an AAC-LC core.
+const AOT_PS: u8 = 29;
+
+/// Sampling frequencies indexed by the 4-bit `samplingFrequencyIndex` of an
+/// `AudioSpecificConfig` (ISO/IEC 14496-3, table 1.18). Indices 13 and 14 are
+/// reserved and 15 escapes to an explicit 24-bit frequency.
+const AAC_SAMPLE_RATES: [u32; 13] = [
+    96_000, 88_200, 64_000, 48_000, 44_100, 32_000, 24_000, 22_050, 16_000, 12_000, 11_025, 8_000,
+    7_350,
+];
+
+/// The AAC-LC core of an HE-AAC stream, described as a plain AAC-LC configuration.
+struct AacLcCore {
+    /// Two-byte AAC-LC `AudioSpecificConfig` for the core.
+    config: Box<[u8]>,
+    /// Sample rate of the core, half the nominal HE-AAC output rate.
+    sample_rate: u32,
+}
+
+/// Rewrite an HE-AAC (SBR) or HE-AACv2 (SBR + PS) `AudioSpecificConfig` so that it
+/// describes only the embedded AAC-LC core.
+///
+/// symphonia implements AAC-LC only and rejects HE-AAC outright. The SBR and PS
+/// payloads live in fill elements that the LC decoder skips, so decoding the core
+/// works and yields audio at the core sample rate without the reconstructed high
+/// band. That is a quality loss, but a muffled MP3 beats a failed download.
+///
+/// Returns `None` when the config is not HE-AAC, or uses an escaped sample rate or
+/// a PCE-defined channel layout, so the caller keeps the original parameters.
+fn aac_lc_core_config(asc: &[u8]) -> Option<AacLcCore> {
+    let (&byte0, &byte1) = (asc.first()?, asc.get(1)?);
+    let object_type = byte0 >> 3;
+    if object_type != AOT_SBR && object_type != AOT_PS {
+        return None;
+    }
+    let freq_index = ((byte0 & 0x07) << 1) | (byte1 >> 7);
+    let chan_conf = (byte1 >> 3) & 0x0F;
+    let sample_rate = *AAC_SAMPLE_RATES.get(usize::from(freq_index))?;
+    if chan_conf == 0 {
+        return None;
+    }
+    // AOT (5 bits) | samplingFrequencyIndex (4) | channelConfiguration (4) |
+    // GASpecificConfig: frameLengthFlag, dependsOnCoreCoder, extensionFlag (3 zero bits)
+    let config = Box::new([
+        (AOT_AAC_LC << 3) | (freq_index >> 1),
+        ((freq_index & 0x01) << 7) | (chan_conf << 3),
+    ]);
+    Some(AacLcCore {
+        config,
+        sample_rate,
+    })
+}
+
 /// Re-encode AAC (including HE-AAC) to MP3 for compatibility with basic MP3 players.
 ///
 /// This function uses symphonia to decode AAC audio and LAME to encode to MP3.
 /// It's used when the source audio is HE-AAC (SBR/PS) which many portable
-/// MP3 players don't support.
+/// MP3 players don't support. symphonia cannot decode SBR, so only the AAC-LC
+/// core of such streams is decoded; see [`aac_lc_core_config`].
+///
+/// Returns the path of the MP3 written, `output_path` with an `.mp3` extension.
 #[allow(
     clippy::too_many_lines,
     reason = "audio re-encoding requires sequential steps"
 )]
-fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Result<()> {
+fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Result<PathBuf> {
     use std::fs::File;
     use std::io::Write;
 
@@ -426,26 +492,43 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
             })
         })?;
 
-    let sample_rate = audio_params.sample_rate.unwrap_or(44100);
-    let channels = audio_params
-        .channels
-        .as_ref()
-        .map_or(2, symphonia::core::audio::Channels::count);
-
-    info!(
-        "Found audio track {}: codec={:?}, {} Hz, {} channels - encoding to MP3",
-        track_id, audio_params.codec, sample_rate, channels
-    );
+    // symphonia only implements AAC-LC, so HE-AAC streams are decoded through
+    // their AAC-LC core by rewriting the configuration the decoder is given.
+    let mut decoder_params = audio_params.clone();
+    if let Some(core) = audio_params
+        .extra_data
+        .as_deref()
+        .and_then(aac_lc_core_config)
+    {
+        info!(
+            "Track {} is HE-AAC - decoding its AAC-LC core at {} Hz (SBR high band dropped)",
+            track_id, core.sample_rate
+        );
+        decoder_params
+            .with_extra_data(core.config)
+            .with_sample_rate(core.sample_rate);
+    }
 
     // Create decoder for the audio track
     let mut decoder_codecs = symphonia::default::get_codecs()
-        .make_audio_decoder(audio_params, &AudioDecoderOptions::default())
+        .make_audio_decoder(&decoder_params, &AudioDecoderOptions::default())
         .map_err(|e| {
             Error::Download(DownloadError::AudioExtractionFailed {
                 title: title.to_string(),
                 reason: format!("Failed to create audio decoder for track {track_id}: {e}"),
             })
         })?;
+
+    // The decoder amends the parameters with what the AudioSpecificConfig says,
+    // which is authoritative over the container's sample entry.
+    let actual_params = decoder_codecs.codec_params();
+    let sample_rate = actual_params.sample_rate.unwrap_or(44_100);
+    let channels = actual_params.channels.as_ref().map_or(2, Channels::count);
+
+    info!(
+        "Found audio track {}: codec={:?}, {} Hz, {} channels - encoding to MP3",
+        track_id, actual_params.codec, sample_rate, channels
+    );
 
     // Create MP3 encoder
     let mut builder = LameBuilder::new().ok_or_else(|| {
@@ -461,6 +544,19 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
             reason: format!("Invalid sample rate for MP3: {e}"),
         })
     })?;
+
+    // Basic MP3 players often only handle MPEG-1 rates (32/44.1/48 kHz), so have
+    // LAME resample low-rate audio such as the 22.05 kHz HE-AAC core to 44.1 kHz.
+    if sample_rate < 32_000 {
+        builder
+            .set_output_sample_rate(NonZeroU32::new(44_100))
+            .map_err(|e| {
+                Error::Download(DownloadError::AudioExtractionFailed {
+                    title: title.to_string(),
+                    reason: format!("Invalid output sample rate for MP3: {e}"),
+                })
+            })?;
+    }
 
     let channels_u8: u8 = channels.try_into().map_err(|_err| {
         Error::Download(DownloadError::AudioExtractionFailed {
@@ -602,5 +698,45 @@ fn reencode_aac_to_mp3(input_path: &Path, output_path: &Path, title: &str) -> Re
         total_samples, mp3_output_path
     );
 
-    Ok(())
+    Ok(mp3_output_path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn he_aac_config_is_rewritten_to_its_lc_core() {
+        // AOT 5 (SBR), 22050 Hz core (index 7), stereo, 44100 Hz extension, AOT 2 core.
+        let he_aac = [0x2B, 0x92, 0x08, 0x00];
+        let core = aac_lc_core_config(&he_aac).expect("HE-AAC should be recognised");
+        assert_eq!(core.sample_rate, 22_050);
+        // AOT 2, index 7, stereo.
+        assert_eq!(&*core.config, &[0x13, 0x90]);
+    }
+
+    #[test]
+    fn he_aac_v2_config_is_rewritten_to_its_mono_lc_core() {
+        // AOT 29 (PS), 22050 Hz core (index 7), mono.
+        let he_aac_v2 = [0xEB, 0x88, 0x00, 0x00];
+        let core = aac_lc_core_config(&he_aac_v2).expect("HE-AACv2 should be recognised");
+        assert_eq!(core.sample_rate, 22_050);
+        assert_eq!(&*core.config, &[0x13, 0x88]);
+    }
+
+    #[test]
+    fn plain_aac_lc_config_is_left_alone() {
+        // AOT 2, 44100 Hz (index 4), stereo.
+        assert!(aac_lc_core_config(&[0x12, 0x10]).is_none());
+    }
+
+    #[test]
+    fn escaped_sample_rate_and_pce_channels_are_not_rewritten() {
+        // AOT 5 with samplingFrequencyIndex 15 (explicit frequency follows).
+        assert!(aac_lc_core_config(&[0x2F, 0x90, 0x00, 0x00, 0x00]).is_none());
+        // AOT 5 with channelConfiguration 0 (layout defined by a PCE).
+        assert!(aac_lc_core_config(&[0x2B, 0x80, 0x00]).is_none());
+        // Too short to hold a configuration.
+        assert!(aac_lc_core_config(&[0x2B]).is_none());
+    }
 }

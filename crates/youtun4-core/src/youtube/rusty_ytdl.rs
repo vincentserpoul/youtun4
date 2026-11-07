@@ -818,19 +818,23 @@ impl RustyYtdlDownloader {
             total_bytes
         );
 
-        // Extract audio from MP4 to AAC using spawn_blocking since it's CPU-bound
+        // Extract audio from MP4 to AAC using spawn_blocking since it's CPU-bound.
+        // The extension of the file written depends on the source codec (.aac for
+        // AAC-LC, .mp3 when HE-AAC had to be re-encoded), so use the returned path.
         let temp_path = temp_mp4_path.clone();
         let out_path = output_path.clone();
         let title = video_title.to_string();
 
-        tokio::task::spawn_blocking(move || extract_audio_to_m4a(&temp_path, &out_path, &title))
-            .await
-            .map_err(|e| {
-                Error::Download(DownloadError::AudioExtractionFailed {
-                    title: video_title.to_string(),
-                    reason: format!("Audio extraction task failed: {e}"),
-                })
-            })??;
+        let output_path = tokio::task::spawn_blocking(move || {
+            extract_audio_to_m4a(&temp_path, &out_path, &title)
+        })
+        .await
+        .map_err(|e| {
+            Error::Download(DownloadError::AudioExtractionFailed {
+                title: video_title.to_string(),
+                reason: format!("Audio extraction task failed: {e}"),
+            })
+        })??;
 
         // Delete the temporary MP4 file
         if let Err(e) = std::fs::remove_file(&temp_mp4_path) {

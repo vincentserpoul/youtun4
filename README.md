@@ -132,6 +132,28 @@ Pre-built binaries are available on the [Releases](https://github.com/vincentser
 | macOS    | `.dmg` (Universal binary: Intel + Apple Silicon) |
 | Linux    | `.deb`, `.rpm`, `.AppImage`                      |
 
+### Linux AppImage desktop integration
+
+An `.AppImage` run directly from a download folder installs no `.desktop` entry,
+so Wayland compositors and taskbars have no icon to show for its window (the
+window's app id is `youtun4`). Either integrate it with a tool such as
+[Gear Lever](https://github.com/mijorus/gearlever) or AppImageLauncher, or add
+the entry by hand:
+
+```bash
+./Youtun4_*.AppImage --appimage-extract >/dev/null
+for size in 32x32 64x64 128x128 256x256@2; do
+  install -Dm644 "squashfs-root/usr/share/icons/hicolor/$size/apps/youtun4.png" \
+    "$HOME/.local/share/icons/hicolor/$size/apps/youtun4.png"
+done
+sed "s|^Exec=.*|Exec=$PWD/Youtun4_0.13.10_amd64.AppImage|" squashfs-root/Youtun4.desktop \
+  > "$HOME/.local/share/applications/youtun4.desktop"
+rm -r squashfs-root
+```
+
+The entry must be named `youtun4.desktop` to match the app id. The in-app updater
+replaces the AppImage file in place, so the `Exec` path stays valid across updates.
+
 ### Self-update
 
 Settings → Updates checks for a newer release and installs it in place. The app
