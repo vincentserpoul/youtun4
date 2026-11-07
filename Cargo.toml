@@ -39,7 +39,7 @@ sysinfo = "0.39"
 
 # YouTube downloading (pure Rust) - use git version for 403 fix and android_sdkless player
 # Note: version is for publishing; git rev is used locally until fix is released
-rusty_ytdl = { version = "0.7.4", git = "https://github.com/Mithronn/rusty_ytdl", rev = "bfd7fed" }
+rusty_ytdl = { version = "0.7.4", git = "https://github.com/Mithronn/rusty_ytdl", rev = "b1c6eb7" }
 regex = "1.12"
 
 # File handling

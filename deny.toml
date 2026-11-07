@@ -15,10 +15,8 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
     # Unmaintained transitive dependencies (via Tauri / Leptos / Symphonia)
     "RUSTSEC-2024-0370", # proc-macro-error
-    "RUSTSEC-2024-0384", # instant
     "RUSTSEC-2024-0388", # derivative
     "RUSTSEC-2024-0436", # paste
-    "RUSTSEC-2025-0057", # fxhash
     # zbus 5.x sub-crates were merged into zbus 6.0 and marked unmaintained.
     # They are only pulled in by tauri-plugin-opener on Linux, which still
     # depends on zbus ^5.9 (also in its 3.0.0-alpha releases). Remove once
