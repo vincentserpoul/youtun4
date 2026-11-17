@@ -29,7 +29,7 @@ mp4 = "0.14"
 # - isomp4: MP4/M4A container support
 symphonia = { version = "0.6.1", features = ["aac", "isomp4"] }
 # MP3 encoding (LAME bindings - compiles from source, no system deps)
-mp3lame-encoder = "0.2"
+mp3lame-encoder = "0.3"
 
 [dev-dependencies]
 mockall.workspace = true

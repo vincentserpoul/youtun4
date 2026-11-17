@@ -35,7 +35,7 @@ tauri-plugin-mcp-bridge = "0.13"
 leptos = { version = "0.8.19", features = ["csr"] }
 
 # Device detection
-sysinfo = "0.39"
+sysinfo = "0.40.4"
 
 # YouTube downloading (pure Rust) - use git version for 403 fix and android_sdkless player
 # Note: version is for publishing; git rev is used locally until fix is released
