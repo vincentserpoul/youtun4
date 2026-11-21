@@ -113,7 +113,7 @@ jobs:
       # Prebuilt binaries (tauri-cli via the cargo-binstall fallback)
       # instead of compiling both tools from source (~13 min per job).
       - name: Install trunk and Tauri CLI
-        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: trunk,tauri-cli
 
@@ -168,7 +168,7 @@ jobs:
       # Prebuilt binaries (tauri-cli via the cargo-binstall fallback)
       # instead of compiling both tools from source (~13 min per job).
       - name: Install trunk and Tauri CLI
-        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: trunk,tauri-cli
 
@@ -238,7 +238,7 @@ jobs:
       # Prebuilt binaries (tauri-cli via the cargo-binstall fallback)
       # instead of compiling both tools from source (~13 min per job).
       - name: Install trunk and Tauri CLI
-        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: trunk,tauri-cli
 

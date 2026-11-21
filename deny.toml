@@ -9,6 +9,11 @@
 version = 2
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
+# Report unmaintained crates only when we depend on them directly: transitive
+# ones (via rusty_ytdl, Tauri, zbus) are not ours to replace. This is the
+# default from cargo-deny 0.22, set explicitly so older versions agree.
+# Vulnerabilities are always reported for the whole graph.
+unmaintained = "workspace"
 # No advisories are currently ignored. If an unmaintained transitive dependency
 # we cannot upgrade ourselves shows up, list its RUSTSEC id here with a comment,
 # and prune it once it no longer matches (cargo-deny warns `advisory-not-detected`).
