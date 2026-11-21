@@ -1,9 +1,8 @@
+# Single source of truth for the Rust version: CI installs from this file
+# (`rustup toolchain install`), so bump it here and nowhere else.
 [toolchain]
 channel = "1.100.0"
 components = ["clippy", "rustfmt", "rust-src"]
-targets = [
-  "aarch64-apple-darwin",
-  "x86_64-apple-darwin",
-  "aarch64-linux-android",
-  "aarch64-apple-ios",
-]
+# The UI crate is compiled to WASM on every platform. Platform-specific
+# targets (e.g. the macOS universal pair) are added by the jobs that need them.
+targets = ["wasm32-unknown-unknown"]

@@ -131,16 +131,14 @@ lto = false
 # Centralized lint configuration for all workspace crates.
 # Individual crates inherit these with: [lints] workspace = true
 #
-# These lints are auto-fixable and enforced in pre-commit hooks.
-# Run `make clippy-fix` to auto-fix most issues.
-#
-# Additional non-auto-fixable lints (todo, unwrap_used, expect_used) are
-# available via the `make clippy-fix-nightly` target.
+# Levels here are what you see while developing. `just clippy` and CI add
+# `-D warnings`, which turns every "warn" below into an error, so warnings
+# never block a local build or a release but cannot be merged either.
+# Run `just clippy-fix` to auto-fix most issues.
 # -----------------------------------------------------------------------------
 
 [workspace.lints.rust]
 unsafe_code = "deny"
-warnings = "deny"
 unused_must_use = "deny"
 unreachable_code = "deny"
 unused_imports = "warn"
@@ -153,10 +151,9 @@ unsafe_op_in_unsafe_fn = "warn"
 unused_lifetimes = "warn"
 
 [workspace.lints.clippy]
-all = { level = "deny", priority = -1 }
+# `correctness` is left at its default level (deny).
 cargo = { level = "warn", priority = -1 }
 complexity = { level = "warn", priority = -1 }
-correctness = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 perf = { level = "warn", priority = -1 }
 style = { level = "warn", priority = -1 }

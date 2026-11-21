@@ -2,6 +2,9 @@
 # Security CI Pipeline
 # Runs security checks on every PR and weekly on main
 
+# The Rust version, components and targets come from rust-toolchain.toml:
+# `rustup toolchain install` with no arguments installs exactly that.
+
 name: Security
 
 "on":
@@ -20,7 +23,6 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
-  RUST_TOOLCHAIN: 1.100.0
 
 jobs:
   # ============================================================================
@@ -35,12 +37,12 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust
-        run: |
-          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
-          rustup default "${{ env.RUST_TOOLCHAIN }}"
+        run: rustup toolchain install
 
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        with:
+          tool: cargo-audit
 
       - name: Run cargo audit
         run: cargo audit
@@ -57,47 +59,15 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust
-        run: |
-          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
-          rustup default "${{ env.RUST_TOOLCHAIN }}"
+        run: rustup toolchain install
 
       - name: Install cargo-deny
-        run: cargo install cargo-deny --locked
-
-      - name: Check advisories
-        run: cargo deny check advisories
-
-      - name: Check licenses
-        run: cargo deny check licenses
-
-      - name: Check bans
-        run: cargo deny check bans
-
-      - name: Check sources
-        run: cargo deny check sources
-
-  # ============================================================================
-  # UNSAFE CODE DETECTION
-  # ============================================================================
-  geiger:
-    name: Unsafe Code Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
         with:
-          persist-credentials: false
+          tool: cargo-deny
 
-      - name: Install Rust
-        run: |
-          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
-          rustup default "${{ env.RUST_TOOLCHAIN }}"
-
-      - name: Install cargo-geiger
-        run: cargo install cargo-geiger --locked
-
-      - name: Run cargo geiger
-        run: cargo geiger --all-features --all-targets
-        continue-on-error: true  # Don't fail the build, just report
+      - name: Check advisories, licenses, bans and sources
+        run: cargo deny check
 
   # ============================================================================
   # SECRET DETECTION
@@ -115,71 +85,6 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ============================================================================
-  # OUTDATED DEPENDENCIES
-  # ============================================================================
-  outdated:
-    name: Check Outdated Dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install Rust
-        run: |
-          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" --profile minimal
-          rustup default "${{ env.RUST_TOOLCHAIN }}"
-
-      - name: Install cargo-outdated
-        run: cargo install cargo-outdated --locked
-
-      - name: Check outdated
-        run: cargo outdated --root-deps-only
-        continue-on-error: true  # Informational only
-
-  # ============================================================================
-  # CLIPPY WITH SECURITY LINTS
-  # ============================================================================
-  clippy-security:
-    name: Clippy Security Lints
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            librsvg2-dev \
-            libssl-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev
-
-      - name: Install Rust
-        run: |
-          rustup toolchain install "${{ env.RUST_TOOLCHAIN }}" \
-            --profile minimal \
-            --component clippy
-          rustup default "${{ env.RUST_TOOLCHAIN }}"
-
-      - name: Add WASM target
-        run: rustup target add wasm32-unknown-unknown
-
-      - name: Run Clippy with security focus
-        run: |
-          cargo clippy --all-targets --all-features -- \
-            -D clippy::unwrap_used \
-            -D clippy::expect_used \
-            -D clippy::panic \
-            -D clippy::todo \
-            -D clippy::unimplemented \
-            -W clippy::cognitive_complexity
-        continue-on-error: true  # Strict mode - informational
 
   # ============================================================================
   # Trivy

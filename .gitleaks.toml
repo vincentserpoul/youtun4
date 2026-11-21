@@ -12,23 +12,23 @@ useDefault = true
 # Paths to ignore (vendor code, build artifacts)
 [allowlist]
 paths = [
-    '''node_modules/''',
-    '''target/''',
-    '''dist/''',
-    '''\.git/''',
-    '''Cargo\.lock''',
-    '''package-lock\.json''',
-    '''playwright-report/''',
-    '''test-results/''',
+  '''node_modules/''',
+  '''target/''',
+  '''dist/''',
+  '''\.git/''',
+  '''Cargo\.lock''',
+  '''package-lock\.json''',
+  '''playwright-report/''',
+  '''test-results/''',
 ]
 
 # Specific patterns to allow (false positives)
 regexes = [
-    # Example YouTube video IDs (not secrets)
-    '''PLtest[A-Za-z0-9_-]+''',
-    # Example API endpoints (not secrets)
-    '''https://www\.youtube\.com/''',
-    '''https://music\.youtube\.com/''',
+  # Example YouTube video IDs (not secrets)
+  '''PLtest[A-Za-z0-9_-]+''',
+  # Example API endpoints (not secrets)
+  '''https://www\.youtube\.com/''',
+  '''https://music\.youtube\.com/''',
 ]
 
 # Additional rules can be added here

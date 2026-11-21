@@ -2,29 +2,29 @@
 default:
     @just --list
 
+# One-time setup after cloning: install the git hooks (pre-commit and commit-msg)
+setup:
+    prek install
+
+# Run every pre-commit hook against the whole repo (same as the CI hooks job)
+hooks:
+    prek run --all-files
+
 # Format all code with cargo fmt
 fmt:
-    cargo +nightly fmt --all
+    cargo fmt --all
 
 # Check formatting without applying changes
 fmt-check:
-    cargo +nightly fmt --all -- --check
+    cargo fmt --all -- --check
 
-# Run clippy on the entire workspace (same flags as CI)
+# Run clippy on the entire workspace (same command as CI; lint levels live in Cargo.toml)
 clippy:
-    cargo clippy --workspace --all-targets -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -W clippy::cognitive_complexity
-
-# Run the same clippy command used in GitHub Actions CI
-clippy-ci:
-    cargo clippy --all-targets --all-features -- -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -W clippy::cognitive_complexity
-
-# Run CI clippy in a Linux container for true Ubuntu parity on macOS
-clippy-ci-linux:
-    docker run --rm -t -v "$PWD":/work -w /work rust:1.94-bookworm bash -lc "apt-get update && apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev && rustup target add wasm32-unknown-unknown && cargo clippy --all-targets --all-features -- -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -W clippy::cognitive_complexity"
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 # Run clippy and auto-fix where possible
 clippy-fix:
-    cargo clippy --workspace --all-targets --fix --allow-dirty --allow-staged -- -D warnings
+    cargo clippy --workspace --all-targets --all-features --fix --allow-dirty --allow-staged -- -D warnings
 
 # Build the workspace in debug mode
 build:
@@ -85,9 +85,6 @@ clean:
 
 # Run the full CI-style check suite
 ci: fmt-check clippy test doc-check deny audit machete
-
-# Quick pre-push checks with CI-equivalent clippy flags
-ci-local: check clippy-ci test
 
 # Check, lint, and test (quick local iteration)
 dev: check clippy test
@@ -151,33 +148,6 @@ zizmor:
 taplo:
     taplo format
 
-infra-local-up:
-    docker compose -f infra/dev/docker-compose.yml up -d --remove-orphans
-
-infra-local-down:
-    docker compose -f infra/dev/docker-compose.yml down --remove-orphans
-
-# Download Tailwind CSS v4 standalone CLI to .bin/
-tailwind-install:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    VERSION="v4.1.8"
-    OS=$(uname -s)
-    ARCH=$(uname -m)
-    case "${OS}-${ARCH}" in
-        Darwin-arm64)  PLATFORM="macos-arm64" ;;
-        Darwin-x86_64) PLATFORM="macos-x64" ;;
-        Linux-x86_64)  PLATFORM="linux-x64" ;;
-        Linux-aarch64) PLATFORM="linux-arm64" ;;
-        *) echo "Unsupported platform: ${OS}-${ARCH}" && exit 1 ;;
-    esac
-    mkdir -p .bin
-    URL="https://github.com/tailwindlabs/tailwindcss/releases/download/${VERSION}/tailwindcss-${PLATFORM}"
-    echo "Downloading Tailwind CSS ${VERSION} for ${PLATFORM}..."
-    curl -sL "${URL}" -o .bin/tailwindcss
-    chmod +x .bin/tailwindcss
-    echo "Installed .bin/tailwindcss (${VERSION})"
-
 # Download and install pre-built CI tool binaries to .bin/
 install-ci-tools:
     #!/usr/bin/env bash
@@ -217,28 +187,6 @@ install-ci-tools:
         echo "Installed .bin/trunk (${TRUNK_VERSION})"
     fi
 
-    # ── cargo-deny ───────────────────────────────────────────────────────────
-    DENY_VERSION="0.20.2"
-    DENY_MARKER=".bin/.cargo-deny-${DENY_VERSION}"
-    if [ -f "${DENY_MARKER}" ]; then
-        echo "cargo-deny ${DENY_VERSION}: cached"
-    else
-        case "${OS_LABEL}-${ARCH_LABEL}" in
-            darwin-aarch64) DENY_TRIPLE="aarch64-apple-darwin"      ;;
-            darwin-x86_64)  DENY_TRIPLE="x86_64-apple-darwin"       ;;
-            linux-aarch64)  DENY_TRIPLE="aarch64-unknown-linux-musl" ;;
-            linux-x86_64)   DENY_TRIPLE="x86_64-unknown-linux-musl"  ;;
-        esac
-        DENY_ARCHIVE="cargo-deny-${DENY_VERSION}-${DENY_TRIPLE}.tar.gz"
-        DENY_URL="https://github.com/EmbarkStudios/cargo-deny/releases/download/${DENY_VERSION}/${DENY_ARCHIVE}"
-        DENY_SUBDIR="cargo-deny-${DENY_VERSION}-${DENY_TRIPLE}"
-        echo "Downloading cargo-deny ${DENY_VERSION} for ${DENY_TRIPLE}..."
-        curl -sL "${DENY_URL}" | tar -xzf - -C .bin --strip-components=1 "${DENY_SUBDIR}/cargo-deny"
-        chmod +x .bin/cargo-deny
-        touch "${DENY_MARKER}"
-        echo "Installed .bin/cargo-deny (${DENY_VERSION})"
-    fi
-
     # ── sccache ──────────────────────────────────────────────────────────────
     SCCACHE_VERSION="0.19.0"
     SCCACHE_MARKER=".bin/.sccache-${SCCACHE_VERSION}"
@@ -260,26 +208,3 @@ install-ci-tools:
         touch "${SCCACHE_MARKER}"
         echo "Installed .bin/sccache (${SCCACHE_VERSION})"
     fi
-
-# Validate OpenAPI spec with libopenapi-validator (requires Go)
-openapi-validate:
-    cargo nextest run --workspace -E 'test(export_openapi_spec)' --success-output immediate 2>/dev/null
-    go run github.com/pb33f/libopenapi-validator/cmd/validate@latest target/openapi.json
-
-# Run hurl E2E smoke tests against a running dev instance
-hurl-test:
-    hurl --test --variable base_url=http://localhost:8085 --error-format long tests/e2e/
-
-# Compile Tailwind CSS from wallet-ui source
-tailwind:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ ! -x .bin/tailwindcss ]; then
-        echo "Tailwind CLI not found at .bin/tailwindcss"
-        echo "Run 'just tailwind-install' first."
-        exit 1
-    fi
-    .bin/tailwindcss \
-        -i crates/wallet-ui/style/input.css \
-        -o crates/wallet-ui/static/css/style.css
-    echo "Compiled crates/wallet-ui/static/css/style.css"

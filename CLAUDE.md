@@ -19,7 +19,9 @@ just test-one NAME  # Run a single test by name
 just test-doc       # Run doctests
 just clippy         # Run clippy lints
 just clippy-fix     # Auto-fix clippy issues
-just fmt            # Format with nightly rustfmt
+just setup          # One-time: install git hooks (prek)
+just hooks          # Run all pre-commit hooks on the whole repo
+just fmt            # Format with rustfmt
 just fmt-check      # Check formatting
 just coverage       # Code coverage with llvm-cov
 just dev            # Quick local iteration: check + clippy + test
@@ -54,11 +56,10 @@ Strict lint configuration in workspace `Cargo.toml`:
 
 ## Toolchain
 
-- Rust 1.100.0 (pinned in `rust-toolchain.toml`)
+- Rust 1.100.0, pinned in `rust-toolchain.toml` — the single source of truth; CI installs from it
 - Edition 2024
-- Nightly required for `rustfmt` only (`cargo +nightly fmt`)
-- WASM target: `wasm32-unknown-unknown`
+- WASM target `wasm32-unknown-unknown` (listed in `rust-toolchain.toml`, installed automatically)
 
 ## Pre-commit Hooks
 
-Configured in `.pre-commit-config.yaml` (uses `prek`): cargo fmt, cargo clippy, cargo deny, prettier, markdownlint, gitleaks secret detection.
+Configured in `.pre-commit-config.yaml` (uses `prek`; run `just setup` once to install): file hygiene checks, conventional commits + gitlint (commit-msg), yamllint, taplo, typos, gitleaks, actionlint, zizmor, cargo fmt, cargo clippy. CI runs the same hooks in the `hooks` job of `ci.yml`.

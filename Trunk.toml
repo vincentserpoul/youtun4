@@ -8,7 +8,11 @@ features = "_wasm_bin"
 
 [watch]
 # Files to watch for changes
-watch = ["crates/youtun4-ui/src", "crates/youtun4-ui/styles", "crates/youtun4-ui/index.html"]
+watch = [
+  "crates/youtun4-ui/src",
+  "crates/youtun4-ui/styles",
+  "crates/youtun4-ui/index.html",
+]
 # Ignore patterns
 ignore = ["target"]
 

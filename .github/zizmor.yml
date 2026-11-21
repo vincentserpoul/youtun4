@@ -1,0 +1,11 @@
+---
+# zizmor configuration — https://docs.zizmor.sh/configuration/
+rules:
+  cache-poisoning:
+    ignore:
+      # Release builds deliberately restore (never save: `save-if: "false"`)
+      # the dependency cache warmed by ci.yml's warm-release-cache job, which
+      # only runs on pushes to main. That cache can therefore only be written
+      # by code already merged to main. Dropping it adds a full cold release
+      # build per platform to every release.
+      - release.yml

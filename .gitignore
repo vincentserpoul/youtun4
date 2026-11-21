@@ -1,7 +1,7 @@
 # Build artifacts
 /target/
-/dist/*.js
-/dist/*.wasm
+# Trunk build output (src-tauri/build.rs creates the directory when missing)
+/dist/
 
 # Coverage
 /coverage/
@@ -33,6 +33,8 @@ node_modules/
 
 test-results
 .automaker
+.planning/
+docs/superpowers/
 playwright-report
 crates/youtun4-ui/dist/
 
