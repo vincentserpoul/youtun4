@@ -156,8 +156,7 @@ impl RustyYtdlDownloader {
 
         let mut videos = initial_data
             .as_ref()
-            .map(Self::videos_from_initial_data)
-            .unwrap_or_default();
+            .map_or_default(Self::videos_from_initial_data);
 
         if videos.is_empty() {
             warn!("No videos found in playlist HTML, trying alternative extraction");

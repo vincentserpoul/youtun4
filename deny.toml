@@ -9,22 +9,10 @@
 version = 2
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-# Ignore unmaintained crate advisories for transitive dependencies we cannot
-# upgrade ourselves. Entries that no longer match any crate make cargo-deny
-# emit `advisory-not-detected` warnings, so prune them when deps are updated.
-ignore = [
-    # Unmaintained transitive dependencies (via Tauri / Leptos / Symphonia)
-    "RUSTSEC-2024-0370", # proc-macro-error
-    "RUSTSEC-2024-0388", # derivative
-    "RUSTSEC-2024-0436", # paste
-    # zbus 5.x sub-crates were merged into zbus 6.0 and marked unmaintained.
-    # They are only pulled in by tauri-plugin-opener on Linux, which still
-    # depends on zbus ^5.9 (also in its 3.0.0-alpha releases). Remove once
-    # tauri-plugin-opener ships a release on zbus 6.
-    "RUSTSEC-2026-0370", # zvariant
-    "RUSTSEC-2026-0371", # zbus_names
-    "RUSTSEC-2026-0372", # zvariant_derive
-]
+# No advisories are currently ignored. If an unmaintained transitive dependency
+# we cannot upgrade ourselves shows up, list its RUSTSEC id here with a comment,
+# and prune it once it no longer matches (cargo-deny warns `advisory-not-detected`).
+ignore = []
 
 # ============================================================================
 # LICENSES

@@ -919,8 +919,7 @@ impl IntegrityVerifier {
                 let ext = path
                     .extension()
                     .and_then(|e| e.to_str())
-                    .map(str::to_lowercase)
-                    .unwrap_or_default();
+                    .map_or_default(str::to_lowercase);
 
                 if !self.options.file_extensions.iter().any(|e| e == &ext) {
                     continue;
@@ -992,8 +991,7 @@ impl IntegrityVerifier {
                 let ext = path
                     .extension()
                     .and_then(|e| e.to_str())
-                    .map(str::to_lowercase)
-                    .unwrap_or_default();
+                    .map_or_default(str::to_lowercase);
 
                 if !self.options.file_extensions.iter().any(|e| e == &ext) {
                     continue;

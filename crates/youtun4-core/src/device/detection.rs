@@ -61,7 +61,8 @@ pub trait DeviceDetector: Send + Sync {
 /// Default device manager using `sysinfo`.
 #[derive(Debug)]
 pub struct DeviceManager {
-    disks: Disks,
+    /// `None` when the system disk list could not be read; retried on refresh.
+    disks: Option<Disks>,
 }
 
 impl DeviceManager {
@@ -69,8 +70,15 @@ impl DeviceManager {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            disks: Disks::new_with_refreshed_list(),
+            disks: Self::load_disks(),
         }
+    }
+
+    /// Load the system disk list, logging and returning `None` on failure.
+    fn load_disks() -> Option<Disks> {
+        Disks::new_with_refreshed_list()
+            .inspect_err(|e| tracing::warn!("Failed to read system disk list: {e}"))
+            .ok()
     }
 
     /// Filter function to determine if a disk is likely an MP3 player.
@@ -119,6 +127,7 @@ impl DeviceDetector for DeviceManager {
         let devices: Vec<DeviceInfo> = self
             .disks
             .iter()
+            .flatten()
             .filter(|disk| Self::is_likely_mp3_device(disk))
             .map(|disk| DeviceInfo {
                 name: disk.name().to_string_lossy().to_string(),
@@ -136,11 +145,15 @@ impl DeviceDetector for DeviceManager {
     fn is_device_connected(&self, mount_point: &Path) -> bool {
         self.disks
             .iter()
+            .flatten()
             .any(|disk| disk.mount_point() == mount_point)
     }
 
     fn refresh(&mut self) {
-        self.disks.refresh(true);
+        match self.disks.as_mut() {
+            Some(disks) => disks.refresh(true),
+            None => self.disks = Self::load_disks(),
+        }
     }
 }
 
@@ -638,7 +651,7 @@ mod tests {
     fn test_list_all_disks_debug() {
         use sysinfo::Disks;
 
-        let disks = Disks::new_with_refreshed_list();
+        let disks = Disks::new_with_refreshed_list().expect("failed to list disks");
         println!("\n=== All Disks ===");
         for disk in &disks {
             let mount = disk.mount_point().to_string_lossy();

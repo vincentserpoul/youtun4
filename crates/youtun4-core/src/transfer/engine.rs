@@ -515,9 +515,9 @@ impl TransferEngine {
             && let Ok(source_meta) = fs::metadata(&item.source)
             && let Ok(modified) = source_meta.modified()
         {
-            let _ = filetime::set_file_mtime(
+            let _ = fs::set_times(
                 &item.destination,
-                filetime::FileTime::from_system_time(modified),
+                fs::FileTimes::new().set_modified(modified),
             );
         }
 

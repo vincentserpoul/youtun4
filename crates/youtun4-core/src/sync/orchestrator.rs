@@ -580,9 +580,11 @@ impl SyncOrchestrator {
     fn verify_device_space(&self, mount_point: &Path, required_bytes: u64) -> Result<()> {
         // Use sysinfo to check available space
         use sysinfo::Disks;
-        let disks = Disks::new_with_refreshed_list();
+        let disks = Disks::new_with_refreshed_list()
+            .inspect_err(|e| warn!("Failed to read system disk list: {e}"))
+            .ok();
 
-        for disk in &disks {
+        for disk in disks.iter().flatten() {
             if disk.mount_point() == mount_point {
                 let available = disk.available_space();
                 if available < required_bytes {

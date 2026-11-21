@@ -122,11 +122,9 @@ pub fn Skeleton(
 
     let style = format!(
         "{}{}{}",
-        width.map(|w| format!("width: {w};")).unwrap_or_default(),
-        height.map(|h| format!("height: {h};")).unwrap_or_default(),
-        radius
-            .map(|r| format!("border-radius: {r};"))
-            .unwrap_or_default(),
+        width.map_or_default(|w| format!("width: {w};")),
+        height.map_or_default(|h| format!("height: {h};")),
+        radius.map_or_default(|r| format!("border-radius: {r};")),
     );
 
     view! {
